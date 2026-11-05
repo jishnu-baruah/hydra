@@ -351,14 +351,15 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <doc link>
 
 ### T-A09, Temp onboarding site: wallet sign-in, API key, repo template
-- Status: in-review | Branch: feature/t-a09-onboarding-site
+- Status: done
 - Suggested: Jishnu
 - Depends-on: T-A02
 - Touches: apps/site/
 - Serves: Usability (judged) ; Practicality (judged)
 - Scope: temporary; Mouli merges it into the explorer later
 - Acceptance: a new user connects a wallet, signs 1 message, gets an API key and a filled-in workflow template, and their first push lands a release on Arkiv, in under 5 minutes end to end
-- Evidence: <PR link>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/36 (live at https://hydra-site-one.vercel.app; 2 blind Sonnet agents pasted the site's 1 copy block and each landed a release on Arkiv on the first publish, 37 s and 49 s from setting the secret: tx 0x97f80d736cd10007347bd26d12493830e0b3205016851a3b44ebbf71af3cad98 block 259760 and tx 0x332431ce79b3210c833efd7310087f6b2a11c8f9ed985947da0735d52151e186 block 259762, both receipt status success)
+- Finding: a key did not reserve its app name, so another wallet took "test-dapp" 3 min 8 s after a key was issued and the key then got 403 in CI; keys now write the hydra.app claim at issue (#35). The blind agents also found 5 doc errors in round 1 (version format, sha256- prefix, where 403 fires, swarm pending, secret before first push), all fixed by round 2.
 
 # P2, 6 Nov afternoon and night
 
