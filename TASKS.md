@@ -479,7 +479,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Serves: Usability (judged)
 - Acceptance: the public URL loads the home page and 1 app page in under 3 s each
 - Evidence: apps/explorer/vercel.json and deploy/README.md; served locally with exactly those headers, every page loads with 0 CSP violations (landing 2.3 s to its hero check, releases 953 ms, app 470 ms, search 521 ms, record 529 ms) and /releases redirects to /releases/; the public URL waits for OP-10
-- Finding: the repo belongs to Jishnu and Mouli is not an admin, so Mouli cannot connect it to his own Vercel through GitHub; the deploy comes from the account that already hosts apps/site, or from a local checkout with the Vercel CLI
+- Finding: the repo belongs to Jishnu and Mouli is not an admin, so Mouli cannot connect it to their own Vercel through GitHub; the deploy comes from the account that already hosts apps/site, or from a local checkout with the Vercel CLI
 
 
 ### T-B07, Landing page and explorer design from the interface template

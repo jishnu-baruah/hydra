@@ -6,8 +6,9 @@ and relative links resolve), and the security headers below.
 
 ## Option A: a second Vercel project from the repo (deploys on every push)
 
-Needs a Vercel account that can see `jishnu-baruah/hydra` on GitHub. The one that hosts `apps/site`
-already can.
+Needs a Vercel account that can see `jishnu-baruah/hydra` on GitHub, which only the repo owner can
+grant. If the import list does not show the repo, install the Vercel GitHub app on it first, or use
+option B.
 
 1. In Vercel: **Add New** > **Project**, and import `jishnu-baruah/hydra`.
 2. Set **Root Directory** to `apps/explorer`, and **Framework Preset** to **Other**. Leave the build
