@@ -28,29 +28,35 @@ in T-F01.
 - **The public RPC is rate limited.** Get an access key at `hub.arkiv.network/access-keys` and pass
   it as `rabdi({ accessKey })` from `@arkiv-network/sdk/chains`.
 - Tiramisu (chain `7738577`), which the spike used, is "Replaced by Rabdi". Do not use it.
-- SDK `@arkiv-network/sdk` with viem; Node 22.10 or later. The docs do not pin a version, and the
-  spike used 0.8.1. Pin whatever T-F01 installs.
+- SDK **`@arkiv-network/sdk` 1.0.1** with viem (pinned in `packages/core`). 1.x is
+  **schema-based**: `defineSchema(name, { col: str().indexed(), ... })`, then
+  `walletClient.createEntity(Schema, values, { expiration })` and
+  `publicClient.select(...).from(Schema).where(eq(...)).fetch()`. The spike's 0.8 attribute-array
+  API is gone.
 - **Limits:** max lifetime 7,884,000 blocks (about 182.5 days) from the create or extension;
-  32 attributes per entity; **128 bytes per string attribute**; 128 KiB of bytes per create;
-  100 rows per query page. "long" expiry below means this maximum.
-- Long values (script URLs, file paths over 128 bytes) go in the payload, not in an attribute.
-- **Attribute names must be lowercase** (`checked_at`, not `checkedAt`). Uppercase reverts on chain, and the SDK doesn't warn you.
-- **Numbers default to i32.** Timestamps must be `u64(BigInt(ms))`.
-- Expiry uses `expires: ExpirationTime.fromSeconds(n)`. Expired entities drop out of queries.
-- A create took about 3 to 7 s on testnet. Batch where we can.
+  32 columns per entity (31 for a named schema); **128 bytes per `str`**; 128 KiB of `bytes` per
+  create; 100 rows per query page. "long" expiry below means `ExpirationTime.max()`.
+- Long values (script URLs, file paths over 128 bytes) are replaced by their `sha256-<hex>` tag in
+  the column (`fitStr` in core); the full value stays in the `body` payload.
+- Column names: we use lowercase snake_case. A bare JS number is an `i32`, so times are
+  `u64(BigInt(ms))` (the builders in core do this). The SDK checks values against the schema
+  before sending; a bad value throws `SchemaMismatchError` with no transaction.
+- Only `.indexed()` columns can be filtered on. `bytes` cannot be indexed.
+- A create took about 3 to 7 s on the old testnet. Batch with `executeBatch` where we can.
 
 ## Records
 
-Every record has the attributes `project = "hydra"` and `type`, so all our data can be queried with one filter. Payloads are JSON.
+Each record type is a **named schema** in `packages/core/src/records.ts`; the name is written as an
+indexed `arkiv.schema` tag, so `.from(ReleaseSchema)` returns only Hydra releases. Use the value
+builders there (`releaseValues` and friends), never hand-built objects. Payloads are JSON in the
+`body` bytes column.
 
-| `type` | Written by | Attributes (all lowercase) | Payload | Expiry |
-| --- | --- | --- | --- | --- |
-| `app` | API, on registration | `app`, `domain`, `publisher`, `created_at` (u64) | `{ name, domains[], repo? }` | long |
-| `release` | API, on publish | `app`, `version`, `commit`, `swarm_ref`, `file_count`, `published_at` (u64), `source` = `ci` | `{ manifest summary, ci_run_url }` | long |
-| `file` | API, on publish | `app`, `sha256`, `path`, `release` (release entity key) | none | long |
-| `observation` | Indexer | `app` or `domain`, `status` (`match`, `mismatch`, `unknown`), `observed_at` (u64), `scripts_hash` | `{ scripts: [{url, sha256}] }` | days |
-
-"long" means the maximum lifetime, about 182.5 days. A `path` or URL over 128 bytes is hashed into the attribute and kept in full in the payload.
+| Schema | Written by | Indexed columns | Other columns | `body` payload | Expiry |
+| --- | --- | --- | --- | --- | --- |
+| `hydra.app` | API, on registration (one record per domain) | `app`, `domain`, `publisher`, `created_at` (u64) | | `{ name, domains[], repo? }` | long |
+| `hydra.release` | API, on publish | `app`, `version`, `commit`, `swarm_ref`, `published_at` (u64) | `file_count` (u64), `source` = `ci` | `{ manifest summary, ci_run_url }` | long |
+| `hydra.file` | API, on publish | `app`, `sha256`, `release` (entity key) | `path` | none | long |
+| `hydra.observation` | Indexer | `domain`, `status` (`match`, `mismatch`, `unknown`), `observed_at` (u64), `scripts_hash` | `app` (optional) | `{ scripts: [{url, sha256}] }` | 3 days |
 
 ## Manifest (stored on Swarm, referenced by `release.swarm_ref`)
 
