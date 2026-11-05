@@ -413,6 +413,16 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: with this machine off, a scheduled Actions run triggers 1 indexer pass on Render that writes 1 observation per reachable target, and its log shows the tx hashes
 - Evidence: <Actions run link, tx hashes>
 
+### T-A14, Indexer second view: rendered page through Jina
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a14-rendered-view
+- Suggested: Jishnu
+- Depends-on: T-A13
+- Touches: packages/indexer/, .github/workflows/indexer.yml
+- Serves: Technicality (judged) ; WOW factor (judged)
+- Scope: Jina's reader renders the page in a browser from another network. Script origins that appear only at runtime are flagged, sites that block the indexer are read through it, and every script is still hashed by a direct fetch
+- Acceptance: a run reports runtime-only script origins per site and scans at least 1 site that returns 403 to the indexer directly; compare logic has failing tests first
+- Evidence: <Actions run link, tx hashes>
+
 # P2, 6 Nov afternoon and night
 
 ### T-A04, Deploy the API with HTTPS
