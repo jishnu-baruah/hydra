@@ -212,7 +212,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Kill criterion: no working upload after 3 hours, so keep the manifest in the Arkiv payload and mark the Swarm bonus at risk in DECISIONS.md
 
 ### T-F03, Extension can hash the scripts a page loads
-- Status: in-review https://github.com/jishnu-baruah/hydra/pull/10 | Branch: feature/t-f03-script-hashing
+- Status: done
 - Suggested: Mouli
 - Depends-on: none
 - Touches: spikes/F3/
@@ -234,7 +234,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <PR link>
 
 ### T-B01, Explorer scaffold that reads Arkiv in the browser
-- Status: in-review https://github.com/jishnu-baruah/hydra/pull/15 | Branch: feature/t-b01-explorer-scaffold
+- Status: done
 - Suggested: Mouli
 - Depends-on: T-A00
 - Touches: apps/explorer/
@@ -244,7 +244,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: Arkiv SDK 1.0.1 ESM does not load on Node 22.17 (ERR_REQUIRE_CYCLE_MODULE on a 0-byte dist chunk) but loads in the browser from jsdelivr in about 2 s; mixing 2 CDNs broke every query; 0 hydra.release records exist yet, so home shows the empty state.
 
 ### T-C01, Extension scaffold with a 3-state badge
-- Status: in-review https://github.com/jishnu-baruah/hydra/pull/6 | Branch: feature/t-c01-extension-scaffold
+- Status: done
 - Suggested: Mouli
 - Depends-on: T-A00
 - Touches: apps/extension/
