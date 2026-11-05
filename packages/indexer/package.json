@@ -11,5 +11,8 @@
   "dependencies": {
     "@hydra/core": "workspace:*",
     "viem": "^2.57.16"
+  },
+  "exports": {
+    "./run": "./src/run.ts"
   }
 }

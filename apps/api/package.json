@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@hydra/core": "workspace:*",
+    "@hydra/indexer": "workspace:*",
     "viem": "^2.57.16"
   }
 }
