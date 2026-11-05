@@ -383,7 +383,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <PR link>
 
 ### T-A12, API uploads to Swarm with no postage batch
-- Status: claimed 2026-11-06 | Owner: Manish | Branch: feature/t-a12-swarm-no-batch
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/61 | Branch: feature/t-a12-swarm-no-batch
 - Suggested: Manish
 - Depends-on: T-A02, OP-2
 - Touches: apps/api/src/swarm.ts, apps/api/src/main.ts, apps/api/test/api.test.ts, apps/api/README.md, apps/api/deploy/README.md, docs/swarm.md, arkiv/swarm.md
