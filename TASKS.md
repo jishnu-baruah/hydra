@@ -312,16 +312,17 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <curl transcript, tx hash>
 
 ### T-B02, Explorer app page with release history
-- Status: claimed 2026-11-05 | Owner: Mouli | Branch: feature/t-b02-app-page
+- Status: blocked, see OP-7 | Branch: feature/t-b02-app-page
 - Suggested: Mouli
 - Depends-on: T-B01, T-A02
 - Touches: apps/explorer/app/, apps/explorer/src/arkiv.js, apps/explorer/search/page.js
 - Serves: Usability (judged)
 - Acceptance: an app page lists all releases newest first with version, commit, time, file count and a working Swarm link, for 1 real published app
-- Evidence: <deployed URL>
+- Evidence: tests 4 of 4 in apps/explorer/app/releases.test.mjs; live Rabdi reads with the publisher filter run with 0 errors but return 0 releases, so the real-app check waits for OP-7
+- Finding: the publisher wallet holds 5 tGLM and has sent 0 transactions, so the blocker is a first publish, not funding; every Hydra record comes from that 1 wallet, so the explorer now trusts only entities created by it
 
 ### T-B03, Explorer search
-- Status: blocked, see OP-1 | Branch: feature/t-b03-explorer-search
+- Status: blocked, see OP-7 | Branch: feature/t-b03-explorer-search
 - Suggested: Mouli
 - Depends-on: T-B01
 - Touches: apps/explorer/search/, apps/explorer/src/arkiv.js, apps/explorer/index.html

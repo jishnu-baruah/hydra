@@ -50,7 +50,8 @@ try {
         tr.insertCell().append(el("a", "View", { href: `../releases/?key=${encodeURIComponent(r.key)}` }));
       }
       $("view").append(wrap);
-      status(`${releases.length} release(s) by the app's owner, read live from Arkiv in ${Math.round(performance.now())} ms.`);
+      const capped = rows.length >= 100 ? " Arkiv returned its 100-row page limit, so some releases may be missing." : "";
+      status(`${releases.length} release(s) by the app's owner, read live from Arkiv in ${Math.round(performance.now())} ms.${capped}`);
     }
   }
 } catch (err) {
