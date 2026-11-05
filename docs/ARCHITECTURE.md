@@ -44,6 +44,29 @@ in T-F01.
 - Only `.indexed()` columns can be filtered on. `bytes` cannot be indexed.
 - A create took about 3 to 7 s on the old testnet. Batch with `executeBatch` where we can.
 
+### Rules from Arkiv's known-issues guide (SDK 1.0.1, Rabdi), enforced in `packages/core`
+
+- **Writes go through `guardedCreate` only.** One wallet, one queue, one transaction per call,
+  **never resent automatically**. Nonce and gasPrice are read at `latest`; gas is at least
+  max(1,000,000, 2 x estimate) and at most half the block gas limit (`policyGas`). The receipt must
+  say `success`. A `WriteNotVerifiedError` with phase `submission_unknown` or `submitted` means a
+  transaction may exist: look up its hash and reconcile with a query before writing again.
+- **Reads** may retry (`readWithRetry`, 3 tries). Never wrap a write in it.
+- **The access key is a server-side secret.** The keyed RPC URL contains it, so every error from
+  core is redacted (`redact`) and carries no `cause`. Never put the key in a browser bundle, a
+  log, a URL we print, or the extension.
+- **Event logs only reach about 1,000 blocks (about 30 minutes) back.** `eth_getLogs` and
+  `watchEntityEvents` fail for older ranges, and a watcher that falls behind never recovers. Build
+  history views (the explorer timeline) from **queries** over records, not from event logs.
+- State reads are at the chain head only (`latest`); `safe`, `finalized` and old block tags fail.
+
+### Open decision: how browsers read Arkiv
+
+The explorer and the extension cannot hold the access key, and anonymous RPC is heavily rate
+limited. Options: (a) a small read proxy in `apps/api` that holds the key and only forwards
+`select` queries; (b) anonymous reads with caching, accepting rate limits for the demo. Decide in
+DECISIONS.md before T-B01 and T-C02 depend on it.
+
 ## Records
 
 Each record type is a **named schema** in `packages/core/src/records.ts`; the name is written as an
