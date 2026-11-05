@@ -418,7 +418,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <deployed URL>
 
 ### T-C02, Extension compare logic
-- Status: open
+- Status: claimed 2026-11-05 | Owner: Mouli | Branch: feature/t-c02-compare
 - Suggested: Mouli
 - Depends-on: T-C01, T-F03, T-A02
 - Touches: apps/extension/src/compare/, apps/extension/src/background.js, apps/extension/src/verdict.js, apps/extension/manifest.json
