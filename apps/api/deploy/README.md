@@ -16,21 +16,21 @@ Never commit any of them, and never put them in `fly.toml` or the Dockerfile.
 | `HYDRA_KEY_SECRET` | yes | signs every API key, 32+ chars. Generate: `openssl rand -hex 32`. Rotating it revokes all keys |
 | `ARKIV_PRIVATE_KEY` | for writes | the publisher wallet (Rabdi testnet, funded from the faucet). Unset means a read-only API |
 | `ARKIV_ACCESS_KEY` | recommended | from hub.arkiv.network/access-keys; the public RPC is rate limited |
-| `BEE_API_URL` | for Swarm | the Bee node API, see below |
-| `SWARM_POSTAGE_BATCH_ID` | for Swarm | the postage batch the Bee node stamps uploads with (OP-2) |
+| `BEE_API_URL` | for Swarm | the Bee API: `https://api.gateway.ethswarm.org` (stamps for us), or an own node, see below |
+| `SWARM_POSTAGE_BATCH_ID` | own Bee only | the postage batch an own Bee node stamps with; leave empty for the gateway |
 | `HYDRA_CORS_ORIGIN` | yes in prod | the Vercel site origin, for example `https://hydra-site.vercel.app`. Unset means `*` |
 | `HYDRA_ALLOWED_ADDRESSES` | optional | comma-separated wallets allowed to get keys; empty means anyone |
 | `HYDRA_PUBLISHES_PER_HOUR` | optional | per-address publish limit, default 30 |
 | `HYDRA_PUBLISHER_ADDRESS` | read-only only | the wallet whose records reads trust, when `ARKIV_PRIVATE_KEY` is unset |
 | `PORT` | set by host | Render sets it; the Fly config sets 8787. Falls back to `HYDRA_API_PORT`, then 8787 |
 
-Without `BEE_API_URL` and `SWARM_POSTAGE_BATCH_ID` the API still publishes, with
+Without `BEE_API_URL` the API still publishes, with
 `swarm_ref: pending`.
 
 ## Bee
 
-Bee runs on the same host as the API and a teammate sets it up (OP-2). Point `BEE_API_URL` at
-its API port over the private network, never a public URL:
+Default: `BEE_API_URL=https://api.gateway.ethswarm.org` and no batch id (OP-2, DECISIONS.md). For an
+own Bee node instead, point `BEE_API_URL` at its API port over the private network and set the batch:
 
 - Render: run Bee as a private service; set `BEE_API_URL=http://<bee-service-name>:1633`.
 - Fly: run Bee as its own app in the same org; set `BEE_API_URL=http://<bee-app>.internal:1633`.
@@ -59,9 +59,8 @@ its API port over the private network, never a public URL:
 curl -s https://<host>/health
 ```
 
-Expect `"ok":true`, `"arkivWrites":true` (the wallet key is set) and `"swarm":true` (Bee and the
-batch are set), plus `publisherWallet` with the wallet address. `arkivWrites:false` means
-`ARKIV_PRIVATE_KEY` is missing; `swarm:false` means `BEE_API_URL` or `SWARM_POSTAGE_BATCH_ID` is.
+Expect `"ok":true`, `"arkivWrites":true` (the wallet key is set) and `"swarm":true` (`BEE_API_URL` is set), plus `publisherWallet` with the wallet address. `arkivWrites:false` means
+`ARKIV_PRIVATE_KEY` is missing; `swarm:false` means `BEE_API_URL` is.
 If the container exits at start, read the log: a short `HYDRA_KEY_SECRET` is named there.
 
 `curl -s https://<host>/publish.mjs` should return the CI publish script.

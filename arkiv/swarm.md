@@ -48,7 +48,7 @@ This is the Arkiv + Swarm bonus's expected answer for teams using the public gat
 | Upload | [`apps/api/src/swarm.ts`](../apps/api/src/swarm.ts) | `POST /bzz` with `Swarm-Collection: true`, `Swarm-Index-Document: index.html`, 120 s abort |
 | Upload caller | [`apps/api/src/publish.ts`](../apps/api/src/publish.ts) (lines 107-112) | Appends `hydra-manifest.json` to the tar, stores the returned ref into `release.swarm_ref` |
 | Tar builder | [`apps/api/src/tar.ts`](../apps/api/src/tar.ts) | Minimal ustar writer for the Bee collection upload |
-| Config wiring | [`apps/api/src/main.ts`](../apps/api/src/main.ts) (line 24) | Reads `BEE_API_URL` + `SWARM_POSTAGE_BATCH_ID` from env |
+| Config wiring | [`apps/api/src/main.ts`](../apps/api/src/main.ts) (line 23) | Reads `BEE_API_URL` and the optional `SWARM_POSTAGE_BATCH_ID` from env |
 | Arkiv column | [`packages/core/src/records.ts`](../packages/core/src/records.ts) (line 23) | `swarm_ref: str().indexed()` on `ReleaseSchema` |
 | Explorer read | [`apps/explorer/src/main.js`](../apps/explorer/src/main.js) (line 58) | Renders `swarm_ref` on the home list; app page (T-B02) will link out |
 | Extension read | `apps/extension/` (T-C02) | Will fetch `<gateway>/bzz/<swarm_ref>/hydra-manifest.json` to verify |
@@ -83,6 +83,6 @@ Full 5-file spike with sha256 byte-compare: `spikes/F2/result.json`.
 ## 9. Friction encountered
 
 - **EF gateway blocks HTML reads** (302 → `bzz.link/forbidden`). JSON/JS/CSS/plain text work. We serve the manifest from Swarm and the site from the dApp's origin, so this does not block our critical path — but a "render the site from Swarm" link in the explorer would need a different gateway.
-- **The API requires a non-empty `SWARM_POSTAGE_BATCH_ID`** (`apps/api/src/main.ts:24`) to construct the uploader, even though the gateway ignores the value. Workaround: set it to any non-empty string. Clean fix (noted in `docs/swarm.md` § Path B): drop the env-guard from `main.ts:24` and make the header conditional in `swarm.ts:11`.
+- **No postage batch needed.** The API turns Swarm on from `BEE_API_URL` alone and sends `Swarm-Postage-Batch-Id` only when `SWARM_POSTAGE_BATCH_ID` is set, so the EF gateway path runs with the batch id empty.
 - **No encrypted Swarm references on-chain.** The bonus rules forbid encrypted refs in public Arkiv entities; our refs are plain 64-hex, so this is a note not a blocker.
 - **Pre-event spike T7** (Tiramisu): `0.8.1` SDK, since replaced by `1.0.1` on Rabdi; `docs/prior-learnings.md` records the lowercase-attribute and i32-number issues we hit then, which are now encoded in `packages/core/src/records.ts` so publishers can't re-step on them. More Arkiv builder feedback goes in `docs/FEEDBACK.md` before submission.

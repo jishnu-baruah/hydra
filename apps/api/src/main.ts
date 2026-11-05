@@ -20,10 +20,9 @@ const { publicClient, walletClient } = arkivClients({
   privateKey: env.ARKIV_PRIVATE_KEY ? (env.ARKIV_PRIVATE_KEY as Hex) : undefined,
 })
 
-const swarm =
-  env.BEE_API_URL && env.SWARM_POSTAGE_BATCH_ID
-    ? swarmUploader({ beeUrl: env.BEE_API_URL, batchId: env.SWARM_POSTAGE_BATCH_ID })
-    : undefined
+const swarm = env.BEE_API_URL
+  ? swarmUploader({ beeUrl: env.BEE_API_URL, batchId: env.SWARM_POSTAGE_BATCH_ID?.trim() || undefined })
+  : undefined
 
 const script = fileURLToPath(new URL('../../../packages/action/publish.mjs', import.meta.url))
 
