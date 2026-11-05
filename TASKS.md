@@ -269,13 +269,14 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <PR link>
 
 ### T-D07, Research kit wired into the repo
-- Status: in-review | Branch: feature/t-d07-research-kit
+- Status: done
 - Suggested: Jishnu
 - Depends-on: none
 - Touches: scripts/research.mjs, .claude/commands/, CLAUDE.md, README.md
 - Serves: unblocks T-D01, T-D02 ; Practicality (judged)
 - Acceptance: /research answers 1 question with citations and a computed verdict in under 60 s, run from this repo, leaving 0 new files in it
-- Evidence: <PR link>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/5 (merged as b07d341)
+- Finding: a question answered in 13 s with 3 cited sources and 0 files left in this repo; a fast answer passed the verify gate with a wrong hex conversion, so answers are leads
 
 # P1, 6 Nov morning
 
