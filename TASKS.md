@@ -370,7 +370,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <URL>
 
 ### T-A05, GitHub Action
-- Status: claimed 2026-11-05 | Owner: Jishnu | Branch: feature/t-a05-publish-script
+- Status: in-review | Branch: feature/t-a05-publish-script
 - Suggested: Jishnu
 - Depends-on: T-A04
 - Touches: packages/action/

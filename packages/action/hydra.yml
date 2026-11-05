@@ -1,0 +1,25 @@
+# Hydra: record every build of this app on Arkiv and Swarm.
+# 1. Add a repo secret HYDRA_API_KEY (Settings > Secrets and variables > Actions).
+# 2. Set your build command and output folder below, commit this file to .github/workflows/.
+name: hydra
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci && npm run build # your build
+      - name: Publish to Hydra
+        env:
+          HYDRA_API_URL: __HYDRA_API_URL__
+          HYDRA_API_KEY: ${{ secrets.HYDRA_API_KEY }}
+        run: |
+          curl -fsSL "$HYDRA_API_URL/publish.mjs" -o hydra-publish.mjs
+          node hydra-publish.mjs __BUILD_DIR__
