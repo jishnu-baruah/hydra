@@ -393,7 +393,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <PR link>
 
 ### T-D08, README section "How we used Swarm"
-- Status: open
+- Status: claimed 2026-11-06 | Owner: Manish | Branch: feature/t-d08-readme-swarm
 - Suggested: Manish
 - Depends-on: T-A12, OP-8
 - Touches: README.md
