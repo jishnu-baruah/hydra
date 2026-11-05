@@ -2,7 +2,7 @@
 // within 10 minutes of its timestamp earns an API key bound to that address and app name.
 
 import { getAddress, isAddress, isHex, verifyMessage } from 'viem'
-import { issueKey } from './keys.ts'
+import { issueKey, KEY_TTL_MS } from './keys.ts'
 
 export const APP_NAME = /^[a-z0-9][a-z0-9-]{1,39}$/
 const MAX_SKEW_MS = 10 * 60 * 1000
@@ -46,5 +46,5 @@ export async function keyFromSignature(
   const message = signInMessage(address, app, body.issuedAt as string)
   const valid = await verifyMessage({ address, message, signature: body.signature }).catch(() => false)
   if (!valid) return { ok: false, status: 401, error: 'signature does not match this address and message' }
-  return { ok: true, value: { apiKey: issueKey(secret, { address, app, iat: now }), address, app } }
+  return { ok: true, value: { apiKey: issueKey(secret, { address, app, iat: now, exp: now + KEY_TTL_MS }), address, app } }
 }

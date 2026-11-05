@@ -2,3 +2,5 @@ export * from './arkiv.ts'
 export * from './attr.ts'
 export * from './hash.ts'
 export * from './records.ts'
+// Query helpers re-exported so apps need only @hydra/core.
+export { eq } from '@arkiv-network/sdk/query'
