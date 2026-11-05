@@ -402,6 +402,16 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: the section links at least 1 live release whose `swarm_ref` opens `hydra-manifest.json` through the gateway, plus its Arkiv entity in the explorer
 - Evidence: <PR link>
 
+### T-A13, Indexer hosted in the API on Render, triggered by GitHub Actions
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a13-indexer-hosting
+- Suggested: Jishnu
+- Depends-on: T-A06, T-A04
+- Touches: packages/indexer/, apps/api/, .github/workflows/indexer.yml
+- Serves: Practicality (judged) ; Arkiv track
+- Scope: the free Render service sleeps after 15 idle minutes; a scheduled Actions job calls a secret-protected run route every 30 minutes, which wakes the API and runs one indexer pass
+- Acceptance: with this machine off, a scheduled Actions run triggers 1 indexer pass on Render that writes 1 observation per reachable target, and its log shows the tx hashes
+- Evidence: <Actions run link, tx hashes>
+
 # P2, 6 Nov afternoon and night
 
 ### T-A04, Deploy the API with HTTPS
