@@ -466,7 +466,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 
 
 ### T-B07, Landing page and explorer design from the interface template
-- Status: in-review https://github.com/jishnu-baruah/hydra/pull/28 | Branch: feature/t-b07-explorer-design
+- Status: done
 - Suggested: Mouli
 - Depends-on: T-B03
 - Touches: apps/explorer/index.html, apps/explorer/assets/, apps/explorer/releases/, apps/explorer/search/index.html, apps/explorer/search/page.js, apps/explorer/src/main.js, apps/explorer/README.md
