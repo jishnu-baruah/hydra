@@ -19,7 +19,17 @@ test("each input kind becomes the right lookups", () => {
   assert.deepEqual(lookups("https://App.Demo.xyz/swap?x=1"), [
     { schema: "hydra.app", field: "domain", value: "app.demo.xyz", via: "domain" },
   ]);
+  // A dotted word may be a domain or an app name, so both are asked.
+  assert.deepEqual(lookups("swap.v2"), [
+    { schema: "hydra.app", field: "domain", value: "swap.v2", via: "domain" },
+    { schema: "hydra.app", field: "app", value: "swap.v2", via: "app name" },
+  ]);
   assert.deepEqual(lookups("demo-dex"), [{ schema: "hydra.app", field: "app", value: "demo-dex", via: "app name" }]);
+  // Typed case and lower case are both asked, since app ids are usually lower case.
+  assert.deepEqual(lookups("Demo-Dex"), [
+    { schema: "hydra.app", field: "app", value: "Demo-Dex", via: "app name" },
+    { schema: "hydra.app", field: "app", value: "demo-dex", via: "app name" },
+  ]);
   assert.deepEqual(lookups(`SHA256-${HEX.toUpperCase()}`), [
     { schema: "hydra.file", field: "sha256", value: `sha256-${HEX}`, via: "file sha256" },
   ]);
@@ -31,7 +41,7 @@ test("each input kind becomes the right lookups", () => {
 });
 
 test("all 4 kinds find the same app", async () => {
-  for (const q of ["app.demo.xyz", "demo-dex", `sha256-${HEX}`, SWARM]) {
+  for (const q of ["app.demo.xyz", "demo-dex", "Demo-Dex", `sha256-${HEX}`, SWARM]) {
     const hits = await search(q, find);
     assert.deepEqual(hits.map((h) => h.app), ["demo-dex"], q);
   }
