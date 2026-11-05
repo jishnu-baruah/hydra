@@ -1,0 +1,14 @@
+# BuildKit reads <Dockerfile>.dockerignore next to the Dockerfile, so this lives in deploy/.
+# Allowlist: only what the image copies. Secrets and local installs never enter the context.
+*
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!apps/api/package.json
+!apps/api/src
+!packages/core/package.json
+!packages/core/src
+!packages/action
+**/node_modules
+**/.env
+**/.env.*
