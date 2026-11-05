@@ -1,0 +1,7 @@
+{
+  "name": "hydra-spike-f3",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test hash.test.mjs", "start": "node run.mjs" },
+  "devDependencies": { "playwright": "1.49.1" }
+}
