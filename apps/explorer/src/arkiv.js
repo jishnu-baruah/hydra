@@ -37,6 +37,18 @@ export async function latestReleases(limit = 20) {
 
 export const entity = (key) => client.getEntity(key);
 
+// One site's indexer observations, newest first.
+export async function observationsFor(domain, limit = 100) {
+  const page = await client
+    .select({ $key: true, $attributes: true })
+    .where(and(eq("arkiv.schema", "hydra.observation"), eq("domain", domain)))
+    .createdBy(INDEXER)
+    .orderBy(desc("observed_at", "u64"))
+    .limit(limit)
+    .fetch();
+  return page.entities;
+}
+
 // Newest indexer observations. Each lives 3 days, so this is the recent record of every site.
 export async function latestObservations(limit = 100) {
   const page = await client

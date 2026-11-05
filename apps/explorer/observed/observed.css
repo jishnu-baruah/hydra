@@ -1,0 +1,18 @@
+/* Observed-site pages. Tokens from ../assets/hydra.css, chips from ../events/events.css. */
+[hidden] { display: none !important; }
+
+.unpublished {
+  max-width: 64ch;
+  margin-top: 28px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-left: 3px solid #e6b450;
+  background: rgb(20 20 20 / 0.7);
+}
+.unpublished .label { color: #e6b450; }
+.unpublished p:last-child { margin: 8px 0 0; font: 400 13px/1.7 var(--mono); color: var(--muted); }
+
+.view h2 { font-size: 28px; margin-top: 40px; }
+.view .table-wrap + h2 { margin-top: 40px; }
+td .chip { display: inline-block; }
+td.hash { color: var(--muted); }

@@ -452,13 +452,14 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: 9 of 80 live observations changed their script set between runs, all on sites with no Hydra release (1inch, across.to, zerion and others), which is natural churn; a Changes filter that counted them would bury a planted change, so it now shows only mismatches and changes on published sites (0 live). 4 sites that record 0 scripts are unreachable from the indexer host (Connect Timeout), not mis-parsed
 
 ### T-B05, Pages for sites that have not onboarded
-- Status: claimed 2026-11-06 | Owner: Mouli | Branch: feature/t-b05-observed
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/58 | Branch: feature/t-b05-observed
 - Suggested: Mouli
 - Depends-on: T-B04
 - Touches: apps/explorer/observed/, apps/explorer/src/arkiv.js, apps/explorer/events/page.js
 - Serves: Practicality (judged) ; Originality (judged)
 - Acceptance: all 15 or more indexed targets have a page labelled "observed, not published by the team" with their observation history
-- Evidence: <deployed URL>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/58; live on Rabdi 2026-11-06 under the deploy headers, 20 of 20 indexed targets have a page labelled "observed, not published by the team" with their observation history (5 runs each), about 0.45 s per page, 0 CSP problems; tests 4 of 4 in apps/explorer/observed/observed.test.mjs; the public URL waits for OP-10 (T-B06)
+- Finding: the explorer can only call a site published when the indexer reports match or mismatch for it, which needs the app name in targets.json to equal the Hydra app name; the demo site (T-D04) must be listed under the name it publishes with, or its page will say "not published by the team"
 
 ### T-C02, Extension compare logic
 - Status: blocked, see OP-3 | Branch: feature/t-c02-compare
