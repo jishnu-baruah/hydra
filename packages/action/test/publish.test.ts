@@ -42,7 +42,7 @@ function buildDir() {
 }
 
 test('publish.mjs sends a build and the API records it', async () => {
-  const key = issueKey(SECRET, { address: '0x00000000000000000000000000000000000000aa', app: 'demo', iat: 1 })
+  const key = issueKey(SECRET, { address: '0x00000000000000000000000000000000000000aa', app: 'demo', iat: 1, exp: Date.now() + 3_600_000 })
   const { stdout } = await run(process.execPath, [script, buildDir()], {
     env: { ...process.env, HYDRA_API_URL: api(), HYDRA_API_KEY: key, GITHUB_SHA: 'deadbeef', GITHUB_RUN_NUMBER: '7' },
   })

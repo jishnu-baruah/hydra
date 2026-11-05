@@ -3,7 +3,8 @@
 // release to the Hydra API, which stores it on Swarm and records it on Arkiv.
 // No dependencies, so CI can fetch and run it directly:
 //   node publish.mjs <build-dir>
-// Env: HYDRA_API_KEY (repo secret), HYDRA_API_URL; optional HYDRA_VERSION, HYDRA_DOMAINS (comma list).
+// Env: HYDRA_API_KEY (repo secret), HYDRA_API_URL; optional HYDRA_VERSION, HYDRA_DOMAINS (comma list; the server
+// ignores it until domain ownership checks land).
 
 import { createHash } from 'node:crypto'
 import { readdir, readFile } from 'node:fs/promises'
