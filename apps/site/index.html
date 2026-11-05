@@ -34,6 +34,10 @@
 
     <section class="step" id="step-repo" hidden>
       <h2><span class="n">3</span> Add Hydra to your repo</h2>
+      <p class="hint">One copy: paste this into your coding agent (Claude Code, Cursor, Codex) opened in your repo. It sets the secret, writes the workflow and pushes. It contains your key, so paste it only into your own agent.</p>
+      <div class="copyrow block"><pre id="handoff"></pre><button id="copy-handoff" data-copy="handoff">Copy for your agent</button></div>
+      <details>
+        <summary class="hint">Or set it up by hand</summary>
       <ol>
         <li>Add the secret: <span class="hint">Settings, then Secrets and variables, then Actions, then New repository secret</span>, or run
           <div class="copyrow"><code id="gh-cmd">gh secret set HYDRA_API_KEY</code><button class="ghost" data-copy="gh-cmd">Copy</button></div>
@@ -44,6 +48,7 @@
         </li>
         <li>Push to <code>main</code>. The run prints the Arkiv transaction.</li>
       </ol>
+      </details>
     </section>
 
     <section class="step" id="step-releases" hidden>
@@ -54,7 +59,7 @@
 
     <section class="step" id="step-agent">
       <h2><span class="n">AI</span> Let your coding agent set it up</h2>
-      <p class="hint">Agents read <a href="./llms.txt">llms.txt</a>. For Claude Code, install the skill in your repo, then ask it to "add Hydra to this repo". You still get the key here yourself; never paste it into a chat.</p>
+      <p class="hint">Agents read <a href="./llms.txt">llms.txt</a>. After signing in above, step 3 gives you one block to paste into your agent. For Claude Code you can also install the skill in your repo:</p>
       <div class="copyrow"><code id="skill-cmd">mkdir -p .claude/skills/hydra-publish && curl -fsSL https://hydra-site-one.vercel.app/skill/hydra-publish/SKILL.md -o .claude/skills/hydra-publish/SKILL.md</code><button class="ghost" data-copy="skill-cmd">Copy</button></div>
     </section>
 
