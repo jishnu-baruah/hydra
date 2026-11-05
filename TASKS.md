@@ -232,7 +232,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <PR link, screenshot>
 
 ### T-C01, Extension scaffold with a 3-state badge
-- Status: open
+- Status: claimed 2026-11-05 | Owner: Mouli | Branch: feature/t-c01-extension-scaffold
 - Suggested: Mouli
 - Depends-on: T-A00
 - Touches: apps/extension/
