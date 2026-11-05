@@ -174,18 +174,28 @@ export function guardedCreate(c: { walletClient: Wallet; publicClient: Reader } 
   )
 }
 
-// Up to MAX_BATCH creates in one transaction, with the gas floor scaled by the number of
-// operations. Returns the keys in the order given.
+export interface ExtendSpec {
+  entityKey: Hex
+  expiration: CreateSpec['expiration'] // must not be earlier than the entity's current expiry
+}
+
+// Up to MAX_BATCH operations (creates plus expiry extensions) in one transaction, with the gas
+// floor scaled by the number of operations. Returns the created keys in the order given.
 export const MAX_BATCH = 20
 
-export function guardedBatch(c: { walletClient: Wallet; publicClient: Reader; creates: CreateSpec[] }) {
-  if (c.creates.length === 0 || c.creates.length > MAX_BATCH) {
-    throw new Error(`a batch holds 1 to ${MAX_BATCH} creates, got ${c.creates.length}; split it`)
+export function guardedBatch(c: { walletClient: Wallet; publicClient: Reader; creates: CreateSpec[]; extensions?: ExtendSpec[] }) {
+  const extensions = c.extensions ?? []
+  const ops = c.creates.length + extensions.length
+  if (ops === 0 || ops > MAX_BATCH) {
+    throw new Error(`a batch holds 1 to ${MAX_BATCH} operations, got ${ops}; split it`)
   }
   return enqueue(c.walletClient, () =>
-    submitOnce(c.walletClient, c.publicClient, c.creates.length, (tx) =>
+    submitOnce(c.walletClient, c.publicClient, ops, (tx) =>
       c.walletClient.executeBatch(
-        { creates: c.creates.map((x) => ({ schema: x.schema, values: x.values, expiration: x.expiration })) as never },
+        {
+          creates: c.creates.map((x) => ({ schema: x.schema, values: x.values, expiration: x.expiration })) as never,
+          ...(extensions.length ? { extensions } : {}),
+        },
         tx,
       ),
     ),

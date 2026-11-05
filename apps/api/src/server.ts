@@ -20,7 +20,7 @@ export interface ApiDeps {
   corsOrigin?: string
   publishScript?: () => Promise<string>
   publish?: PublishDeps // undefined: no funded Arkiv wallet configured
-  ownerOf?: (app: string) => Promise<string | null> // lowercased owner, or null if unclaimed
+  claimOf?: (app: string) => Promise<{ owner: string; key: `0x${string}` } | null> // live claim, or null
   allowedAddresses?: Set<string> // lowercased; when set, only these may get keys and publish
   publishesPerHour?: number // per address; default 30
   claimsPerHour?: number // new app names reserved per address; default 5
@@ -113,11 +113,11 @@ export function createApi(deps: ApiDeps) {
         if (!out.ok) return send(res, out.status, { error: out.error })
         if (!allowed(out.value.address)) return send(res, 403, { error: 'this test server only issues keys to allowlisted addresses' })
         const { address, app } = out.value
-        const owner = deps.ownerOf ? await deps.ownerOf(app) : null
+        const owner = deps.claimOf ? (await deps.claimOf(app))?.owner ?? null : null
         if (owner && owner !== address.toLowerCase()) return send(res, 403, { error: ownedError(app, owner) })
         // Unclaimed: reserve the name now, so nobody can take it between key and first publish.
         let claimTx: string | null = null
-        if (!owner && deps.ownerOf && deps.publish) {
+        if (!owner && deps.claimOf && deps.publish) {
           if (!takeClaim(address)) return send(res, 429, { error: 'too many new app names for this address; try again within the hour' })
           claimTx = (await claimApp(deps.publish, app, address, Date.now())).txHash
         }
@@ -132,7 +132,7 @@ export function createApi(deps: ApiDeps) {
         if (!deps.publish) return send(res, 503, { error: 'publishing is not configured on this server (no funded Arkiv wallet)' })
         const body = await readJson(req, LARGE)
         if (!takeSlot(claims.address)) return send(res, 429, { error: 'publish limit reached for this address; try again within the hour' })
-        const out = await publish(claims, body, { ...deps.publish, ownerOf: deps.ownerOf })
+        const out = await publish(claims, body, { ...deps.publish, claimOf: deps.claimOf })
         return out.ok ? send(res, 201, out.value) : send(res, out.status, { error: out.error })
       }
 
@@ -144,7 +144,7 @@ export function createApi(deps: ApiDeps) {
       }
 
       if (req.method === 'GET' && path === '/v1/activity' && deps.activity) {
-        return send(res, 200, { events: await deps.activity() })
+        return send(res, 200, await deps.activity())
       }
 
       const fileRoute = /^\/v1\/files\/(sha256-[0-9a-f]{64})$/.exec(path)

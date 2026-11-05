@@ -5,6 +5,7 @@ import { API_URL } from '../config.js'
 
 const $ = (id) => document.getElementById(id)
 let events = []
+let head = null
 let filter = new URLSearchParams(location.search).get('app')
 
 const el = (tag, text, cls) => {
@@ -14,6 +15,15 @@ const el = (tag, text, cls) => {
   return e
 }
 const short = (s, n = 10) => (String(s).length > n + 4 ? `${String(s).slice(0, n)}...` : String(s))
+
+// Arkiv records expire at a block; turn that into a date with the chain's head and block time.
+function lifetime(e) {
+  if (!head || !e.expires_at) return 'expiry unknown'
+  const days = ((e.expires_at - head.block) * head.blockSeconds) / 86400
+  const when = new Date((head.time + (e.expires_at - head.block) * head.blockSeconds) * 1000).toLocaleDateString()
+  if (e.kind === 'app') return `name lease ends ${when} (${Math.round(days)} days) unless a publish renews it`
+  return `expires ${when} (${Math.round(days)} days)`
+}
 
 function detail(e) {
   const d = el('div')
@@ -29,7 +39,7 @@ function detail(e) {
       d.append(a)
     }
   }
-  d.append(el('div', `entity ${e.$key}`, 'mono hint'))
+  d.append(el('div', `entity ${e.$key} · ${lifetime(e)}`, 'mono hint'))
   return d
 }
 
@@ -74,6 +84,7 @@ async function load() {
     const body = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`)
     events = Array.isArray(body.events) ? body.events : []
+    head = body.head ?? null
     $('error').hidden = true
     render()
   } catch (err) {

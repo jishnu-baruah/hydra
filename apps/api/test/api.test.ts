@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { after, test } from 'node:test'
 import type { AddressInfo } from 'node:net'
 import { privateKeyToAccount, generatePrivateKey } from 'viem/accounts'
-import { AppSchema } from '@hydra/core'
+import { AppSchema, LEASE, LONG } from '@hydra/core'
 import { keyFromSignature, signInMessage } from '../src/auth.ts'
 import { issueKey, verifyKey } from '../src/keys.ts'
 import { createApi } from '../src/server.ts'
@@ -60,20 +60,24 @@ test('tar: system tar lists and extracts what we wrote', () => {
 })
 
 // End-to-end through HTTP with fake Arkiv and Swarm writers. App claims land in `owners`.
-const calls = { one: 0, many: 0, swarm: 0, lastMany: 0 }
+const calls = { one: 0, many: 0, swarm: 0, lastMany: 0, lastExt: [] as unknown[], claimExp: undefined as unknown }
 const owners = new Map<string, string>()
 const server = createApi({
   secret: SECRET,
-  ownerOf: async (app) => owners.get(app) ?? null,
+  claimOf: async (app) => (owners.has(app) ? { owner: owners.get(app)!, key: `0x${'aa'.repeat(32)}` as const } : null),
   publish: {
     createOne: async (spec) => {
       calls.one++
-      if (spec.schema === AppSchema) owners.set(String(spec.values.app), String(spec.values.publisher))
+      if (spec.schema === AppSchema) {
+        owners.set(String(spec.values.app), String(spec.values.publisher))
+        calls.claimExp = spec.expiration
+      }
       return { entityKey: `0x${'11'.repeat(32)}`, txHash: `0x${'22'.repeat(32)}` }
     },
-    createMany: async (specs) => {
+    createMany: async (specs, extensions = []) => {
       calls.many++
       calls.lastMany = specs.length
+      calls.lastExt = extensions
       return { createdEntities: specs.map(() => `0x${'33'.repeat(32)}` as const), txHash: `0x${'44'.repeat(32)}` }
     },
     swarm: async (files) => {
@@ -194,4 +198,8 @@ test('reserve at key time: a key claims its unowned name once; another wallet is
   assert.equal(pub.status, 201)
   assert.equal(pub.json.appClaimTx, null) // already claimed at key time
   assert.equal(calls.one, before + 2) // + the release write only
+  // The claim is a 30-day lease; the publish renews it to LONG inside the file batch.
+  assert.deepEqual(calls.claimExp, LEASE())
+  assert.equal(pub.json.leaseRenewed, true)
+  assert.deepEqual(calls.lastExt, [{ entityKey: `0x${'aa'.repeat(32)}`, expiration: LONG() }])
 })
