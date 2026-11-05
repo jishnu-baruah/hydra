@@ -12,5 +12,8 @@ Open http://localhost:5174/?api=http://localhost:8788, connect, sign, then run t
 publish step against `http://localhost:8788` and press Refresh. Against a real API, serve the
 folder with any static server and point `?api=` at it.
 
-Set `API_DEFAULT` in `config.js` to the deployed API before deploying. `?api=` overrides it.
+Live: https://hydra-site-one.vercel.app, talking to https://hydra-api-5xmn.onrender.com
+(`API_DEFAULT` in `config.js`). `?api=` overrides it only for a localhost API. Deploy with
+`vercel deploy --prod` from this folder; `vercel.json` makes it a plain static site and
+`.vercelignore` keeps the dev server out.
 The YAML in `app.js` mirrors `packages/action/hydra.yml`; change both together.
