@@ -362,7 +362,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: a key did not reserve its app name, so another wallet took "test-dapp" 3 min 8 s after a key was issued and the key then got 403 in CI; keys now write the hydra.app claim at issue (#35). The blind agents also found 5 doc errors in round 1 (version format, sha256- prefix, where 403 fires, swarm pending, secret before first push), all fixed by round 2.
 
 ### T-A10, Temp activity view: everything Hydra wrote to Arkiv
-- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a10-activity
+- Status: in-review | Branch: feature/t-a10-activity
 - Suggested: Jishnu
 - Depends-on: T-A02, T-A09
 - Touches: apps/api/src/reads.ts, apps/api/src/server.ts, apps/api/src/main.ts, apps/site/

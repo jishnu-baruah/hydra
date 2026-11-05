@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hydra activity</title>
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    .apps { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+    .app { text-align: left; margin: 0; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--line); font-weight: 500; }
+    .app[aria-pressed="true"] { border-color: var(--accent-soft); }
+    .app strong { display: block; }
+    #events { list-style: none; padding: 0; margin: 0; }
+    #events li { display: grid; grid-template-columns: 110px 70px 1fr; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); align-items: baseline; }
+    .kind { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .kind.app { color: #ffd479; } .kind.release { color: var(--accent-soft); } .kind.file { color: var(--muted); }
+    .mono { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 13px; word-break: break-all; }
+    @media (max-width: 560px) { #events li { grid-template-columns: 1fr; gap: 2px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow"><a href="../">/Hydra</a> / activity</p>
+      <h1>What Hydra has written to Arkiv</h1>
+      <p class="lead">Every app claim, release and file record our publisher wallet wrote on the Rabdi testnet, newest first. A temporary view until the explorer timeline ships. Swarm references show <code>pending</code> until a postage batch is attached.</p>
+    </header>
+
+    <section class="step">
+      <h2>Apps <button class="ghost" id="refresh">Refresh</button></h2>
+      <p class="hint" id="status">Loading...</p>
+      <div class="apps" id="apps"></div>
+    </section>
+
+    <section class="step">
+      <h2 id="events-title">All events</h2>
+      <ul id="events"></ul>
+    </section>
+
+    <p class="error" id="error" role="alert" hidden></p>
+    <footer>API: <code id="api"></code></footer>
+  </main>
+  <script type="module" src="./activity.js"></script>
+</body>
+</html>
