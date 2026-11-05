@@ -108,7 +108,7 @@
 .how p { margin: 0; max-width: 28ch; font: 400 13px/1.7 var(--mono); color: var(--muted); }
 
 /* Measured */
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); margin: 40px 0 0; border-top: 1px solid var(--border); }
+.stats { display: grid; grid-template-columns: repeat(2, 1fr); margin: 40px 0 0; border-top: 1px solid var(--border); }
 .stat { padding: 32px 24px 0 0; display: flex; flex-direction: column-reverse; gap: 12px; }
 .stat dt { font: 400 12px/1.6 var(--mono); color: var(--muted); max-width: 26ch; }
 .stat dd { margin: 0; font: 400 clamp(64px, 9vw, 128px)/0.85 var(--display); }
@@ -137,4 +137,59 @@
   .track { animation: none; flex-wrap: wrap; width: auto; }
   .track [aria-hidden="true"] { display: none; }
   .rows li { opacity: 1; transform: none; }
+}
+
+/* Built on Arkiv: Arkiv's own blue (#181EA9) as the safe container for its white wordmark, which is
+   used as supplied: not recoloured, stretched or combined with our mark. */
+.arkiv { width: 100vw; margin: 0 0 0 calc(50% - 50vw); background: #181ea9; color: #fff; }
+.arkiv-in { display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 20px 48px; max-width: 1320px; margin: 0 auto; padding: 44px var(--gutter); }
+.arkiv .label { color: rgb(255 255 255 / 0.72); }
+.arkiv-logo { display: block; padding: 8px 0; }
+.arkiv-logo img { display: block; width: 200px; height: auto; }
+.arkiv-line { margin: 0; max-width: 56ch; font: 400 14px/1.7 var(--mono); color: rgb(255 255 255 / 0.86); }
+
+/* How: a pinned stage; vertical scroll moves the track sideways (landing.js). The page itself never
+   gets wider than the viewport: the track only moves inside the pinned, clipped stage. */
+.hscroll { position: relative; width: 100vw; margin-left: calc(50% - 50vw); height: 320vh; }
+.hs-pin { position: sticky; top: 56px; height: calc(100dvh - 56px); overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: 36px; }
+.hs-head { display: flex; align-items: center; gap: 32px; padding: 0 var(--gutter); max-width: 1320px; width: 100%; margin: 0 auto; }
+.hs-head .eyebrow { margin: 0; white-space: nowrap; }
+.hs-bar { flex: 1; height: 1px; background: var(--border); }
+.hs-bar i { display: block; height: 100%; width: 100%; background: var(--accent); transform-origin: left; transform: scaleX(var(--p, 0)); }
+.hs-track { display: flex; gap: 24px; list-style: none; margin: 0; padding: 0 var(--gutter); will-change: transform; }
+.hs-panel {
+  flex: 0 0 min(560px, 78vw);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 440px;
+  padding: 36px;
+  border: 1px solid var(--border);
+  background: rgb(20 20 20 / 0.85);
+  transition: border-color 300ms var(--ease);
+}
+.hs-panel:hover { border-color: #3a3a3a; }
+.hs-panel .num { font: 500 12px var(--mono); letter-spacing: 0.2em; color: var(--accent); }
+.hs-panel h3 { margin: 0; font: 400 clamp(64px, 7vw, 112px)/0.88 var(--display); text-transform: uppercase; }
+.hs-panel p { margin: 0; max-width: 36ch; font: 400 14px/1.7 var(--mono); color: var(--muted); }
+.hs-vis { margin: auto 0 0; padding: 16px 18px; border: 1px solid var(--border); background: var(--bg); font: 400 13px/1.7 var(--mono); color: #cfcfcf; white-space: pre; overflow: hidden; }
+.hs-vis b { color: var(--accent); font-weight: 500; }
+.hs-vis em { font-style: normal; color: var(--match); }
+.hs-badge { display: flex; align-items: center; gap: 14px; white-space: normal; }
+.hs-badge span { display: grid; place-items: center; min-width: 40px; height: 28px; font: 600 13px var(--mono); color: var(--bg); }
+.hs-badge.ok span { background: var(--match); }
+.hs-badge.bad { border-color: rgb(255 90 78 / 0.45); color: var(--fg); }
+.hs-badge.bad span { background: var(--mismatch); }
+
+/* Phones and reduced motion: a plain vertical stack, nothing pinned or moved. */
+@media (max-width: 760px), (prefers-reduced-motion: reduce) {
+  .hscroll { height: auto; width: auto; margin-left: 0; padding-top: clamp(96px, 14vh, 160px); }
+  .hs-pin { position: static; height: auto; overflow: visible; gap: 24px; }
+  .hs-head { padding: 0; }
+  .hs-bar { display: none; }
+  .hs-track { flex-direction: column; padding: 0; transform: none !important; }
+  .hs-panel { flex: none; min-height: 0; padding: 28px 22px; }
+}
+@media (max-width: 900px) {
+  .arkiv-in { grid-template-columns: 1fr; gap: 16px; padding: 40px var(--gutter); }
 }

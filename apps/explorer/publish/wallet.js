@@ -30,7 +30,11 @@ const h = React.createElement;
 const wallets = WALLETCONNECT_PROJECT_ID
   ? [rkWallets.injectedWallet, rkWallets.metaMaskWallet, rkWallets.rainbowWallet, rkWallets.walletConnectWallet]
   : [rkWallets.injectedWallet];
-const connectors = connectorsForWallets([{ groupName: "Wallets", wallets }], {
+// Installed wallets get their own "Installed" group (EIP-6963); this is the fallback for any other
+// extension that only sets window.ethereum, under a name that says what it is.
+const plain = (wallet, name) => (opts) => ({ ...wallet(opts), name });
+const listed = wallets.map((w) => (w === rkWallets.injectedWallet ? plain(w, "Another browser wallet") : w));
+const connectors = connectorsForWallets([{ groupName: "Other wallets", wallets: listed }], {
   appName: "Hydra",
   projectId: WALLETCONNECT_PROJECT_ID || "hydra-installed-wallets-only",
 });
@@ -44,20 +48,22 @@ export const config = wagmi.createConfig({
 const theme = darkTheme({ accentColor: "#7aa2ff", accentColorForeground: "#0a0a0a", borderRadius: "none", fontStack: "system", overlayBlur: "small" });
 theme.colors.modalBackground = "#141414";
 theme.colors.modalBorder = "#2a2a2a";
-theme.fonts.body = '"IBM Plex Sans", system-ui, sans-serif';
+theme.fonts.body = '"IBM Plex Mono", ui-monospace, Consolas, monospace';
 
-// The button is the page's own .btn; RainbowKit supplies the modal and the account state.
+// The modal's footnote, in the site's own words.
+const Disclaimer = ({ Text }) => h(Text, null, "Hydra only asks your wallet to sign a message. No transaction, no gas.");
+
+// The page's own buttons: Connect opens RainbowKit's wallet list; once connected, Disconnect. No
+// RainbowKit account panel (its avatar and token balance mean nothing on this page).
 function Button({ onAccount }) {
-  return h(ConnectButton.Custom, null, ({ account, openConnectModal, openAccountModal, mounted }) => {
+  return h(ConnectButton.Custom, null, ({ account, openConnectModal, mounted }) => {
     React.useEffect(() => {
       if (mounted) onAccount(account?.address ?? null);
     }, [mounted, account?.address]);
-    const connected = mounted && account;
-    return h(
-      "button",
-      { className: "btn", type: "button", onClick: connected ? openAccountModal : openConnectModal, "data-testid": "connect" },
-      connected ? `Connected ${account.displayName}` : "Connect wallet",
-    );
+    if (mounted && account) {
+      return h("button", { className: "ghost-btn", type: "button", onClick: () => actions.disconnect(config), "data-testid": "disconnect" }, "Disconnect");
+    }
+    return h("button", { className: "btn", type: "button", onClick: openConnectModal, "data-testid": "connect" }, "Connect wallet");
   });
 }
 
@@ -65,7 +71,7 @@ function Button({ onAccount }) {
 export function mount(el, onAccount) {
   const client = new QueryClient();
   createRoot(el).render(
-    h(wagmi.WagmiProvider, { config }, h(QueryClientProvider, { client }, h(RainbowKitProvider, { theme, modalSize: "compact", appInfo: { appName: "Hydra" } }, h(Button, { onAccount })))),
+    h(wagmi.WagmiProvider, { config }, h(QueryClientProvider, { client }, h(RainbowKitProvider, { theme, modalSize: "compact", appInfo: { appName: "Hydra", disclaimer: Disclaimer, learnMoreUrl: "https://ethereum.org/en/wallets/find-wallet/" } }, h(Button, { onAccount })))),
   );
 }
 

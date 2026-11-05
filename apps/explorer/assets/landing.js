@@ -70,3 +70,35 @@ if (scan) {
     })();
   }
 }
+
+// How it works: vertical scroll inside the pinned section moves the track sideways, so the page
+// never scrolls horizontally. Only on wide screens without reduced motion; CSS stacks it otherwise.
+const hs = document.querySelector(".hscroll");
+if (hs) {
+  const track = hs.querySelector(".hs-track");
+  const bar = hs.querySelector(".hs-bar");
+  const wide = matchMedia("(min-width: 761px) and (prefers-reduced-motion: no-preference)");
+  let ticking = false;
+  const update = () => {
+    ticking = false;
+    if (!wide.matches) return;
+    const travel = hs.offsetHeight - innerHeight;
+    const p = Math.min(1, Math.max(0, -hs.getBoundingClientRect().top / Math.max(1, travel)));
+    const distance = Math.max(0, track.scrollWidth - innerWidth);
+    track.style.transform = `translate3d(${-p * distance}px, 0, 0)`;
+    bar.style.setProperty("--p", p.toFixed(4));
+  };
+  const onScroll = () => {
+    if (!ticking) {
+      ticking = true;
+      requestAnimationFrame(update);
+    }
+  };
+  addEventListener("scroll", onScroll, { passive: true });
+  addEventListener("resize", onScroll);
+  wide.addEventListener("change", () => {
+    track.style.transform = "";
+    onScroll();
+  });
+  update();
+}

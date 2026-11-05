@@ -120,3 +120,9 @@ summary:hover { color: var(--fg); }
   .stepper li:nth-child(-n + 2) { border-bottom: 1px solid var(--border); }
   .panel { padding: 20px 16px; }
 }
+
+/* RainbowKit's modal, in the site's type. Its title is an h1, so it gets the site's heading face
+   on purpose rather than half of the page's h1 rule. */
+[data-rk] [role="dialog"] h1 { font: 400 28px/1 var(--display) !important; letter-spacing: 0.04em; text-transform: uppercase; }
+[data-rk] [role="dialog"] { font-family: var(--mono); }
+#wallet-root .ghost-btn { min-height: 44px; }

@@ -34,6 +34,7 @@ function onAccount(address) {
   if (state.key && address && address !== state.address) {
     return show("e2", `Your wallet switched to ${short(address)}, but this key is for ${short(state.address)}. Reload the page to get a key for the new account.`);
   }
+  $("wallet-help").hidden = Boolean(address);
   if (address && address !== state.address) {
     state.address = address;
     show("address", `Connected ${short(address)}`);
