@@ -28,9 +28,8 @@
       <!-- Hero: the product working, not a paragraph about it. -->
       <section class="l-hero">
         <div class="l-copy">
-          <p class="eyebrow">Hydra <span>/ Frontend integrity</span></p>
           <h1 class="l-head" data-flap>Know what you sign on</h1>
-          <p class="l-sub">Every script your browser loads, checked against the build the team published.</p>
+          <p class="l-sub">Every script your browser loads, checked against the published build.</p>
           <div class="l-cta">
             <a class="btn" href="#check">Check a site
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
@@ -75,8 +74,7 @@
           <a class="arkiv-logo" href="https://arkiv.network/" rel="noopener noreferrer" target="_blank">
             <img src="assets/arkiv-logo-white.svg" alt="Arkiv" width="278" height="64" />
           </a>
-          <p class="arkiv-line">Every release and every check is a record on Arkiv, the universal data layer for Ethereum: queryable, time-scoped and tamper-evident. Builds live on Swarm.</p>
-          <a class="arkiv-go" href="https://arkiv.network/" rel="noopener noreferrer" target="_blank">arkiv.network</a>
+          <p class="arkiv-line">Every release and every check is a public record on Arkiv.</p>
         </div>
       </section>
 
@@ -84,14 +82,14 @@
       <section class="hscroll" id="how" aria-label="How Hydra works">
         <div class="hs-pin">
           <div class="hs-head">
-            <p class="eyebrow">01 <span>/ How it works</span></p>
+            <p class="eyebrow">How it works</p>
             <div class="hs-bar" aria-hidden="true"><i></i></div>
           </div>
           <ol class="hs-track">
             <li class="hs-panel">
               <span class="num">01</span>
               <h3>Publish</h3>
-              <p>Your CI sends each build to Hydra with one API key. No wallet in CI, no gas.</p>
+              <p>CI sends each build. One API key, no gas.</p>
               <pre class="hs-vis" aria-hidden="true"><b>$</b> node hydra-publish.mjs dist
   hashed 24 files
   <em>release 2026-11-06.1 recorded</em></pre>
@@ -99,7 +97,7 @@
             <li class="hs-panel">
               <span class="num">02</span>
               <h3>Record</h3>
-              <p>The manifest goes to Swarm. Every file's hash goes to Arkiv, public and permanent.</p>
+              <p>File hashes go to Arkiv. The build goes to Swarm.</p>
               <pre class="hs-vis" aria-hidden="true">/index.html        <em>9f2c1e..a41b</em>
 /assets/app.js     <em>3b7d90..0c2e</em>
 /assets/vendor.js  <em>e41a07..77f3</em></pre>
@@ -107,13 +105,13 @@
             <li class="hs-panel">
               <span class="num">03</span>
               <h3>Check</h3>
-              <p>The extension re-hashes every script your browser loaded and compares it with the release.</p>
+              <p>The extension re-hashes every script you load.</p>
               <div class="hs-vis hs-badge ok" aria-hidden="true"><span>OK</span>Every script matches the release</div>
             </li>
             <li class="hs-panel">
               <span class="num">04</span>
               <h3>Catch</h3>
-              <p>One changed file and the badge turns red, naming it, before you sign anything.</p>
+              <p>One changed file turns the badge red.</p>
               <div class="hs-vis hs-badge bad" aria-hidden="true"><span>!</span>/assets/app.js is in no release</div>
             </li>
           </ol>
@@ -122,11 +120,10 @@
 
       <!-- Measured -->
       <section class="l-section" id="measured">
-        <p class="eyebrow reveal">02 <span>/ Measured</span></p>
+        <p class="eyebrow reveal">Measured</p>
         <dl class="stats">
           <div class="stat reveal"><dt>Scripts hashed on 5 live dApps</dt><dd>1,081<span>/1,081</span></dd></div>
-          <div class="stat reveal"><dt>Slowest record read in the browser, 9 runs</dt><dd>1.1<span>s</span></dd></div>
-          <div class="stat reveal"><dt>Backends to trust</dt><dd>0</dd></div>
+          <div class="stat reveal"><dt>Slowest record read, 9 runs</dt><dd>1.1<span>s</span></dd></div>
         </dl>
       </section>
 
