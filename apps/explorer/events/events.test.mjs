@@ -26,7 +26,7 @@ test("decode reads a hex JSON body and returns null for anything else", () => {
 test("releases and observations mix, newest first", () => {
   const t = timeline(releases, obs);
   assert.deepEqual(t.map((e) => e.key), ["0xr2", "0xo4", "0xo2", "0xo3", "0xo1", "0xr1"]);
-  assert.deepEqual(t[0], { kind: "release", key: "0xr2", at: 4000, app: "demo-dex", version: "1.1.0", commit: "fff9999", files: 5 });
+  assert.deepEqual(t[0], { kind: "release", key: "0xr2", at: 4000, app: "demo-dex", version: "1.1.0", commit: "fff9999", files: 5, ci: null });
 });
 
 test("a site's script set changing between 2 observations is a change, whatever the indexer said", () => {
@@ -61,4 +61,18 @@ test("filters: releases, observed, and changes that matter", () => {
   assert.equal(only(t, "observed").length, 6);
   assert.deepEqual(only(t, "changes").map((e) => e.key), ["0xo2"]);
   assert.equal(only(t, "all").length, 8);
+});
+
+test("app name claims join the feed, and a release links its CI run only when it is a GitHub Actions run", () => {
+  const apps = [row("0xa1", { app: "demo-dex", publisher: "0xabc", created_at: 500n })];
+  const rel = [
+    row("0xr9", { app: "demo-dex", version: "2", commit: "c", file_count: 1n, published_at: 5000n, body: hex({ ci_run_url: "https://github.com/acme/demo/actions/runs/123" }) }),
+    row("0xr8", { app: "demo-dex", version: "1", commit: "c", file_count: 1n, published_at: 4500n, body: hex({ ci_run_url: "javascript:alert(1)" }) }),
+  ];
+  const t = timeline(rel, [], apps);
+  assert.deepEqual(t.map((e) => e.kind), ["release", "release", "claim"]);
+  assert.deepEqual(t[2], { kind: "claim", key: "0xa1", at: 500, app: "demo-dex", publisher: "0xabc" });
+  assert.equal(t[0].ci, "https://github.com/acme/demo/actions/runs/123");
+  assert.equal(t[1].ci, null);
+  assert.deepEqual(only(t, "releases").map((e) => e.kind), ["release", "release", "claim"]);
 });

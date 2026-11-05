@@ -37,6 +37,18 @@ export async function latestReleases(limit = 20) {
 
 export const entity = (key) => client.getEntity(key);
 
+// App name claims: the hydra.app records the publisher wallet wrote when it issued a key.
+export async function latestApps(limit = 100) {
+  const page = await client
+    .select({ $key: true, $attributes: true })
+    .where(eq("arkiv.schema", "hydra.app"))
+    .createdBy(PUBLISHER)
+    .orderBy(desc("created_at", "u64"))
+    .limit(limit)
+    .fetch();
+  return page.entities;
+}
+
 // One site's indexer observations, newest first.
 export async function observationsFor(domain, limit = 100) {
   const page = await client

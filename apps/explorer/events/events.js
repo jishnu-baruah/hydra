@@ -18,7 +18,18 @@ export function decode(body) {
   }
 }
 
-export function timeline(releaseRows, observationRows) {
+// Only a GitHub Actions run becomes a link; anything else in the field stays text.
+const CI = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/actions\/runs\/\d+(\/[\w/]*)?$/;
+const ciLink = (url) => (typeof url === "string" && CI.test(url) ? url : null);
+
+export function timeline(releaseRows, observationRows, appRows = []) {
+  const claims = appRows.map((e) => ({
+    kind: "claim",
+    key: e.$key,
+    at: Number(val(e, "created_at") ?? 0),
+    app: String(val(e, "app") ?? ""),
+    publisher: String(val(e, "publisher") ?? ""),
+  }));
   const releases = releaseRows.map((e) => ({
     kind: "release",
     key: e.$key,
@@ -27,6 +38,7 @@ export function timeline(releaseRows, observationRows) {
     version: String(val(e, "version") ?? ""),
     commit: String(val(e, "commit") ?? ""),
     files: Number(val(e, "file_count") ?? 0),
+    ci: ciLink(decode(val(e, "body"))?.ci_run_url),
   }));
 
   // A change is a site's script set differing from its previous observation. Worked out here, not
@@ -55,11 +67,11 @@ export function timeline(releaseRows, observationRows) {
       };
     });
 
-  return [...releases, ...observations].sort((a, b) => b.at - a.at);
+  return [...claims, ...releases, ...observations].sort((a, b) => b.at - a.at);
 }
 
 export function only(events, mode) {
-  if (mode === "releases") return events.filter((e) => e.kind === "release");
+  if (mode === "releases") return events.filter((e) => e.kind === "release" || e.kind === "claim");
   if (mode === "observed") return events.filter((e) => e.kind === "observation");
   // Changes that matter: a mismatch, or a change on a site that has a release. A site with no
   // release changes its script set on its own (spike F3: 1inch loads a different set every time).
