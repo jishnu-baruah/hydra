@@ -181,7 +181,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: GitHub showed the PR on a stale head for over 2 minutes after a push and refused the merge as out of date; closing and reopening the PR resynced it at once.
 
 ### T-A08, Core write safety and key hygiene
-- Status: claimed 2026-11-05 | Owner: Jishnu | Branch: feature/t-a08-write-safety
+- Status: in-review | Branch: feature/t-a08-write-safety
 - Suggested: Jishnu
 - Depends-on: T-A01
 - Touches: packages/core/, docs/ARCHITECTURE.md
