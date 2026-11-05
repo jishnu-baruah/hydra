@@ -34,12 +34,12 @@ Status values: `open` | `claimed <date> | Owner: <name>` | `done <date>: <result
 - Done when: both addresses hold tGLM and the access key works for one query; the addresses (not keys) are written here.
 
 ### OP-2, Swarm testnet postage batch
-- Status: open
+- Status: decided 2026-11-06: no batch; the EF gateway (api.gateway.ethswarm.org) stamps uploads, see DECISIONS.md
 - Owner: Jishnu
 - Needed by: 2026-11-06 morning
 - Unblocks: T-F02, T-A02
 - What exactly: run or pick a Bee node on the Swarm testnet and get a postage batch (testnet tokens from a faucet, or ask the Swarm team at their stall).
-- Done when: the batch id is in `.env` and one upload succeeds.
+- Done when: one upload succeeds and reads back byte-identical through a gateway URL (amended from "batch id in `.env`"; the gateway stamps for us). Met by T-F02, ref `bef3c15af9a3ebfefaee14cc5675f15dd3ec9080230351bf38ee340cd0d43006`. Once T-A11 lands, the API sends no batch header when `SWARM_POSTAGE_BATCH_ID` is empty.
 
 ### OP-3, Demo domain on Vercel
 - Status: open
@@ -86,7 +86,7 @@ Status values: `open` | `claimed <date> | Owner: <name>` | `done <date>: <result
 - Owner: Jishnu
 - Needed by: 2026-11-06 midday
 - Unblocks: T-B02, T-B03
-- What exactly: `GET /health` on the deployed API reports `"swarm": false`, so all 5 live releases have `swarm_ref = pending` and the explorer has no Swarm link to show. docs/swarm.md (Path B) needs no code change: on the API host set `BEE_API_URL` and `SWARM_GATEWAY_URL` to `https://api.gateway.ethswarm.org` and `SWARM_POSTAGE_BATCH_ID` to any non-empty value (the gateway ignores it), then publish once.
+- What exactly: `GET /health` on the deployed API reports `"swarm": false`, so all 5 live releases have `swarm_ref = pending` and the explorer has no Swarm link to show. On the API host set `BEE_API_URL` and `SWARM_GATEWAY_URL` to `https://api.gateway.ethswarm.org`, leave `SWARM_POSTAGE_BATCH_ID` empty (the gateway stamps for us, OP-2), redeploy, then publish once. Until T-A11 merges, set `SWARM_POSTAGE_BATCH_ID` to any non-empty value instead (the gateway ignores it).
 - Done when: `/health` reports `"swarm": true` and the next release's `swarm_ref` is 64 hex characters whose `hydra-manifest.json` opens through the gateway.
 
 ### OP-9, Hand-time the extension install in Chrome
