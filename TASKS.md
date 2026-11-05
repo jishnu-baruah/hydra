@@ -433,6 +433,72 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: the page lists all 20 targets in targets.json, including ones never observed, with their latest status read from Arkiv, and refreshes without a reload
 - Evidence: <PR link, live URL>
 
+### T-A16, DNS checker from two resolvers
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a16-dns-checker
+- Suggested: Jishnu
+- Depends-on: T-A13
+- Touches: packages/indexer/
+- Serves: Technicality (judged) ; WOW factor (judged)
+- Known: the 2026 hijacks were registrar-level, not code: CoW Swap (14 Apr, about 6 h of phishing per its post-mortem) and 12 Name.com sites (30 to 31 Oct). Script hashes only catch them after the page changes; NS and A records change first
+- Scope: each run resolves NS, A and CNAME for every target through 2 DNS-over-HTTPS resolvers (Cloudflare, Google), stores the fingerprint in the observation, and flags DNS_CHANGED when it differs from the previous run and RESOLVER_SPLIT when the 2 resolvers disagree
+- Acceptance: a run records DNS for 20 of 20 targets; a unit test flags a changed NS set and a resolver split; compare logic has failing tests first
+- Evidence: <Actions run, tx hashes>
+- Kill criterion: DoH rate-limited or flaky after 2 hours, so keep 1 resolver and NS only
+
+### T-A17, Alert subscriptions stored on Arkiv as leases
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a17-alert-subs
+- Suggested: Jishnu
+- Depends-on: T-A11, T-A13
+- Touches: apps/api/, packages/core/src/records.ts, docs/ARCHITECTURE.md
+- Serves: Arkiv track (prize) ; Practicality (judged)
+- Scope: a protocol team registers a webhook, Discord or Slack endpoint for its app with its Hydra API key. The endpoint config is encrypted (AES-256-GCM, server key) into a `hydra.alert_sub` entity with a 30-day lease, renewed by each publish. The signing secret (`whsec_`) is returned once. Routes: register, list, test, delete
+- Acceptance: register, then list returns it from Arkiv after an API restart, and the stored entity body contains no plaintext URL; another app's key gets 403
+- Evidence: <entity key, tx hash>
+- Kill criterion: no persisted subscription by 6 Nov 18:00 IST, so keep subscriptions in env config for the demo and say so
+
+### T-A18, Alert delivery: signed webhooks plus Discord and Slack
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a18-alert-delivery
+- Suggested: Jishnu
+- Depends-on: T-A16, T-A17
+- Touches: apps/api/, packages/indexer/
+- Serves: Practicality (judged) ; WOW factor (judged)
+- Known: Standard Webhooks headers webhook-id, webhook-timestamp, webhook-signature (HMAC-SHA256, 5 min replay window); protocol teams already route OpenZeppelin Monitor alerts to Slack, Discord, Telegram and webhooks
+- Scope: after each indexer run, every new problem per site (DNS_CHANGED, RESOLVER_SPLIT, CHANGED, EXTRA, RUNTIME_ORIGIN, NEW_RUNTIME_ORIGIN, mismatch) becomes 1 event with a stable id. Each subscription gets it signed per Standard Webhooks, or formatted for Discord and Slack, with 3 attempts and no duplicate per id
+- Acceptance: changing 1 script on the demo site sends 1 signed webhook and 1 Discord message within 1 triggered run, and a receiver sample verifies the signature
+- Evidence: <Discord screenshot, Actions run>
+- Kill criterion: delivery not working by 6 Nov 22:00 IST, so Discord only
+
+### T-C05, Extension shows indexer alerts
+- Status: open
+- Suggested: Mouli
+- Depends-on: T-A16, T-C03
+- Touches: apps/extension/
+- Serves: Usability (judged) ; WOW factor (judged)
+- Scope: on any site in the target list, read GET /v1/observations; if the latest observation is under 1 hour old and has DNS_CHANGED, CHANGED, EXTRA or RUNTIME_ORIGIN, show the red banner with the reason and the time
+- Acceptance: on the demo site after a planted change, the banner names the reason within 1 reload of a triggered run
+- Evidence: <recording>
+
+### T-D09, Incident case studies, sources opened
+- Status: open
+- Suggested: Manish
+- Depends-on: none
+- Touches: docs/incidents.md
+- Serves: Practicality (judged)
+- Known: research leads in DECISIONS.md 2026-11-06 Alerts row; every number must be read at its primary source (CoW post-mortem, The Block, Sygnia, Aikido) before it goes in
+- Scope: 4 cases (CoW Swap Apr 2026, Name.com Oct 2026, Bybit Feb 2025, npm chalk Sep 2025): vector, time live, who detected first, team warning delay, and which Hydra signal would have fired
+- Acceptance: 4 cases, every number with a primary-source link
+- Evidence: <PR link>
+
+### T-D10, Live demo: hijack our own site, alert lands
+- Status: open
+- Suggested: Manish
+- Depends-on: T-D04, T-A18, T-C05
+- Touches: docs/demo.md
+- Serves: WOW factor (judged)
+- Scope: on stage, change 1 script on the demo domain (or repoint its DNS), trigger 1 indexer run, show the Discord alert, the explorer, and the extension banner
+- Acceptance: the full sequence runs in under 90 seconds, 3 rehearsals in a row
+- Evidence: <recording>
+
 # P2, 6 Nov afternoon and night
 
 ### T-A04, Deploy the API with HTTPS
