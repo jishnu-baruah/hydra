@@ -423,6 +423,16 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: a run reports runtime-only script origins per site and scans at least 1 site that returns 403 to the indexer directly; compare logic has failing tests first
 - Evidence: <Actions run link, tx hashes>
 
+### T-A15, Page to visualise every site the indexer watches
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a15-indexed-sites
+- Suggested: Jishnu
+- Depends-on: T-A13, T-A14, T-D03
+- Touches: apps/api/src/reads.ts, apps/api/src/server.ts, apps/api/src/main.ts, apps/api/test/, apps/site/indexed/, packages/core/src/index.ts
+- Serves: WOW factor (judged) ; Usability (judged)
+- Scope: GET /v1/observations returns the latest observation per target (joined with targets.json categories) plus the last few runs; /indexed/ on the site shows every site as a card with status, script count, runtime origins, change flag and a run-history strip, and a summary and category chart
+- Acceptance: the page lists all 20 targets in targets.json, including ones never observed, with their latest status read from Arkiv, and refreshes without a reload
+- Evidence: <PR link, live URL>
+
 # P2, 6 Nov afternoon and night
 
 ### T-A04, Deploy the API with HTTPS
