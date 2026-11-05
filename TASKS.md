@@ -392,7 +392,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <Actions run link>
 
 ### T-A06, Indexer on a timer
-- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a06-indexer
+- Status: in-review | Branch: feature/t-a06-indexer
 - Suggested: Jishnu
 - Depends-on: T-A01, T-D03
 - Touches: packages/indexer/
