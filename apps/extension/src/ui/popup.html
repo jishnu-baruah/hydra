@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Hydra</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <span class="mark">Hydra</span>
+      <span class="host" id="host"></span>
+    </header>
+    <main>
+      <section class="verdict" id="verdict" data-state="checking" role="status" aria-live="polite">
+        <p class="label" id="label">Checking</p>
+        <p class="message" id="message"></p>
+        <p class="note" id="note"></p>
+      </section>
+      <section class="list" id="list" hidden>
+        <h2 class="label" id="list-title">Flagged scripts</h2>
+        <ul id="items"></ul>
+        <p class="more" id="more"></p>
+      </section>
+      <a class="link" id="link" hidden target="_blank" rel="noopener noreferrer"></a>
+    </main>
+    <footer class="foot" id="foot"></footer>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

@@ -430,13 +430,14 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: the API ignores domains until ownership is provable, so the extension finds the app from the page's own script hashes (1 lookup per hash, up to 5); a site whose every script was swapped would then look unknown, so the extension remembers each site's app after the first match and shows it red instead of grey
 
 ### T-C03, Warning banner and popup detail
-- Status: claimed 2026-11-06 | Owner: Mouli | Branch: feature/t-c03-banner-popup
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/37 | Branch: feature/t-c03-banner-popup
 - Suggested: Mouli
 - Depends-on: T-C02
 - Touches: apps/extension/src/ui/, apps/extension/src/popup.html, apps/extension/src/popup.js, apps/extension/src/background.js, apps/extension/manifest.json, apps/extension/evidence/
 - Serves: Usability (judged) ; WOW factor (judged)
 - Acceptance: a red banner lists every mismatched script (up to 10) and links to the app's explorer page; a grey state says "no release on record" for 1 unknown site
-- Evidence: <screenshots>
+- Evidence: apps/extension/evidence/t-c03-*.png; end to end in Chromium, 3 of 3 runs, 10 of 10 checks: the red banner names 1 changed file and links to the explorer page, lists 10 of 12 flagged scripts then "and 2 more", comes back when the page removes it, stays dismissed, and stays styled under a page CSP of style-src 'none'; the popup reads "No release on record" on example.com
+- Finding: a hidden attribute loses to a display rule in the same stylesheet, so the grey popup showed an empty explorer button while a test that read the attribute passed; the check now asks whether the element is visible, and fails without the fix
 
 ### T-D06, Get-started page and per-app READMEs
 - Status: open

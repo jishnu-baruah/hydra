@@ -1,6 +1,9 @@
 import { STATES, isWeb } from "./verdict.js";
 import { compare } from "./compare/compare.js";
 import { appForHashes, latestManifest } from "./compare/lookup.js";
+import { present } from "./ui/present.js";
+import { showBanner } from "./ui/banner.js";
+import { EXPLORER } from "./ui/links.js";
 
 // Per tab, the script URLs the page loaded. webRequest sees runtime-loaded chunks that a scan of
 // the HTML would miss (spike F3). Kept in storage.session, so it survives the worker sleeping.
@@ -9,6 +12,7 @@ const POOL = 6;
 
 const key = (tabId) => `s:${tabId}`;
 const timers = new Map();
+const bannered = new Set(); // tabs whose page may be showing the red banner
 // In memory, so scripts that finish together are not lost to a read-then-write race on storage;
 // mirrored to storage.session and read back after the worker wakes.
 const seen = new Map();
@@ -32,6 +36,7 @@ chrome.webRequest.onBeforeRequest.addListener(
   (d) => {
     if (d.tabId < 0) return;
     seen.set(d.tabId, new Set());
+    bannered.delete(d.tabId); // a navigation drops the old page and its banner
     chrome.storage.session.remove([key(d.tabId), `v:${d.tabId}`]);
     paint(d.tabId, isWeb(d.url) ? "checking" : "none");
   },
@@ -55,6 +60,7 @@ chrome.tabs.onUpdated.addListener((tabId, change) => {
 });
 chrome.tabs.onRemoved.addListener((tabId) => {
   seen.delete(tabId);
+  bannered.delete(tabId);
   chrome.storage.session.remove([key(tabId), `v:${tabId}`]);
 });
 
@@ -122,16 +128,31 @@ async function check(tabId) {
     result = { verdict: "grey", reason: `Could not reach the Hydra API (${e.message}). The page is unverified; reload to retry.` };
   }
 
+  result = { ...result, origin, at: Date.now() };
   await chrome.storage.session.set({ [`v:${tabId}`]: result });
-  await paint(tabId, result.verdict, title(result));
+  const view = present(result, { explorer: EXPLORER, origin });
+  await paint(tabId, result.verdict, title(view));
+  await banner(tabId, view);
 }
 
-function title(r) {
-  if (r.verdict === "red") {
-    const names = r.mismatches.slice(0, 3).map((m) => `${new URL(m.url).pathname} (${m.kind})`);
-    const more = r.mismatches.length > 3 ? ` and ${r.mismatches.length - 3} more` : "";
-    return `${r.mismatches.length} script(s) not in ${r.app} ${r.version}: ${names.join(", ")}${more}. Do not sign anything here.`;
+// Red puts the banner in the page; a later non-red result on the same page takes it down.
+async function banner(tabId, view) {
+  const red = view.state === "red";
+  if (!red && !bannered.has(tabId)) return;
+  try {
+    await chrome.scripting.executeScript({ target: { tabId, frameIds: [0] }, func: showBanner, args: [red ? view : null] });
+    if (red) bannered.add(tabId);
+    else bannered.delete(tabId);
+  } catch {
+    // Pages the browser does not let extensions touch (the Web Store, other extensions). The
+    // badge and the popup still carry the verdict.
   }
-  if (r.verdict === "green") return `${r.matched} script(s) match ${r.app} ${r.version}.`;
-  return r.reason;
+}
+
+// The badge tooltip: present()'s message, plus the first 3 flagged files when red.
+function title(view) {
+  if (view.state !== "red") return view.message;
+  const rest = view.items.length - 3 + view.more;
+  const names = view.items.slice(0, 3).map((i) => `${i.path} (${i.text.toLowerCase()})`).join(", ");
+  return `${names}${rest > 0 ? ` and ${rest} more` : ""}. ${view.message}`;
 }
