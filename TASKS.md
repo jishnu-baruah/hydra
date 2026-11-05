@@ -421,13 +421,14 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <CI or local run log>
 
 ### T-B04, Explorer events timeline
-- Status: claimed 2026-11-06 | Owner: Mouli | Branch: feature/t-b04-events
+- Status: blocked, see OP-3 | Branch: feature/t-b04-events
 - Suggested: Mouli
 - Depends-on: T-B02, T-A06
 - Touches: apps/explorer/events/, apps/explorer/src/arkiv.js, apps/explorer/index.html, apps/explorer/releases/index.html, apps/explorer/search/index.html, apps/explorer/app/index.html
 - Serves: WOW factor (judged) ; Usability (judged)
 - Acceptance: one timeline mixes releases and observations newest first, and a planted script change appears within 1 indexer run
-- Evidence: <recording>
+- Evidence: live on Rabdi 2026-11-06, under the deploy headers: 87 events (7 releases and 80 observations of 20 sites) in one feed, newest first, in 1.2 s, 0 CSP problems, no horizontal scroll at 1280 and 375 px; tests 5 of 5 in apps/explorer/events/events.test.mjs. The planted change needs a published site the indexer watches, which only the demo site can be (OP-3)
+- Finding: 9 of 80 live observations changed their script set between runs, all on sites with no Hydra release (1inch, across.to, zerion and others), which is natural churn; a Changes filter that counted them would bury a planted change, so it now shows only mismatches and changes on published sites (0 live). 4 sites that record 0 scripts are unreachable from the indexer host (Connect Timeout), not mis-parsed
 
 ### T-B05, Pages for sites that have not onboarded
 - Status: open
