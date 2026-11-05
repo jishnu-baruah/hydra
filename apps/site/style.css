@@ -27,7 +27,7 @@ h1 { font-size: clamp(28px, 5vw, 44px); line-height: 1.1; margin: 8px 0 12px; }
 
 .step { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
 h2 { font-size: 18px; margin: 0 0 8px; display: flex; align-items: center; gap: 10px; }
-.n { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); font-size: 14px; }
+.n { display: inline-grid; place-items: center; min-width: 26px; padding: 0 6px; height: 26px; border-radius: 13px; background: var(--accent); font-size: 14px; }
 .hint { color: var(--muted); font-size: 14px; }
 .value { color: var(--accent-soft); word-break: break-all; }
 
@@ -47,3 +47,4 @@ ol { padding-left: 20px; } ol li { margin-bottom: 12px; }
 #releases li { padding: 10px 0; border-top: 1px solid var(--line); }
 .error { color: var(--error); background: rgba(255, 80, 80, 0.08); border: 1px solid rgba(255, 138, 138, 0.4); border-radius: 12px; padding: 12px; }
 footer { margin-top: 24px; color: var(--muted); font-size: 13px; }
+a { color: var(--accent-soft); }

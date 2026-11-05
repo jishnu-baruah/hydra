@@ -52,6 +52,12 @@
       <ul id="releases"></ul>
     </section>
 
+    <section class="step" id="step-agent">
+      <h2><span class="n">AI</span> Let your coding agent set it up</h2>
+      <p class="hint">Agents read <a href="./llms.txt">llms.txt</a>. For Claude Code, install the skill in your repo, then ask it to "add Hydra to this repo". You still get the key here yourself; never paste it into a chat.</p>
+      <div class="copyrow"><code id="skill-cmd">mkdir -p .claude/skills/hydra-publish && curl -fsSL https://hydra-site-one.vercel.app/skill/hydra-publish/SKILL.md -o .claude/skills/hydra-publish/SKILL.md</code><button class="ghost" data-copy="skill-cmd">Copy</button></div>
+    </section>
+
     <p class="error" id="error" role="alert" hidden></p>
     <footer>API: <code id="api"></code> · temporary onboarding page for ETHGlobal Mumbai</footer>
   </main>
