@@ -104,7 +104,7 @@ Default tool per step:
 | CI red or a spike fails | `superpowers:systematic-debugging` |
 | Before opening a PR | `/code-review` at medium, plus `/security-review` on `apps/api` and keys |
 | Claiming a task done | `superpowers:verification-before-completion` |
-| Research, copy, submission text (Manish) | Claude with web search; cite every source in the doc |
+| Research, copy, submission text (Manish) | `/research <question>` (fast) or `/deep <question>` (cross-model verified), from the filebus-research kit; cite every source, and read the sources before trusting a number |
 
 ## 4. Task row format
 
@@ -135,7 +135,7 @@ Tasks in one wave touch disjoint files, so three people or three agents can hold
 
 | Wave | When | Parallel-safe set |
 |---|---|---|
-| P0 | Day 0, 5 Nov night | T-A00 **first, alone**; then T-F01, T-F02, T-A01, T-B01, T-C01, T-F03, T-D01, T-D02, T-D03 |
+| P0 | Day 0, 5 Nov night | T-A00 **first, alone**; then T-F01, T-F02, T-A01, T-B01, T-C01, T-F03, T-D01, T-D02, T-D03, T-D07 |
 | P1 | 6 Nov morning | T-A02, T-A03, T-B02, T-B03, T-D04, T-D05 |
 | P2 | 6 Nov afternoon and night | T-A04, T-A05, T-A06, T-A07, T-B04, T-B05, T-C02, T-C03, T-D06 |
 | P3 | 7 Nov morning | T-J01, T-J02, T-J03, T-C04, T-B06 |
@@ -265,6 +265,15 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Touches: packages/indexer/targets.json
 - Serves: Practicality (judged) ; WOW factor (judged)
 - Acceptance: 15 to 20 live dApp frontends with name, domain and category, each opened in a browser to confirm it loads
+- Evidence: <PR link>
+
+### T-D07, Research kit wired into the repo
+- Status: claimed 2026-11-05 | Owner: Jishnu | Branch: feature/t-d07-research-kit
+- Suggested: Jishnu
+- Depends-on: none
+- Touches: scripts/research.mjs, .claude/commands/, CLAUDE.md, README.md
+- Serves: unblocks T-D01, T-D02 ; Practicality (judged)
+- Acceptance: /research answers 1 question with citations and a computed verdict in under 60 s, run from this repo, leaving 0 new files in it
 - Evidence: <PR link>
 
 # P1, 6 Nov morning
