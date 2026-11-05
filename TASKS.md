@@ -371,6 +371,16 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: GET /v1/activity lists every app claim, release and file record our wallet wrote, newest block first, and /activity/ on the site shows them per app with CI run links, for at least 2 real apps
 - Evidence: <PR link>
 
+### T-A11, Expiry as a feature: app-name leases renewed by publishing
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a11-expiry-leases
+- Suggested: Jishnu
+- Depends-on: T-A02, T-A10
+- Touches: packages/core/, apps/api/, apps/site/, docs/ARCHITECTURE.md
+- Serves: Arkiv track (prize) ; Originality (judged)
+- Scope: step 1 and 2 of the expiry plan (show lifetimes, name leases); observation TTL and incident flags follow with the indexer
+- Acceptance: a new name claim expires 30 days out, the first publish extends it to the network maximum inside the file batch with 0 extra transactions, and /activity/ shows every record's expiry date
+- Evidence: <PR link>
+
 # P2, 6 Nov afternoon and night
 
 ### T-A04, Deploy the API with HTTPS
