@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { arkivClients, guardedBatch, guardedCreate } from '@hydra/core'
 import type { Hex } from 'viem'
+import { runOnce } from '@hydra/indexer/run'
 import { activity, claimOf, filesByHash, releasesFor } from './reads.ts'
 import { createApi, type ApiDeps } from './server.ts'
 import { swarmUploader } from './swarm.ts'
@@ -31,6 +32,17 @@ const script = fileURLToPath(new URL('../../../packages/action/publish.mjs', imp
 const writer = (walletClient?.account.address ?? env.HYDRA_PUBLISHER_ADDRESS) as Hex | undefined
 const allow = (env.HYDRA_ALLOWED_ADDRESSES ?? '').split(',').map((a) => a.trim().toLowerCase()).filter(Boolean)
 
+// The indexer runs inside the API with its own wallet, triggered by a scheduled GitHub Actions job.
+const indexerKey = env.ARKIV_INDEXER_PRIVATE_KEY as Hex | undefined
+const indexer =
+  indexerKey && (env.INDEXER_TRIGGER_SECRET ?? '').length >= 32
+    ? (() => {
+        const clients = arkivClients({ accessKey: env.ARKIV_ACCESS_KEY, privateKey: indexerKey })
+        const port = Number(env.PORT ?? env.HYDRA_API_PORT ?? 8787)
+        return { secret: env.INDEXER_TRIGGER_SECRET!, run: () => runOnce({ api: `http://127.0.0.1:${port}`, clients }) }
+      })()
+    : undefined
+
 const deps: ApiDeps = {
   secret,
   corsOrigin: env.HYDRA_CORS_ORIGIN,
@@ -47,8 +59,9 @@ const deps: ApiDeps = {
   publishesPerHour: env.HYDRA_PUBLISHES_PER_HOUR ? Number(env.HYDRA_PUBLISHES_PER_HOUR) : undefined,
   releasesFor: async (app) => (writer ? releasesFor(publicClient, writer, app) : []),
   filesByHash: async (sha) => (writer ? filesByHash(publicClient, writer, sha) : []),
+  indexer,
   activity: async () => (writer ? activity(publicClient, writer) : { head: null, events: [] }),
-  health: { publisherWallet: walletClient?.account.address ?? null, accessKey: Boolean(env.ARKIV_ACCESS_KEY) },
+  health: { publisherWallet: walletClient?.account.address ?? null, accessKey: Boolean(env.ARKIV_ACCESS_KEY), indexer: Boolean(indexer) },
 }
 
 const port = Number(env.PORT ?? env.HYDRA_API_PORT ?? 8787)

@@ -7,8 +7,10 @@
 //   POST /v1/releases                  Authorization: Bearer <apiKey>
 //   GET  /v1/apps/:app/releases
 //   GET  /v1/files/:sha256
+//   POST /v1/indexer/run              Authorization: Bearer <INDEXER_TRIGGER_SECRET>; one indexer pass
 //   GET  /v1/activity                 everything our wallet wrote, newest block first
 
+import { timingSafeEqual } from 'node:crypto'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { rootCause, WriteNotVerifiedError } from '@hydra/core'
 import { APP_NAME, checkInput, keyFromSignature, signInMessage } from './auth.ts'
@@ -27,6 +29,7 @@ export interface ApiDeps {
   releasesFor?: (app: string) => Promise<unknown>
   filesByHash?: (sha256: string) => Promise<unknown>
   activity?: () => Promise<unknown>
+  indexer?: { secret: string; run: () => Promise<unknown> } // scheduled trigger; spends indexer gas
   health?: Record<string, unknown>
 }
 
@@ -75,6 +78,16 @@ export function createApi(deps: ApiDeps) {
   }
   const takeSlot = limiter(deps.publishesPerHour ?? 30)
   const takeClaim = limiter(deps.claimsPerHour ?? 5)
+
+  // The indexer trigger spends gas, so it needs its own secret, runs one pass at a time, and at most
+  // once every 5 minutes however often it is called.
+  let indexerBusy = false
+  let indexerLast = 0
+  const triggerOk = (auth: string | undefined) => {
+    const want = Buffer.from(`Bearer ${deps.indexer?.secret ?? ''}`)
+    const got = Buffer.from(auth ?? '')
+    return Boolean(deps.indexer?.secret) && got.length === want.length && timingSafeEqual(got, want)
+  }
 
   const send = (res: ServerResponse, status: number, body: unknown, type = 'application/json') => {
     res.writeHead(status, {
@@ -141,6 +154,19 @@ export function createApi(deps: ApiDeps) {
         const app = decodeURIComponent(appRoute[1])
         if (!APP_NAME.test(app)) return send(res, 400, { error: 'invalid app name' })
         return send(res, 200, { app, releases: await deps.releasesFor(app) })
+      }
+
+      if (req.method === 'POST' && path === '/v1/indexer/run' && deps.indexer) {
+        if (!triggerOk(req.headers.authorization)) return send(res, 401, { error: 'missing or wrong indexer trigger secret' })
+        if (indexerBusy) return send(res, 409, { error: 'an indexer run is already in progress' })
+        if (Date.now() - indexerLast < 5 * 60_000) return send(res, 429, { error: 'the indexer ran less than 5 minutes ago' })
+        indexerBusy = true
+        indexerLast = Date.now()
+        try {
+          return send(res, 200, await deps.indexer.run())
+        } finally {
+          indexerBusy = false
+        }
       }
 
       if (req.method === 'GET' && path === '/v1/activity' && deps.activity) {

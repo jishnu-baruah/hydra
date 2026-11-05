@@ -1,0 +1,30 @@
+# Runs one indexer pass on the API every 30 minutes. The call also wakes the free Render service,
+# so neither the API nor the observations go stale. The log lists each site and the Arkiv txs.
+# Needs repo secret INDEXER_TRIGGER_SECRET (same value as on Render).
+name: indexer
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: indexer
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Wake the API
+        run: curl -fsS --retry 6 --retry-all-errors --retry-delay 10 --max-time 90 https://hydra-api-5xmn.onrender.com/health
+      - name: Run one indexer pass
+        env:
+          SECRET: ${{ secrets.INDEXER_TRIGGER_SECRET }}
+        run: |
+          code=$(curl -sS -o out.json -w '%{http_code}' --max-time 300 -X POST \
+            -H "Authorization: Bearer $SECRET" https://hydra-api-5xmn.onrender.com/v1/indexer/run)
+          node -e "const s=JSON.parse(require('fs').readFileSync('out.json','utf8'));for(const l of s.lines??[])console.log(l);for(const t of s.txs??[])console.log('tx https://rabdi.explorer.arkiv.network/tx/'+t);for(const e of s.errors??[])console.log('ERROR',e);console.log(s.error??(s.sites+' sites, '+s.written+' observations, '+s.ms+' ms'))"
+          # 429: a run happened in the last 5 minutes, which is fine
+          [ "$code" = 200 ] || [ "$code" = 429 ]

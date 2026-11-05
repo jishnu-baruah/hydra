@@ -9,6 +9,9 @@
 !packages/core/package.json
 !packages/core/src
 !packages/action
+!packages/indexer/package.json
+!packages/indexer/src
+!packages/indexer/targets.json
 **/node_modules
 **/.env
 **/.env.*

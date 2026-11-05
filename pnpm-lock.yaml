@@ -13,6 +13,9 @@ importers:
       '@hydra/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@hydra/indexer':
+        specifier: workspace:*
+        version: link:../../packages/indexer
       viem:
         specifier: ^2.57.16
         version: 2.57.16
