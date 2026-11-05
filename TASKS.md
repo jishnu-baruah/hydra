@@ -149,7 +149,7 @@ repo, and the extension goes red when we change a file on the live site.
 # P0, day 0. Nothing branches until T-A00 lands.
 
 ### T-A00, Workspace, CI and the board
-- Status: in-review (this PR)
+- Status: in-review | Branch: feature/t-a00-board
 - Suggested: Jishnu
 - Depends-on: none
 - Touches: CLAUDE.md, TASKS.md, OPERATOR_TODO.md, DECISIONS.md, .github/, scripts/board.mjs, .claude/
