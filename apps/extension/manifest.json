@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Hydra",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Warns when a site serves scripts that are in no release on Arkiv.",
   "background": {
     "service_worker": "src/background.js",
@@ -9,7 +9,12 @@
   },
   "action": {
     "default_title": "Hydra",
-    "default_popup": "src/ui/popup.html"
+    "default_popup": "src/ui/popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png"
+    }
   },
   "permissions": [
     "webRequest",
@@ -18,5 +23,11 @@
   ],
   "host_permissions": [
     "<all_urls>"
-  ]
+  ],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
 }
