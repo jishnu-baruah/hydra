@@ -53,17 +53,19 @@ function renderHandoff(app, key) {
   $('handoff').textContent = `Set up Hydra in this repo so every push to main records the build on Arkiv.
 Docs: ${location.origin}/llms.txt
 
-App name: ${app}
+App name: ${app} (reserved for your wallet; the key works only for this name)
 HYDRA_API_KEY: ${key}
 HYDRA_API_URL: ${API_URL}
 
 1. Store the key as a GitHub Actions secret (never commit it or write it to a file):
    gh secret set HYDRA_API_KEY --body "${key}"
+   (from inside the repo clone, or add -R <owner>/<repo>)
 2. Add .github/workflows/hydra.yml from the docs template, with this repo's real install and build
    commands and its build output folder (the folder that contains index.html).
 3. Commit and push to main, then watch the run: gh run watch
 4. Confirm the release: curl ${API_URL}/v1/apps/${app}/releases
-If a step fails, read the error section of the docs before retrying.`
+If a step fails, read the error section of the docs before retrying. A 401 or 403 means the key
+cannot be used: ask the human for a new block from the Hydra site; never retry with the same key.`
 }
 
 $('connect').onclick = async () => {
