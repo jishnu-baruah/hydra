@@ -17,6 +17,15 @@ importers:
         specifier: ^2.57.16
         version: 2.57.16
 
+  apps/site:
+    devDependencies:
+      '@hydra/api':
+        specifier: workspace:*
+        version: link:../api
+      '@hydra/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+
   packages/action:
     devDependencies:
       '@hydra/api':
