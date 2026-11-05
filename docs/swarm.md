@@ -21,9 +21,13 @@ That split is also the exact shape the Arkiv + Swarm bonus wants to see (`docs/p
 |  | `hydra.app` entity (registration metadata) |
 |  | `hydra.observation` entities (indexer records) |
 
-**Reference flow:** publish uploads the folder to Swarm → Swarm returns one `swarmRef` (64-hex content-addressed root of the folder) → the API writes that reference into `release.swarm_ref` on Arkiv → anyone reading the release from Arkiv can reach the files on Swarm by that reference.
+**Reference flow:** publish uploads the folder to Swarm → Swarm returns one `swarmRef` (64–128 hex content-addressed root of the folder; `apps/api/src/swarm.ts:22` regex) → the API writes that reference into `release.swarm_ref` on Arkiv → anyone reading the release from Arkiv can reach the files on Swarm by that reference.
 
-`release.swarm_ref` is a `str().indexed()` column (128 B max). A Swarm reference is 64 hex chars (32 B). Fits. Feeds and encrypted references are **not used** — the prize rules forbid encrypted references in public Arkiv entities, and our build is public anyway.
+`release.swarm_ref` is a `str().indexed()` column (128 B max). A plain Swarm reference is 64 hex chars (32 B). Fits. Feeds and encrypted references are **not used** — the prize rules forbid encrypted references in public Arkiv entities, and our build is public anyway.
+
+**Belt-and-braces:** when the manifest JSON is ≤ 100 KB, `apps/api/src/publish.ts:123` *also* puts the full manifest into the Arkiv `release.body` payload. Over that size, only `{ manifest_on_swarm: true }` is written to Arkiv and the manifest only lives on Swarm. Either way, the pointer `swarm_ref` is authoritative.
+
+**Fallback:** if `BEE_API_URL` or `SWARM_POSTAGE_BATCH_ID` is missing (`apps/api/src/main.ts:24`), the API still publishes with `swarm_ref = "pending"`. Explorer and extension must tolerate `pending` as a read-only mode.
 
 ## 3. The manifest
 
@@ -40,19 +44,19 @@ interface Manifest {
 }
 ```
 
-The manifest is uploaded to Swarm **as part of the same folder** as the build (so one `swarmRef` covers both). Convention: the manifest lives at `/hydra.manifest.json` inside the uploaded folder. The explorer and the extension fetch exactly that path from the Swarm gateway.
+The manifest is uploaded to Swarm **as part of the same folder** as the build (so one `swarmRef` covers both). Filename inside the Swarm collection: **`hydra-manifest.json`** (no leading slash, hyphen not dot — `apps/api/src/publish.ts:111`). The explorer and the extension fetch exactly that path from the Swarm gateway.
 
 ## 4. Who touches Swarm, where
 
 Grep for `swarm`/`bee` across the repo (already done). Four live touch points:
 
-1. **`apps/api`** (Jishnu, task **T-A02**, in-flight on `feature/t-a02-publish-api`). On `POST /v1/releases`:
-   - Reads the build tarball + manifest from the request.
-   - Writes both into one Swarm folder upload → receives `swarmRef`.
-   - Passes `swarmRef` into `releaseValues({...swarmRef})` from `packages/core/src/records.ts:89`, which goes into the `hydra.release` Arkiv entity.
-   - Also writes `hydra.file` records keyed by that release's entity key.
+1. **`apps/api`** (Jishnu, task **T-A02**, merged). On `POST /v1/releases`:
+   - Takes `files: { "/path": "<base64>" }` plus `scripts` from the publish script.
+   - The server hashes every file itself (`apps/api/src/publish.ts:82`); the client is only trusted for *external* script hashes, which it fetched at build time.
+   - Builds the `Manifest`, serialises to JSON, calls `swarmUploader` (`apps/api/src/swarm.ts`) with `[...files, { path: "hydra-manifest.json", data: manifestJson }]` → one `/bzz` POST → returns `swarmRef`.
+   - Writes `hydra.release` with `swarmRef` and `hydra.file` records in batches of `MAX_BATCH` for up to `MAX_INDEXED_FILES=200` code files.
 2. **`apps/explorer/src/main.js:58`** renders `swarm_ref` as a column. **T-B02** expands this into an app page where the ref becomes a **working gateway link** per release. **T-B03** (claimed) accepts a Swarm ref as a search input.
-3. **`apps/extension`** (task **T-C02**, not yet in `TASKS.md` body shown here but implied by `apps/extension/src/verdict.js:18`). On each page: reads latest `hydra.release` from Arkiv → fetches `/hydra.manifest.json` from `<gateway>/bzz/<swarm_ref>/hydra.manifest.json` → compares live scripts with `files`+`scripts`.
+3. **`apps/extension`** (task **T-C02**, not yet in `TASKS.md` body shown here but implied by `apps/extension/src/verdict.js:18`). On each page: reads latest `hydra.release` from Arkiv → fetches `/hydra-manifest.json` from `<gateway>/bzz/<swarm_ref>/hydra-manifest.json` → compares live scripts with `files`+`scripts`.
 4. **`packages/action`** (Jishnu, task **T-A05**). **Does not talk to Swarm directly.** It hashes files and POSTs the build to the API; the API is the only thing that holds the batch id.
 
 ## 5. Config surface (already defined)
@@ -78,11 +82,13 @@ Walk up, ask for either a hosted Bee URL for the event or a testnet batch id. Ta
 
 ### Path B — EF public gateway (`api.gateway.ethswarm.org`) — **confirmed working, 2026-11-05**
 - Spike `T-F02` ran against it from this repo. Result: `spikes/F2/result.json`.
-- Upload: `POST /bzz` with `Content-Type: application/x-tar`, `Swarm-Collection: true`, `Swarm-Index-Document: index.html`. No `Swarm-Postage-Batch-Id` header sent. Status 201, reference returned.
+- Upload: `POST /bzz` with `Content-Type: application/x-tar`, `Swarm-Collection: true`, `Swarm-Index-Document: index.html`. Status 201, reference returned.
 - Read: `GET /bzz/<ref>/<path>` serves JSON, JS, CSS and plain text byte-identical. HTML is **blocked** with a 302 to `https://bzz.link/forbidden?hash=<ref>` (anti-phishing). `Accept: text/plain` and `Accept: application/octet-stream` do not bypass it. `<ref>.bzz.link` subdomain does not resolve.
+- **Batch-id header is ignored by the gateway.** Verified 2026-11-05: `Swarm-Postage-Batch-Id:` (empty) and 64-zero dummy both return HTTP 201 with a valid reference. The gateway envelope-stamps regardless. So we don't need a real batch id to run Path B against the current API code.
 - **Impact on Hydra:** none on the critical path. The extension fetches the manifest JSON from Swarm (works) and verifies scripts by hash against the dApp's own origin. Swarm is never asked to render HTML. The explorer can link to any non-HTML asset by Swarm URL; a "render the site on Swarm" link would need a different gateway and is not a demo requirement.
-- Cons: no batch id in `.env` (gateway envelope-stamps). OP-2's acceptance says "batch id is in `.env` and one upload succeeds" — this spike replaces the second half. Propose amending OP-2 to "an upload succeeds and reads back byte-identical through a gateway URL."
-- Decision for Jishnu: the API should default to **no batch-id header** against `SWARM_GATEWAY_URL=https://api.gateway.ethswarm.org`. Keep `SWARM_POSTAGE_BATCH_ID` optional so Path C (own batch) stays supported without code changes.
+- **How to run it today, zero code change:** set `BEE_API_URL=https://api.gateway.ethswarm.org`, `SWARM_GATEWAY_URL=https://api.gateway.ethswarm.org`, and `SWARM_POSTAGE_BATCH_ID=` **to any non-empty string** (e.g., 64 zeros) so the `main.ts:24` guard passes. The gateway ignores the value. Lazy, working.
+- **Cleaner fix for Jishnu (one line):** change `env.BEE_API_URL && env.SWARM_POSTAGE_BATCH_ID` in `apps/api/src/main.ts:24` to `env.BEE_API_URL`, and make the `Swarm-Postage-Batch-Id` header conditional in `apps/api/src/swarm.ts:11`. Keeps Path C compatible.
+- OP-2's acceptance says "batch id is in `.env` and one upload succeeds" — Path B satisfies the second half, not the first. Propose amending OP-2 to "an upload succeeds and reads back byte-identical through a gateway URL."
 
 ### Path C — Run a Bee light node on Sepolia
 - Half a day of setup: Sepolia ETH faucet → sBZZ on Uniswap → Bee 2.x Docker → `POST /stamps/<amount>/<depth>` → batch id.
@@ -108,7 +114,7 @@ curl -sS -X POST \
 
 # Read one file back from the folder, by content address
 REF=<the reference above>
-curl -sS "${SWARM_GATEWAY_URL:-$BEE_API_URL}/bzz/$REF/hydra.manifest.json"
+curl -sS "${SWARM_GATEWAY_URL:-$BEE_API_URL}/bzz/$REF/hydra-manifest.json"
 ```
 
 (If using the EF public gateway, drop the batch-id header; the gateway stamps.)
@@ -116,7 +122,7 @@ curl -sS "${SWARM_GATEWAY_URL:-$BEE_API_URL}/bzz/$REF/hydra.manifest.json"
 ## 8. What the extension and explorer actually fetch
 
 - **Explorer app page (T-B02):** for each release row, the "Swarm link" is `${SWARM_GATEWAY_URL}/bzz/${swarm_ref}/`.
-- **Explorer "open release":** `${SWARM_GATEWAY_URL}/bzz/${swarm_ref}/hydra.manifest.json` to get the manifest JSON.
+- **Explorer "open release":** `${SWARM_GATEWAY_URL}/bzz/${swarm_ref}/hydra-manifest.json` to get the manifest JSON.
 - **Extension (T-C02):** same URL as above, called from the background worker (CORS: Swarm gateways typically allow `*`, confirm when the spike lands). Cache per `swarm_ref`; refs are immutable, so cache forever.
 
 Note from `spikes/F3/result.json` (via T-F03 findings): Uniswap serves 0 of 816 scripts from its own origin, so the extension can't fall back to same-origin-only. The Swarm manifest is the sole source of truth.
