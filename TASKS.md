@@ -361,6 +361,16 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: https://github.com/jishnu-baruah/hydra/pull/36 (live at https://hydra-site-one.vercel.app; 2 blind Sonnet agents pasted the site's 1 copy block and each landed a release on Arkiv on the first publish, 37 s and 49 s from setting the secret: tx 0x97f80d736cd10007347bd26d12493830e0b3205016851a3b44ebbf71af3cad98 block 259760 and tx 0x332431ce79b3210c833efd7310087f6b2a11c8f9ed985947da0735d52151e186 block 259762, both receipt status success)
 - Finding: a key did not reserve its app name, so another wallet took "test-dapp" 3 min 8 s after a key was issued and the key then got 403 in CI; keys now write the hydra.app claim at issue (#35). The blind agents also found 5 doc errors in round 1 (version format, sha256- prefix, where 403 fires, swarm pending, secret before first push), all fixed by round 2.
 
+### T-A10, Temp activity view: everything Hydra wrote to Arkiv
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a10-activity
+- Suggested: Jishnu
+- Depends-on: T-A02, T-A09
+- Touches: apps/api/src/reads.ts, apps/api/src/server.ts, apps/api/src/main.ts, apps/site/
+- Serves: Usability (judged) ; WOW factor (judged)
+- Scope: temporary, until the explorer events timeline (T-B04) and deploy (T-B06) land; Mouli may fold it in
+- Acceptance: GET /v1/activity lists every app claim, release and file record our wallet wrote, newest block first, and /activity/ on the site shows them per app with CI run links, for at least 2 real apps
+- Evidence: <PR link>
+
 # P2, 6 Nov afternoon and night
 
 ### T-A04, Deploy the API with HTTPS
