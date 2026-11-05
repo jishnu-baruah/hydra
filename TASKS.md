@@ -413,6 +413,16 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: with this machine off, a scheduled Actions run triggers 1 indexer pass on Render that writes 1 observation per reachable target, and its log shows the tx hashes
 - Evidence: <Actions run link, tx hashes>
 
+### T-A14, Indexer second view: rendered page through Jina
+- Status: in-review | Branch: feature/t-a14-rendered-view
+- Suggested: Jishnu
+- Depends-on: T-A13
+- Touches: packages/indexer/, .github/workflows/indexer.yml
+- Serves: Technicality (judged) ; WOW factor (judged)
+- Scope: Jina's reader renders the page in a browser from another network. Script origins that appear only at runtime are flagged, sites that block the indexer are read through it, and every script is still hashed by a direct fetch
+- Acceptance: a run reports runtime-only script origins per site and scans at least 1 site that returns 403 to the indexer directly; compare logic has failing tests first
+- Evidence: <Actions run link, tx hashes>
+
 # P2, 6 Nov afternoon and night
 
 ### T-A04, Deploy the API with HTTPS
@@ -540,9 +550,9 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Status: claimed 2026-11-06 | Owner: Mouli | Branch: feature/t-b08-publish-page
 - Suggested: Mouli
 - Depends-on: T-A09, T-B07
-- Touches: apps/explorer/publish/, apps/explorer/src/api.js, apps/explorer/events/, apps/explorer/vercel.json, apps/explorer/index.html, apps/explorer/releases/index.html, apps/explorer/search/index.html, apps/explorer/app/index.html, apps/explorer/observed/index.html
+- Touches: apps/explorer/publish/, apps/explorer/assets/, apps/explorer/src/api.js, apps/explorer/events/, apps/explorer/vercel.json, apps/explorer/index.html, apps/explorer/releases/index.html, apps/explorer/search/index.html, apps/explorer/app/index.html, apps/explorer/observed/index.html
 - Serves: Usability (judged) ; Practicality (judged)
-- Acceptance: the explorer's /publish/ page runs the whole T-A09 flow (connect a wallet, sign 1 message, get a key, copy the agent block or the workflow, see the first release) in the explorer design, tested end to end against the API's 3 routes; the events feed also shows app name claims and CI run links from the publisher wallet
+- Acceptance: the explorer's /publish/ page runs the whole T-A09 flow (connect a wallet, sign 1 message, get a key, copy the agent block or the workflow, see the first release) in the explorer design, tested end to end against the API's 3 routes; the events feed also shows app name claims and CI run links from the publisher wallet; every page scrolls smoothly and reveals its content, with 0 motion under prefers-reduced-motion
 - Evidence: <PR link, screenshots>
 ### T-J01, Public action repo for the Marketplace
 - Status: open
