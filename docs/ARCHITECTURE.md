@@ -16,14 +16,28 @@ Extension ──(read)──► Arkiv + Swarm gateway, compares with the live pa
 
 The API is the only thing that holds keys: the Arkiv wallet and the Swarm postage batch. The explorer and the extension only read public data.
 
-## Arkiv facts (from the pre-event spike, re-check on day 1)
+## Arkiv facts
 
-- Testnet "Tiramisu", chain id `7738577`, RPC `https://rpc.tiramisu.db-chain.testnet.arkiv.network`, gas token GLM, faucet `hub.arkiv.network/faucet`.
-- SDK `@arkiv-network/sdk` (0.8.1 at the spike) with viem.
+Network values are from docs.arkiv.network/networks/rabdi and /reference/limits, read 2026-11-05.
+The SDK behaviour notes are from our pre-event spike, which ran on Tiramisu: re-check them on Rabdi
+in T-F01.
+
+- Testnet **Rabdi**, chain id `7794095`, RPC `https://rpc.rabdi.db-chain.testnet.arkiv.network`
+  (WebSocket `wss://rpc.rabdi.db-chain.testnet.arkiv.network`), gas token tGLM, 2 s blocks.
+  Faucet `hub.arkiv.network/faucet`, explorer `rabdi.explorer.arkiv.network`.
+- **The public RPC is rate limited.** Get an access key at `hub.arkiv.network/access-keys` and pass
+  it as `rabdi({ accessKey })` from `@arkiv-network/sdk/chains`.
+- Tiramisu (chain `7738577`), which the spike used, is "Replaced by Rabdi". Do not use it.
+- SDK `@arkiv-network/sdk` with viem; Node 22.10 or later. The docs do not pin a version, and the
+  spike used 0.8.1. Pin whatever T-F01 installs.
+- **Limits:** max lifetime 7,884,000 blocks (about 182.5 days) from the create or extension;
+  32 attributes per entity; **128 bytes per string attribute**; 128 KiB of bytes per create;
+  100 rows per query page. "long" expiry below means this maximum.
+- Long values (script URLs, file paths over 128 bytes) go in the payload, not in an attribute.
 - **Attribute names must be lowercase** (`checked_at`, not `checkedAt`). Uppercase reverts on chain, and the SDK doesn't warn you.
 - **Numbers default to i32.** Timestamps must be `u64(BigInt(ms))`.
 - Expiry uses `expires: ExpirationTime.fromSeconds(n)`. Expired entities drop out of queries.
-- A create took about 3–7 s on testnet. Batch where we can.
+- A create took about 3 to 7 s on testnet. Batch where we can.
 
 ## Records
 
@@ -36,7 +50,7 @@ Every record has the attributes `project = "hydra"` and `type`, so all our data 
 | `file` | API, on publish | `app`, `sha256`, `path`, `release` (release entity key) | none | long |
 | `observation` | Indexer | `app` or `domain`, `status` (`match`, `mismatch`, `unknown`), `observed_at` (u64), `scripts_hash` | `{ scripts: [{url, sha256}] }` | days |
 
-"long" means the longest expiry the testnet allows. Find that number on day 1.
+"long" means the maximum lifetime, about 182.5 days. A `path` or URL over 128 bytes is hashed into the attribute and kept in full in the payload.
 
 ## Manifest (stored on Swarm, referenced by `release.swarm_ref`)
 

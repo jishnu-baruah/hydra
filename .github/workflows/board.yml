@@ -1,0 +1,71 @@
+name: board
+
+# Enforces the TASKS.md protocol: the claim lock, then PR hygiene. One line per check.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  lock:
+    # Only merged pull requests should reach main. A direct push may move Status lines and nothing else.
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Did this commit arrive through a pull request?
+        id: origin
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          n=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" \
+                --jq '[.[] | select(.merged_at != null)] | length' 2>/dev/null || echo 0)
+          echo "from_pr=$([ "$n" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Direct push, Status lines only
+        if: steps.origin.outputs.from_pr == 'false'
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: node scripts/board.mjs claim-push
+
+      - name: The board still lints
+        run: node scripts/board.mjs lint
+
+  hygiene:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Board lint, branch, body and diff
+        env:
+          PR_BRANCH: ${{ github.head_ref }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/board.mjs pr
+
+      - name: A record contract change needs both sides to agree
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if git diff --name-only "$BASE"..."$HEAD" -- docs/ARCHITECTURE.md packages/core/src/records.ts | grep -q .; then
+            echo "$PR_BODY" | grep -q '\[x\] Changes the record contract' \
+              || { echo "::error::This PR changes the record contract. Tick that box and name the API, explorer and extension owners who agreed."; exit 1; }
+          fi
