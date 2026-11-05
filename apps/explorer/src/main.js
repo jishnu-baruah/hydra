@@ -13,7 +13,8 @@ function el(tag, text, attrs = {}) {
 }
 
 function table(head, rows) {
-  const t = el("table");
+  const wrap = el("div", undefined, { className: "table-wrap" });
+  const t = wrap.appendChild(el("table"));
   const tr = t.createTHead().insertRow();
   for (const h of head) tr.append(el("th", h));
   const body = t.createTBody();
@@ -21,7 +22,7 @@ function table(head, rows) {
     const r = body.insertRow();
     for (const c of cells) r.insertCell().append(c);
   }
-  return t;
+  return wrap;
 }
 
 // An Arkiv attribute is { type, value }. A schemaless read returns bytes as a 0x hex string, so
@@ -30,7 +31,10 @@ function show(attr) {
   if (!attr) return "";
   const { type, value } = attr;
   if (type === "bytes") return `${typeof value === "string" ? (value.length - 2) / 2 : value.length} bytes`;
-  return type ? `${value} (${type})` : String(value);
+  if (!type) return String(value);
+  const out = document.createDocumentFragment();
+  out.append(String(value), el("span", type, { className: "type" }));
+  return out;
 }
 const when = (attr) => (attr ? new Date(Number(attr.value)).toISOString() : "");
 const val = (attr) => (attr ? String(attr.value) : "");
@@ -64,6 +68,7 @@ async function home(arkiv) {
 }
 
 async function one(arkiv, key) {
+  document.body.classList.add("is-entity");
   $("title").textContent = "Arkiv entity";
   if (!/^0x[0-9a-fA-F]{64}$/.test(key)) {
     status(`"${key}" is not an entity key. A key is 0x followed by 64 hex characters.`, true);

@@ -4,29 +4,51 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Search, Hydra explorer</title>
-    <style>
-      :root { color-scheme: light dark; --muted: #6b7280; --line: #d1d5db; }
-      body { font: 15px/1.5 system-ui, sans-serif; margin: 0 auto; max-width: 960px; padding: 16px; }
-      header a { color: inherit; text-decoration: none; font-weight: 700; font-size: 18px; }
-      form { display: flex; gap: 8px; }
-      input { flex: 1; font: inherit; padding: 6px 8px; min-width: 0; }
-      #status { color: var(--muted); }
-      #status.error { color: #b91c1c; }
-      li { margin: 6px 0; word-break: break-all; }
-    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
+    <link rel="stylesheet" href="../assets/hydra.css" />
   </head>
   <body>
-    <header><a href="../">Hydra explorer</a></header>
-    <main>
-      <h1>Search</h1>
-      <form>
-        <label for="q" hidden>Search</label>
-        <input id="q" name="q" autocomplete="off" placeholder="Domain, app name, file sha256 or Swarm reference" />
-        <button>Search</button>
-      </form>
-      <p id="status" role="status"></p>
-      <ul id="results"></ul>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="bar">
+      <a class="mark" href="../">Hydra</a>
+      <nav aria-label="Main">
+        <a href="../releases/">Releases</a>
+        <a href="./" aria-current="page">Search</a>
+      </nav>
+      <span class="tag">Arkiv Rabdi / 7794095</span>
+    </header>
+    <span class="rail label" aria-hidden="true">Search</span>
+
+    <main id="main">
+      <section class="hero">
+        <p class="eyebrow">Registry <span>/ Search</span></p>
+        <h1 class="compact" data-flap>Find a build</h1>
+        <form class="find" role="search">
+          <label for="q">Query</label>
+          <div class="row">
+            <input id="q" name="q" autocomplete="off" spellcheck="false" placeholder="app.example.com" />
+            <button class="btn">Search
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+          </div>
+          <p class="help">A domain or URL, an app name, a file sha256 (with or without "sha256-") or a Swarm reference.</p>
+        </form>
+      </section>
+
+      <section class="section">
+        <p id="status" role="status"></p>
+        <ul id="results" class="results"></ul>
+      </section>
+
+      <footer class="colophon label">
+        <span>Read only</span>
+        <span>No backend</span>
+        <span>Arkiv SDK 1.0.1</span>
+      </footer>
     </main>
+    <script type="module" src="../assets/flap.js"></script>
     <script type="module" src="page.js"></script>
   </body>
 </html>
