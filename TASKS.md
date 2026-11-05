@@ -464,6 +464,15 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: the public URL loads the home page and 1 app page in under 3 s each
 - Evidence: <URL>
 
+
+### T-B07, Landing page and explorer design from the interface template
+- Status: claimed 2026-11-05 | Owner: Mouli | Branch: feature/t-b07-explorer-design
+- Suggested: Mouli
+- Depends-on: T-B03
+- Touches: apps/explorer/index.html, apps/explorer/assets/, apps/explorer/releases/, apps/explorer/search/index.html, apps/explorer/search/page.js, apps/explorer/src/main.js, apps/explorer/README.md
+- Serves: Usability (judged) ; WOW factor (judged)
+- Acceptance: a landing page plus the releases, search and entity views share 1 token set with text contrast of at least 4.5:1; 0 page errors and no horizontal scroll at 375 px and 1440 px; reduced motion turns off smooth scroll and every animation
+- Evidence: <PR link, screenshots>
 ### T-J01, Public action repo for the Marketplace
 - Status: open
 - Suggested: Jishnu
