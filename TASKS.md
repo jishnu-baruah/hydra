@@ -461,7 +461,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 # P3, 7 Nov morning
 
 ### T-C04, Package the extension
-- Status: open
+- Status: claimed 2026-11-06 | Owner: Mouli | Branch: feature/t-c04-package
 - Suggested: Mouli
 - Depends-on: T-C03
 - Touches: apps/extension/
