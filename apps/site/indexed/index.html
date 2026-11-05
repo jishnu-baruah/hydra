@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hydra indexed sites</title>
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    main { max-width: 1100px; }
+    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+    .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+    .stat b { display: block; font-size: 28px; line-height: 1.1; }
+    .stat span { color: var(--muted); font-size: 13px; }
+    .bar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: rgba(255,255,255,.08); margin: 6px 0 4px; }
+    .bar i { display: block; }
+    .cats { display: grid; gap: 6px; margin-top: 8px; }
+    .cat { display: grid; grid-template-columns: 150px 1fr 24px; gap: 10px; align-items: center; font-size: 13px; }
+    .cat .track { height: 10px; background: rgba(255,255,255,.08); border-radius: 5px; overflow: hidden; }
+    .cat .fill { height: 100%; background: var(--accent); }
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
+    .chip { margin: 0; padding: 6px 12px; background: transparent; border: 1px solid var(--line); color: var(--muted); font-weight: 500; border-radius: 99px; }
+    .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+    .site { text-align: left; margin: 0; padding: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; display: flex; flex-direction: column; gap: 8px; font-weight: 400; color: var(--text); }
+    .site[aria-expanded="true"] { border-color: var(--accent-soft); }
+    .site .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+    .site .dom { font-weight: 600; overflow-wrap: anywhere; }
+    .pill { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; padding: 3px 8px; border-radius: 99px; white-space: nowrap; }
+    .pill.match { background: #1f3527; color: #7fd19d; } .pill.mismatch { background: #3a2420; color: #f08b7a; }
+    .pill.unknown { background: #2a2f4d; color: #a9b4ff; } .pill.pending { background: #2f2f2f; color: #b0b0b0; }
+    .meta { font-size: 12px; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; }
+    .tag { border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
+    .tag.warn { border-color: #f0c36a; color: #f0c36a; } .tag.hot { border-color: #f08b7a; color: #f08b7a; }
+    .scripts { height: 8px; background: rgba(255,255,255,.08); border-radius: 4px; overflow: hidden; }
+    .scripts i { display: block; height: 100%; background: var(--accent-soft); }
+    .hist { display: flex; gap: 3px; align-items: center; }
+    .hist i { width: 14px; height: 14px; border-radius: 3px; }
+    .hist i.match { background: #4fb078; } .hist i.mismatch { background: #e0624e; } .hist i.unknown { background: #6f7bd6; } .hist i.pending { background: #555; }
+    .hist i.chg { outline: 2px solid #f0c36a; outline-offset: 1px; }
+    .detail { grid-column: 1 / -1; background: rgba(0,0,0,.3); border: 1px solid var(--line); border-radius: 14px; padding: 14px; font-size: 13px; }
+    .detail ul { margin: 6px 0 12px; padding-left: 18px; }
+    .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+    .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+    code.mono { font-family: ui-monospace, Consolas, monospace; font-size: 12px; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow"><a href="../">/Hydra</a> / indexed sites</p>
+      <h1>Every site the indexer watches</h1>
+      <p class="lead">The indexer fetches each site, hashes every script it loads, and records the result on Arkiv. <strong>Unknown</strong> means the site has no Hydra release to compare with yet; it is still checked for change. Outlined squares are runs where a site's scripts changed.</p>
+    </header>
+
+    <section class="summary" id="summary"></section>
+
+    <section class="step">
+      <h2>By category</h2>
+      <div class="cats" id="cats"></div>
+    </section>
+
+    <section class="step">
+      <h2>Sites <span class="hint" id="status">Loading...</span> <button class="ghost" id="refresh">Refresh</button></h2>
+      <div class="legend">
+        <span><i style="background:#4fb078"></i>match</span><span><i style="background:#e0624e"></i>mismatch</span>
+        <span><i style="background:#6f7bd6"></i>unknown (no release)</span><span><i style="background:#555"></i>not observed yet</span>
+        <span>Squares: last runs, newest on the left</span>
+      </div>
+      <div class="filters" id="filters"></div>
+      <div class="grid" id="grid"></div>
+    </section>
+
+    <p class="error" id="error" role="alert" hidden></p>
+    <footer><a href="../activity/">Activity</a> · <a href="../">Onboarding</a> · API: <code id="api"></code></footer>
+  </main>
+  <script type="module" src="./indexed.js"></script>
+</body>
+</html>

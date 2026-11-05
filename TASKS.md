@@ -424,7 +424,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <Actions run link, tx hashes>
 
 ### T-A15, Page to visualise every site the indexer watches
-- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a15-indexed-sites
+- Status: in-review | Branch: feature/t-a15-indexed-sites
 - Suggested: Jishnu
 - Depends-on: T-A13, T-A14, T-D03
 - Touches: apps/api/src/reads.ts, apps/api/src/server.ts, apps/api/src/main.ts, apps/api/test/, apps/site/indexed/, packages/core/src/index.ts

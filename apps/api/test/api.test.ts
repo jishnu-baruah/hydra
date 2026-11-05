@@ -247,3 +247,18 @@ test('swarm: the batch header is sent only when a batch id is set (gateway mode 
   assert.equal(seen[0].has('swarm-postage-batch-id'), false)
   assert.equal(seen[1].get('swarm-postage-batch-id'), 'cd'.repeat(32))
 })
+
+test('observations route is served when a reader is configured and absent otherwise', async () => {
+  const srv = createApi({ secret: SECRET, observations: async () => ({ summary: { sites: 1 }, sites: [{ domain: 'a.example' }] }) }).listen(0)
+  const bare = createApi({ secret: SECRET }).listen(0)
+  try {
+    const get = (s: typeof srv) => fetch(`http://127.0.0.1:${(s.address() as AddressInfo).port}/v1/observations`)
+    const ok = await get(srv)
+    assert.equal(ok.status, 200)
+    assert.equal(((await ok.json()) as { sites: unknown[] }).sites.length, 1)
+    assert.equal((await get(bare)).status, 404)
+  } finally {
+    srv.close()
+    bare.close()
+  }
+})
