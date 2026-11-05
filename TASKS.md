@@ -171,13 +171,14 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 # P0, day 0. Nothing branches until T-A00 lands.
 
 ### T-A00, Workspace, CI and the board
-- Status: in-review | Branch: feature/t-a00-board
+- Status: done
 - Suggested: Jishnu
 - Depends-on: none
 - Touches: CLAUDE.md, TASKS.md, OPERATOR_TODO.md, DECISIONS.md, README.md, .env.example, docs/ARCHITECTURE.md, docs/prior-learnings.md, .github/, scripts/board.mjs, .claude/
 - Serves: unblocks every task ; Practicality (judged)
 - Acceptance: board lint passes on 30 rows; a claim PR that edits a non-Status line fails CI in 1 run
-- Evidence: <PR link>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/1 (merged as cef6743; hygiene, checks and secrets green)
+- Finding: GitHub showed the PR on a stale head for over 2 minutes after a push and refused the merge as out of date; closing and reopening the PR resynced it at once.
 
 ### T-F01, Arkiv on Rabdi: write, query, timings
 - Status: open
