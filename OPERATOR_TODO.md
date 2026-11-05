@@ -88,3 +88,11 @@ Status values: `open` | `claimed <date> | Owner: <name>` | `done <date>: <result
 - Unblocks: T-B02, T-B03
 - What exactly: `GET /health` on the deployed API reports `"swarm": false`, so all 5 live releases have `swarm_ref = pending` and the explorer has no Swarm link to show. docs/swarm.md (Path B) needs no code change: on the API host set `BEE_API_URL` and `SWARM_GATEWAY_URL` to `https://api.gateway.ethswarm.org` and `SWARM_POSTAGE_BATCH_ID` to any non-empty value (the gateway ignores it), then publish once.
 - Done when: `/health` reports `"swarm": true` and the next release's `swarm_ref` is 64 hex characters whose `hydra-manifest.json` opens through the gateway.
+
+### OP-9, Hand-time the extension install in Chrome
+- Status: open
+- Owner: Mouli
+- Needed by: 2026-11-06 afternoon
+- Unblocks: T-C04
+- What exactly: T-C04's acceptance asks for the install to work on 1 clean Chrome profile in under 2 minutes. An automated load into a clean Chromium profile took 9.6 s from unzip to the first verdict, but branded Chrome's Load unpacked has to be clicked by a person. Make a new Chrome profile, start a timer, download the zip from https://github.com/jishnu-baruah/hydra/releases/tag/extension-v0.4.0, follow the 4 install steps, and stop when a site shows a badge.
+- Done when: the time is written here and in the T-C04 row.
