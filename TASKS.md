@@ -224,7 +224,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <PR link>
 
 ### T-B01, Explorer scaffold that reads Arkiv in the browser
-- Status: open
+- Status: claimed 2026-11-05 | Owner: Mouli | Branch: feature/t-b01-explorer-scaffold
 - Suggested: Mouli
 - Depends-on: T-A00
 - Touches: apps/explorer/
