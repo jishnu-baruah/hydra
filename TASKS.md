@@ -418,20 +418,21 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <deployed URL>
 
 ### T-C02, Extension compare logic
-- Status: claimed 2026-11-05 | Owner: Mouli | Branch: feature/t-c02-compare
+- Status: blocked, see OP-7 | Branch: feature/t-c02-compare
 - Suggested: Mouli
 - Depends-on: T-C01, T-F03, T-A02
 - Touches: apps/extension/src/compare/, apps/extension/src/background.js, apps/extension/src/verdict.js, apps/extension/manifest.json
 - Serves: Technicality (judged) ; Usability (judged)
 - Known: spike T4 compare algorithm and T12 Next.js rules; the extension is the best vantage point against cloaking (T8). See docs/prior-learnings.md
 - Acceptance: on the demo site, green with 0 mismatches; after changing 1 line of the JS on the host, red naming that 1 file, within 1 reload
-- Evidence: <recording>
+- Evidence: 7 of 7 tests in apps/extension/src/compare/compare.test.mjs; end to end in Chromium against a local demo site and a local stand-in for the API read routes, 3 of 3 runs: green in about 2.7 s, then 1 line added to app.js on the host turns it red naming /assets/app.js within 1 reload. The live demo site check waits for OP-7 (a first publish) and T-D04
+- Finding: the API ignores domains until ownership is provable, so the extension finds the app from the page's own script hashes (1 lookup per hash, up to 5); a site whose every script was swapped would then look unknown, so the extension remembers each site's app after the first match and shows it red instead of grey
 
 ### T-C03, Warning banner and popup detail
-- Status: open
+- Status: claimed 2026-11-06 | Owner: Mouli | Branch: feature/t-c03-banner-popup
 - Suggested: Mouli
 - Depends-on: T-C02
-- Touches: apps/extension/src/ui/
+- Touches: apps/extension/src/ui/, apps/extension/src/popup.html, apps/extension/src/popup.js, apps/extension/src/background.js, apps/extension/manifest.json, apps/extension/evidence/
 - Serves: Usability (judged) ; WOW factor (judged)
 - Acceptance: a red banner lists every mismatched script (up to 10) and links to the app's explorer page; a grey state says "no release on record" for 1 unknown site
 - Evidence: <screenshots>

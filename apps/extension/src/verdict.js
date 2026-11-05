@@ -1,4 +1,4 @@
-// The 3 badge states. green = every script is in the release, red = something is not,
+// The badge states. green = every script is in the release, red = something is not,
 // grey = no release on record for this site. See docs/ARCHITECTURE.md, "How the extension decides".
 export const STATES = {
   green: { text: "OK", color: "#15803d", label: "Every script matches the latest release." },
@@ -12,22 +12,22 @@ export const STATES = {
     color: "#6b7280",
     label: "No release on record for this site, so its scripts cannot be checked. Treat it as unverified.",
   },
+  checking: { text: "..", color: "#6b7280", label: "Checking this page's scripts against its release." },
   none: { text: "", color: "#6b7280", label: "Not a website, so there is nothing to check." },
 };
 
-// Hard-coded until T-C02 replaces it with the real compare against Arkiv and Swarm.
-const HARD_CODED = {
-  "example.com": "green",
-  "example.org": "red",
+export const isWeb = (url) => {
+  try {
+    return /^https?:$/.test(new URL(url).protocol);
+  } catch {
+    return false;
+  }
 };
 
-export function verdictFor(url) {
-  let parsed;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return "none";
-  }
-  if (!/^https?:$/.test(parsed.protocol)) return "none";
-  return HARD_CODED[parsed.hostname] ?? "grey";
+// Before the worker has a result for a tab, a web page is being checked.
+export const verdictFor = (url) => (isWeb(url) ? "checking" : "none");
+
+// The worker's last result for a tab: { verdict, mismatches, matched, ignored, app, version, reason }.
+export async function stored(tabId) {
+  return (await chrome.storage.session.get(`v:${tabId}`))[`v:${tabId}`] ?? null;
 }
