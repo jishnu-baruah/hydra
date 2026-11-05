@@ -203,3 +203,28 @@ test('reserve at key time: a key claims its unowned name once; another wallet is
   assert.equal(pub.json.leaseRenewed, true)
   assert.deepEqual(calls.lastExt, [{ entityKey: `0x${'aa'.repeat(32)}`, expiration: LONG() }])
 })
+
+test('indexer trigger: wrong secret 401, one run at a time, then rate limited', async () => {
+  let runs = 0
+  let release: () => void = () => {}
+  const srv = createApi({
+    secret: SECRET,
+    indexer: { secret: 'k'.repeat(40), run: () => new Promise((r) => { runs++; release = () => r({ written: 20 }) }) },
+  }).listen(0)
+  try {
+    const url = `http://127.0.0.1:${(srv.address() as AddressInfo).port}/v1/indexer/run`
+    const hit = (secret: string) => fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${secret}` } })
+    assert.equal((await hit('wrong')).status, 401)
+    const first = hit('k'.repeat(40))
+    await new Promise((r) => setTimeout(r, 50))
+    assert.equal((await hit('k'.repeat(40))).status, 409) // still running
+    release()
+    const done = await first
+    assert.equal(done.status, 200)
+    assert.deepEqual(await done.json(), { written: 20 })
+    assert.equal((await hit('k'.repeat(40))).status, 429) // under 5 minutes since the last run
+    assert.equal(runs, 1)
+  } finally {
+    srv.close()
+  }
+})
