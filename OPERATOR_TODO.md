@@ -96,3 +96,11 @@ Status values: `open` | `claimed <date> | Owner: <name>` | `done <date>: <result
 - Unblocks: T-C04
 - What exactly: T-C04's acceptance asks for the install to work on 1 clean Chrome profile in under 2 minutes. An automated load into a clean Chromium profile took 9.6 s from unzip to the first verdict, but branded Chrome's Load unpacked has to be clicked by a person. Make a new Chrome profile, start a timer, download the zip from https://github.com/jishnu-baruah/hydra/releases/tag/extension-v0.4.0, follow the 4 install steps, and stop when a site shows a badge.
 - Done when: the time is written here and in the T-C04 row.
+
+### OP-10, Deploy the explorer on Vercel
+- Status: open
+- Owner: Jishnu
+- Needed by: 2026-11-06 afternoon
+- Unblocks: T-B06
+- What exactly: hosting needs an account sign-in, which no agent does. The repo is Jishnu's and Mouli is not an admin, so the simplest path is Jishnu adding the explorer as a second project in the Vercel account that already hosts apps/site: import jishnu-baruah/hydra with Root Directory apps/explorer and Framework Preset Other, then deploy (apps/explorer/deploy/README.md, option A). Mouli can instead deploy from a local checkout with the Vercel CLI (option B).
+- Done when: the explorer's public URL is written here and in the T-B06 row.

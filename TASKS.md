@@ -472,13 +472,14 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: Windows' 260-character path limit broke the first unzip inside a deep folder, though the zip's longest path is 22 characters, so users should unzip to a short path; each page sends up to 5 script hashes to the API, so its operator can see which checked sites a user visits, and the README says so
 
 ### T-B06, Deploy the explorer
-- Status: claimed 2026-11-06 | Owner: Mouli | Branch: feature/t-b06-deploy-explorer
+- Status: blocked, see OP-10 | Branch: feature/t-b06-deploy-explorer
 - Suggested: Mouli
 - Depends-on: T-B02
 - Touches: apps/explorer/deploy/, apps/explorer/vercel.json, apps/extension/src/ui/links.js
 - Serves: Usability (judged)
 - Acceptance: the public URL loads the home page and 1 app page in under 3 s each
-- Evidence: <URL>
+- Evidence: apps/explorer/vercel.json and deploy/README.md; served locally with exactly those headers, every page loads with 0 CSP violations (landing 2.3 s to its hero check, releases 953 ms, app 470 ms, search 521 ms, record 529 ms) and /releases redirects to /releases/; the public URL waits for OP-10
+- Finding: the repo belongs to Jishnu and Mouli is not an admin, so Mouli cannot connect it to his own Vercel through GitHub; the deploy comes from the account that already hosts apps/site, or from a local checkout with the Vercel CLI
 
 
 ### T-B07, Landing page and explorer design from the interface template
