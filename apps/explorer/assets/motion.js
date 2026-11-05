@@ -27,14 +27,19 @@ if (!still) {
   };
   document.querySelectorAll(RISE).forEach(watch);
 
-  // Rows from Arkiv cascade in, 35 ms apart, the first 14 of each batch.
+  // Rows from Arkiv cascade in, 35 ms apart, the first 14 of each batch. A list cascades on its
+  // first fill only; after that (the events feed refreshes every minute) only rows marked new do.
   const ROWS = "tbody tr, .feed > li, .results > li, .rows > li";
   new MutationObserver((records) => {
     let i = 0;
+    const filled = new Set();
     for (const r of records) {
       for (const n of r.addedNodes) {
         if (!(n instanceof Element)) continue;
         for (const row of [n, ...n.querySelectorAll(ROWS)].filter((x) => x.matches(ROWS))) {
+          const list = row.parentElement;
+          if (list?.dataset.cascaded && !row.classList.contains("new")) continue;
+          filled.add(list);
           row.style.setProperty("--i", String(Math.min(i++, 14)));
           row.classList.add("cascade");
         }
@@ -42,6 +47,7 @@ if (!still) {
         n.querySelectorAll?.(RISE).forEach(watch);
       }
     }
+    for (const list of filled) if (list) list.dataset.cascaded = "1";
   }).observe(document.body, { childList: true, subtree: true });
 
   // The top bar lifts off the page once it scrolls.
