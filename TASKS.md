@@ -202,14 +202,15 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Kill criterion: 20 file records take over 2 minutes, so index external scripts only and drop per-file records
 
 ### T-F02, Swarm upload and read spike
-- Status: open
+- Status: done
 - Suggested: Jishnu
 - Depends-on: OP-2
 - Touches: spikes/F2/, docs/swarm.md
 - Serves: Technicality (judged) ; Swarm bonus
 - Acceptance: a 5-file folder uploaded to the Swarm testnet and all 5 files read back byte-identical through a gateway URL; steps written in docs/swarm.md
-- Evidence: <Swarm reference and gateway URL>
+- Evidence: commit 7bfe80c, spikes/F2/result.json, https://api.gateway.ethswarm.org/bzz/bef3c15af9a3ebfefaee14cc5675f15dd3ec9080230351bf38ee340cd0d43006/hydra.manifest.json
 - Kill criterion: no working upload after 3 hours, so keep the manifest in the Arkiv payload and mark the Swarm bonus at risk in DECISIONS.md
+- Finding: 4 of 5 files read back byte-identical; the EF gateway answers every HTML read with a 302 to bzz.link/forbidden (anti-phishing), which costs Hydra nothing because only the JSON manifest is read from Swarm; the gateway stamps uploads itself, so no postage batch is needed
 
 ### T-F03, Extension can hash the scripts a page loads
 - Status: done
@@ -379,6 +380,26 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Serves: Arkiv track (prize) ; Originality (judged)
 - Scope: step 1 and 2 of the expiry plan (show lifetimes, name leases); observation TTL and incident flags follow with the indexer
 - Acceptance: a new name claim expires 30 days out, the first publish extends it to the network maximum inside the file batch with 0 extra transactions, and /activity/ shows every record's expiry date
+- Evidence: <PR link>
+
+### T-A12, API uploads to Swarm with no postage batch
+- Status: open
+- Suggested: Manish
+- Depends-on: T-A02, OP-2
+- Touches: apps/api/src/swarm.ts, apps/api/src/main.ts, apps/api/test/api.test.ts, apps/api/README.md, apps/api/deploy/README.md, docs/swarm.md, arkiv/swarm.md
+- Serves: Swarm bonus ; Technicality (judged)
+- Scope: Swarm turns on from `BEE_API_URL` alone and the batch header is sent only when `SWARM_POSTAGE_BATCH_ID` is set, so the EF gateway path (OP-2) works with the batch id empty; today an empty batch id leaves Swarm off and every release gets `swarm_ref = pending`
+- Acceptance: with `BEE_API_URL` set and no batch id, 1 upload sends 0 `Swarm-Postage-Batch-Id` headers; with a batch id it sends 1; all API tests pass
+- Evidence: <PR link>
+
+### T-D08, README section "How we used Swarm"
+- Status: open
+- Suggested: Manish
+- Depends-on: T-A12, OP-8
+- Touches: README.md
+- Serves: Swarm bonus
+- Scope: what lives on Swarm (build plus `hydra-manifest.json`) and what on Arkiv (`swarm_ref`), the gateway and stamping choice (OP-2), the HTML-blocked finding, and links a judge can open
+- Acceptance: the section links at least 1 live release whose `swarm_ref` opens `hydra-manifest.json` through the gateway, plus its Arkiv entity in the explorer
 - Evidence: <PR link>
 
 # P2, 6 Nov afternoon and night
