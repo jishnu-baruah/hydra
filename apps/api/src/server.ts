@@ -8,6 +8,7 @@
 //   GET  /v1/apps/:app/releases
 //   GET  /v1/files/:sha256
 //   POST /v1/indexer/run              Authorization: Bearer <INDEXER_TRIGGER_SECRET>; one indexer pass
+//   GET  /v1/observations             every indexed site with its latest observation and recent history
 //   GET  /v1/activity                 everything our wallet wrote, newest block first
 
 import { timingSafeEqual } from 'node:crypto'
@@ -29,6 +30,7 @@ export interface ApiDeps {
   releasesFor?: (app: string) => Promise<unknown>
   filesByHash?: (sha256: string) => Promise<unknown>
   activity?: () => Promise<unknown>
+  observations?: () => Promise<unknown>
   indexer?: { secret: string; run: () => Promise<unknown> } // scheduled trigger; spends indexer gas
   health?: Record<string, unknown>
 }
@@ -167,6 +169,10 @@ export function createApi(deps: ApiDeps) {
         } finally {
           indexerBusy = false
         }
+      }
+
+      if (req.method === 'GET' && path === '/v1/observations' && deps.observations) {
+        return send(res, 200, await deps.observations())
       }
 
       if (req.method === 'GET' && path === '/v1/activity' && deps.activity) {

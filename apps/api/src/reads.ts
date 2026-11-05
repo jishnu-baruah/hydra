@@ -4,7 +4,7 @@
 // only records created by our publisher wallet (`writer`). An app name belongs to the address in
 // its earliest `hydra.app` record; releases and files from any other address are dropped.
 
-import { AppSchema, FileSchema, ReleaseSchema, eq, readWithRetry } from '@hydra/core'
+import { AppSchema, FileSchema, ObservationSchema, ReleaseSchema, desc, eq, readWithRetry } from '@hydra/core'
 import { hexToString, type Hex } from 'viem'
 
 type Query = {
@@ -12,6 +12,7 @@ type Query = {
   where: (w: unknown) => Query
   createdBy: (a: Hex) => Query
   limit: (n: number) => Query
+  orderBy: (o: unknown) => Query
   fetch: () => Promise<{ entities: Record<string, unknown>[] }>
 }
 type Reader = { select: (cols: never) => Query }
@@ -108,4 +109,19 @@ export async function filesByHash(reader: unknown, writer: Hex, sha256: string) 
     trusted.set(app, new Set((await releasesFor(reader, writer, app)).map((r) => r.$key)))
   }
   return rows.filter((r) => trusted.get(String(r.app))?.has(r.release))
+}
+
+// The indexer wallet's newest observations (100 is one Arkiv page: about the last 5 runs of 20
+// sites), newest first. Only records created by the indexer wallet count.
+export async function observations(reader: unknown, indexer: Hex) {
+  const page = await readWithRetry(() =>
+    (reader as Reader)
+      .select({ $key: true, $expiresAt: true, domain: true, status: true, observed_at: true, scripts_hash: true, body: true } as never)
+      .from(ObservationSchema)
+      .createdBy(indexer)
+      .orderBy(desc('observed_at'))
+      .limit(100)
+      .fetch(),
+  )
+  return page.entities.map(row)
 }
