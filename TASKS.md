@@ -461,14 +461,15 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 # P3, 7 Nov morning
 
 ### T-C04, Package the extension
-- Status: claimed 2026-11-06 | Owner: Mouli | Branch: feature/t-c04-package
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/ | Branch: feature/t-c04-package
 - Suggested: Mouli
 - Depends-on: T-C03
 - Touches: apps/extension/
 - Known: before packaging, set EXPLORER in apps/extension/src/ui/links.js to the T-B06 explorer URL (it is localhost:5173 until then), and rewrite apps/extension/README.md, which still describes the T-C01 hard-coded verdict
 - Serves: Usability (judged)
 - Acceptance: a zip plus load-unpacked steps that work on 1 clean Chrome profile in under 2 minutes
-- Evidence: <zip link>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/; hydra-extension-0.4.0.zip, sha256 89b408b98fc8fe5dfdf1bec335e0ea31ca20ae0625525b539e0aa61e70a3c9fa on 2 builds; unzipped into a clean Chromium profile it gave a first real verdict in 9.6 s (stake.lido.fi, grey, deployed API); the hand-timed run in branded Chrome is still to do
+- Finding: Windows' 260-character path limit broke the first unzip inside a deep folder, though the zip's longest path is 22 characters, so users should unzip to a short path; each page sends up to 5 script hashes to the API, so its operator can see which checked sites a user visits, and the README says so
 
 ### T-B06, Deploy the explorer
 - Status: open
