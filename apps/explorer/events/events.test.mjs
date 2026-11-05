@@ -49,10 +49,16 @@ test("an observation that saw no scripts says so", () => {
   assert.equal(t.find((e) => e.key === "0xo4").scripts, null);
 });
 
-test("filters: releases, observed, and changes (a change or a mismatch)", () => {
-  const t = timeline(releases, obs);
+test("filters: releases, observed, and changes that matter", () => {
+  // Natural churn: a site with no release whose script set moved. Observed, but not a change.
+  const churn = [
+    row("0xc1", { domain: "churn.xyz", status: "unknown", observed_at: 100n, scripts_hash: H("c") }),
+    row("0xc2", { domain: "churn.xyz", status: "unknown", observed_at: 200n, scripts_hash: H("d") }),
+  ];
+  const t = timeline(releases, [...obs, ...churn]);
+  assert.equal(t.find((e) => e.key === "0xc2").changed, true);
   assert.deepEqual(only(t, "releases").map((e) => e.key), ["0xr2", "0xr1"]);
-  assert.equal(only(t, "observed").length, 4);
+  assert.equal(only(t, "observed").length, 6);
   assert.deepEqual(only(t, "changes").map((e) => e.key), ["0xo2"]);
-  assert.equal(only(t, "all").length, 6);
+  assert.equal(only(t, "all").length, 8);
 });

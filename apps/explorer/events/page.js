@@ -59,18 +59,19 @@ function item(e, fresh) {
 
 let events = [];
 let mode = "all";
-let known = null; // keys from the previous load, to mark what arrived since
 let updated = 0;
+let loading = false;
 
-function render() {
+// fresh: keys that arrived with the latest load, highlighted once. A filter click passes none.
+function render(fresh = new Set()) {
   for (const b of document.querySelectorAll("[data-mode]")) {
     b.setAttribute("aria-pressed", String(b.dataset.mode === mode));
     b.querySelector("span").textContent = String(only(events, b.dataset.mode).length);
   }
   const shown = only(events, mode);
-  $("feed").replaceChildren(...shown.map((e) => item(e, known !== null && !known.has(e.key))));
+  $("feed").replaceChildren(...shown.map((e) => item(e, fresh.has(e.key))));
   if (!events.length) status("Nothing on Arkiv yet. Releases appear when a team publishes; observations every 15 minutes once the indexer runs.");
-  else if (!shown.length) status(mode === "changes" ? "No changes: every observed site served the same scripts as its previous run." : "Nothing of this kind yet.");
+  else if (!shown.length) status(mode === "changes" ? "No changes that matter: no mismatch, and no published site changed its scripts. Sites without a release that churn are under Observed." : "Nothing of this kind yet.");
   else status(`${shown.length} event(s). Updated ${clock(updated)} UTC; refreshes every minute.`);
 }
 
@@ -83,14 +84,17 @@ document.querySelector(".filters").addEventListener("click", (ev) => {
 
 let arkiv;
 async function load() {
+  if (loading) return; // a slow load is still running; do not start a second
+  loading = true;
   try {
     arkiv ??= await import("../src/arkiv.js");
     const [releases, observations] = await Promise.all([arkiv.latestReleases(100), arkiv.latestObservations(100)]);
     const next = timeline(releases, observations);
-    if (events.length) known = new Set(events.map((e) => e.key));
+    const before = new Set(events.map((e) => e.key));
+    const fresh = events.length ? new Set(next.filter((e) => !before.has(e.key)).map((e) => e.key)) : new Set();
     events = next;
     updated = Date.now();
-    render();
+    render(fresh);
   } catch (err) {
     status(
       arkiv
@@ -99,6 +103,7 @@ async function load() {
       true,
     );
   }
+  loading = false;
   document.body.dataset.done = "1";
 }
 

@@ -61,6 +61,8 @@ export function timeline(releaseRows, observationRows) {
 export function only(events, mode) {
   if (mode === "releases") return events.filter((e) => e.kind === "release");
   if (mode === "observed") return events.filter((e) => e.kind === "observation");
-  if (mode === "changes") return events.filter((e) => e.kind === "observation" && (e.changed || e.status === "mismatch"));
+  // Changes that matter: a mismatch, or a change on a site that has a release. A site with no
+  // release changes its script set on its own (spike F3: 1inch loads a different set every time).
+  if (mode === "changes") return events.filter((e) => e.kind === "observation" && (e.status === "mismatch" || (e.changed && e.status !== "unknown")));
   return events;
 }
