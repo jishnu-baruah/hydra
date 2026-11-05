@@ -392,6 +392,16 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: with `BEE_API_URL` set and no batch id, 1 upload sends 0 `Swarm-Postage-Batch-Id` headers; with a batch id it sends 1; all API tests pass
 - Evidence: <PR link>
 
+### T-D08, README section "How we used Swarm"
+- Status: open
+- Suggested: Manish
+- Depends-on: T-A12, OP-8
+- Touches: README.md
+- Serves: Swarm bonus
+- Scope: what lives on Swarm (build plus `hydra-manifest.json`) and what on Arkiv (`swarm_ref`), the gateway and stamping choice (OP-2), the HTML-blocked finding, and links a judge can open
+- Acceptance: the section links at least 1 live release whose `swarm_ref` opens `hydra-manifest.json` through the gateway, plus its Arkiv entity in the explorer
+- Evidence: <PR link>
+
 # P2, 6 Nov afternoon and night
 
 ### T-A04, Deploy the API with HTTPS
