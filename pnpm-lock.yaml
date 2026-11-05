@@ -8,6 +8,15 @@ importers:
 
   .: {}
 
+  apps/api:
+    dependencies:
+      '@hydra/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      viem:
+        specifier: ^2.57.16
+        version: 2.57.16
+
   packages/core:
     dependencies:
       '@arkiv-network/sdk':
