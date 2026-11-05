@@ -557,13 +557,14 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: the template look needs none of its about 60 packages: 1 CSS file, a 20-line split-flap and Lenis reproduce it, and IntersectionObserver replaces GSAP in about 15 lines.
 
 ### T-B08, Publish page in the explorer, from the T-A09 onboarding flow
-- Status: claimed 2026-11-06 | Owner: Mouli | Branch: feature/t-b08-publish-page
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/71 | Branch: feature/t-b08-publish-page
 - Suggested: Mouli
 - Depends-on: T-A09, T-B07
 - Touches: apps/explorer/publish/, apps/explorer/assets/, apps/explorer/src/api.js, apps/explorer/events/, apps/explorer/vercel.json, apps/explorer/index.html, apps/explorer/releases/index.html, apps/explorer/search/index.html, apps/explorer/app/index.html, apps/explorer/observed/index.html
 - Serves: Usability (judged) ; Practicality (judged)
 - Acceptance: the explorer's /publish/ page runs the whole T-A09 flow (connect a wallet, sign 1 message, get a key, copy the agent block or the workflow, see the first release) in the explorer design, tested end to end against the API's 3 routes; the events feed also shows app name claims and CI run links from the publisher wallet; every page scrolls smoothly and reveals its content, with 0 motion under prefers-reduced-motion
-- Evidence: <PR link, screenshots>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/71; /publish/ connects through RainbowKit and was tested with freshly generated wallets (real keys, real signatures) against Jishnu's own sign-in code (apps/api/src/auth.ts, keys.ts): 2 wallets each got a key that verifyKey binds to that wallet and app, a forged signature was refused, 0 CSP problems; live, the events feed shows 6 name claims; all 8 pages scroll smoothly and reveal, and do none of it under reduced motion
+- Finding: React, wagmi and RainbowKit from a CDN break unless every package shares 1 copy of each ("No QueryClient set"); an import map fixes it, allowed by the publish page's own CSP by hash, with inline styles for RainbowKit on that page only. The live API issues keys only to allowlisted wallets (HYDRA_ALLOWED_ADDRESSES), so a judge's wallet must be added before it can sign up. The T-A09 page also wrote the build folder into the workflow unchecked; the explorer accepts only a plain path
 ### T-J01, Public action repo for the Marketplace
 - Status: open
 - Suggested: Jishnu

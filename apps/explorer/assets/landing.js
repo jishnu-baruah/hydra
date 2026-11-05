@@ -1,38 +1,6 @@
-// Landing page: Lenis smooth scroll (settings from the interface template), scroll reveals and
-// the example badge. Under prefers-reduced-motion there is no smooth scroll and no reveal.
+// Landing page: the hero's example check. Smooth scroll and reveals are in motion.js, shared by
+// every page. Under prefers-reduced-motion the hero shows its final state.
 const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-if (!still) {
-  document.documentElement.classList.add("js-reveal");
-  const seen = new IntersectionObserver(
-    (entries) => {
-      for (const e of entries) {
-        if (!e.isIntersecting) continue;
-        e.target.classList.add("in");
-        seen.unobserve(e.target);
-      }
-    },
-    { rootMargin: "0px 0px -10% 0px" },
-  );
-  document.querySelectorAll(".reveal").forEach((el) => seen.observe(el));
-
-  // If the CDN is unreachable the page still scrolls natively.
-  import("https://cdn.jsdelivr.net/npm/lenis@1.3.15/dist/lenis.mjs")
-    .then(({ default: Lenis }) => {
-      const lenis = new Lenis({
-        duration: 1.2,
-        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-        smoothWheel: true,
-        anchors: { offset: -56 },
-      });
-      const raf = (time) => {
-        lenis.raf(time);
-        requestAnimationFrame(raf);
-      };
-      requestAnimationFrame(raf);
-    })
-    .catch(() => {});
-}
 
 // The hero panel: an example of Hydra checking a page's scripts, then catching one change.
 // Example data only; it never claims to be a real site.

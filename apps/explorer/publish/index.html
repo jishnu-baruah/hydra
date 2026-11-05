@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Publish, Hydra</title>
+    <meta name="description" content="Record every build of your dApp on Arkiv: connect a wallet, get a key, add one workflow." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
+    <link rel="stylesheet" href="../assets/hydra.css" />
+    <script type="importmap">{"imports":{"react":"https://esm.sh/react@18.3.1","react/jsx-runtime":"https://esm.sh/react@18.3.1/jsx-runtime","react-dom":"https://esm.sh/react-dom@18.3.1?external=react","react-dom/client":"https://esm.sh/react-dom@18.3.1/client?external=react","@tanstack/react-query":"https://esm.sh/@tanstack/react-query@5.106.1?external=react","wagmi":"https://esm.sh/wagmi@2.19.5?external=react,@tanstack/react-query&deps=viem@2.57.16","wagmi/actions":"https://esm.sh/wagmi@2.19.5/actions?external=react,@tanstack/react-query&deps=viem@2.57.16","wagmi/chains":"https://esm.sh/wagmi@2.19.5/chains?external=react,@tanstack/react-query&deps=viem@2.57.16","wagmi/connectors":"https://esm.sh/wagmi@2.19.5/connectors?external=react,@tanstack/react-query&deps=viem@2.57.16","@rainbow-me/rainbowkit":"https://esm.sh/@rainbow-me/rainbowkit@2.2.11?external=react,react-dom,@tanstack/react-query,wagmi&deps=viem@2.57.16","@rainbow-me/rainbowkit/wallets":"https://esm.sh/@rainbow-me/rainbowkit@2.2.11/wallets?external=react,react-dom,@tanstack/react-query,wagmi&deps=viem@2.57.16"}}</script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@rainbow-me/rainbowkit@2.2.11/dist/index.css" />
+    <link rel="stylesheet" href="publish.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="bar">
+      <a class="mark" href="../">Hydra</a>
+      <nav aria-label="Main">
+        <a href="../releases/">Releases</a>
+        <a href="../events/">Events</a>
+        <a href="../search/">Search</a>
+        <a href="./" aria-current="page">Publish</a>
+      </nav>
+      <span class="tag">For teams</span>
+    </header>
+    <span class="rail label" aria-hidden="true">Publish</span>
+
+    <main id="main">
+      <section class="hero">
+        <p class="eyebrow">Publish <span>/ For teams</span></p>
+        <h1 class="compact" data-flap>Publish your builds</h1>
+        <p class="lede">Record every build of your dApp on Arkiv, so your users can check they are running it. 4 steps, about 5 minutes. No gas and no tokens.</p>
+      </section>
+
+      <ol class="stepper" aria-label="Progress">
+        <li data-step="1" data-state="current"><span>1</span>Connect</li>
+        <li data-step="2" data-state="locked"><span>2</span>Get a key</li>
+        <li data-step="3" data-state="locked"><span>3</span>Add to repo</li>
+        <li data-step="4" data-state="locked"><span>4</span>First release</li>
+      </ol>
+
+      <section class="panel" id="p1" data-state="current" aria-labelledby="h1-title">
+        <h2 id="h1-title"><span class="n">01</span> Connect your wallet</h2>
+        <p class="why">Your wallet proves who owns the app name. It signs a message only: no transaction, no gas.</p>
+        <div id="wallet-root"><button class="btn" type="button" disabled>Loading wallets...</button></div>
+        <p class="help">No wallet yet? Install MetaMask or Rainbow in this browser, then reload.</p>
+        <p class="ok" id="address" hidden></p>
+        <p class="err" id="e1" role="alert" hidden></p>
+      </section>
+
+      <section class="panel" id="p2" data-state="locked" aria-labelledby="h2-title">
+        <h2 id="h2-title"><span class="n">02</span> Name your app and get a key</h2>
+        <p class="why">The name is how people find your builds. The first wallet to claim it keeps it.</p>
+        <div class="field">
+          <label for="app">App name</label>
+          <input id="app" autocomplete="off" spellcheck="false" placeholder="my-dapp" maxlength="40" aria-describedby="app-help" disabled />
+          <p class="help" id="app-help">2 to 40 lowercase letters, digits and dashes.</p>
+        </div>
+        <button class="btn" id="sign" type="button" disabled>Sign and get key</button>
+        <div class="keybox" id="keybox" hidden>
+          <p class="label">Your API key</p>
+          <div class="keyrow">
+            <code id="key" data-secret="">••••••••••••••••••••</code>
+            <button class="ghost-btn" id="reveal" type="button">Reveal</button>
+            <button class="ghost-btn" data-copy="key-value" type="button">Copy</button>
+          </div>
+          <p class="warn">Shown once. Save it now as the repo secret <code>HYDRA_API_KEY</code>; you cannot see it again.</p>
+        </div>
+        <p class="err" id="e2" role="alert" hidden></p>
+      </section>
+
+      <section class="panel" id="p3" data-state="locked" aria-labelledby="h3-title">
+        <h2 id="h3-title"><span class="n">03</span> Add Hydra to your repo</h2>
+        <p class="why">One workflow file. Every push to main then records the build on Arkiv and stores it on Swarm.</p>
+        <div class="tabs" role="tablist" aria-label="How to set it up">
+          <button role="tab" id="t-agent" aria-selected="true" aria-controls="v-agent" type="button">With your coding agent</button>
+          <button role="tab" id="t-hand" aria-selected="false" aria-controls="v-hand" type="button" tabindex="-1">By hand</button>
+        </div>
+        <div role="tabpanel" id="v-agent" aria-labelledby="t-agent">
+          <p class="help">Paste this into Claude Code, Cursor or Codex, opened in your repo. It sets the secret, writes the workflow and pushes. It contains your key, so paste it only into your own agent.</p>
+          <div class="code"><pre id="handoff"></pre><button class="ghost-btn" data-copy="handoff" type="button">Copy</button></div>
+          <details>
+            <summary>Claude Code: install the Hydra skill instead</summary>
+            <div class="code"><pre id="skill-cmd"></pre><button class="ghost-btn" data-copy="skill-cmd" type="button">Copy</button></div>
+          </details>
+        </div>
+        <div role="tabpanel" id="v-hand" aria-labelledby="t-hand" hidden>
+          <ol class="hand">
+            <li>
+              <p>Store the key as a repo secret (Settings, Secrets and variables, Actions), or run:</p>
+              <div class="code"><pre id="gh-cmd">gh secret set HYDRA_API_KEY</pre><button class="ghost-btn" data-copy="gh-cmd" type="button">Copy</button></div>
+            </li>
+            <li>
+              <div class="field">
+                <label for="dir">Build output folder</label>
+                <input id="dir" value="dist" spellcheck="false" aria-describedby="dir-help" />
+                <p class="help" id="dir-help">The folder your build writes, the one with index.html.</p>
+              </div>
+            </li>
+            <li>
+              <p>Commit this as <code>.github/workflows/hydra.yml</code> and push to main:</p>
+              <div class="code"><pre id="yaml"></pre><button class="ghost-btn" data-copy="yaml" type="button">Copy</button></div>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="panel" id="p4" data-state="locked" aria-labelledby="h4-title">
+        <h2 id="h4-title"><span class="n">04</span> Your first release</h2>
+        <p class="why" id="watch">Push once. This page watches for the release and links to it.</p>
+        <div class="release" id="release" hidden></div>
+        <button class="ghost-btn" id="check" type="button" disabled>Check now</button>
+        <p class="err" id="e4" role="alert" hidden></p>
+      </section>
+
+      <footer class="colophon label">
+        <span>Agent docs: <a id="docs" href="#">llms.txt</a></span>
+        <span>API: <span id="api"></span></span>
+      </footer>
+    </main>
+    <script type="module" src="../assets/flap.js"></script>
+    <script type="module" src="page.js"></script>
+    <script type="module" src="../assets/motion.js"></script>
+  </body>
+</html>

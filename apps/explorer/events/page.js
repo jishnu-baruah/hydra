@@ -37,9 +37,13 @@ function item(e, fresh) {
   const what = el("div", "what");
   const detail = el("p", "detail");
 
-  if (e.kind === "release") {
+  if (e.kind === "claim") {
+    what.append(el("span", "kind", "Name claimed"), link(e.app, `../app/?name=${encodeURIComponent(e.app)}`));
+    detail.textContent = `reserved by ${e.publisher.slice(0, 6)}...${e.publisher.slice(-4)} when it got its API key`;
+  } else if (e.kind === "release") {
     what.append(el("span", "kind", "Release"), link(e.app, `../app/?name=${encodeURIComponent(e.app)}`), el("span", "chip", e.version));
     detail.textContent = `commit ${e.commit.slice(0, 12)}, ${e.files} file${e.files === 1 ? "" : "s"}`;
+    if (e.ci) detail.append(", ", Object.assign(link("CI run", e.ci), { target: "_blank", rel: "noopener noreferrer" }));
   } else {
     what.append(el("span", "kind", "Observed"), link(e.domain, `../observed/?domain=${encodeURIComponent(e.domain)}`), el("span", `chip ${e.status}`, e.status));
     // A site with no release churns its scripts on its own (spike F3), so a change there is news,
@@ -88,8 +92,8 @@ async function load() {
   loading = true;
   try {
     arkiv ??= await import("../src/arkiv.js");
-    const [releases, observations] = await Promise.all([arkiv.latestReleases(100), arkiv.latestObservations(100)]);
-    const next = timeline(releases, observations);
+    const [releases, observations, apps] = await Promise.all([arkiv.latestReleases(100), arkiv.latestObservations(100), arkiv.latestApps(100)]);
+    const next = timeline(releases, observations, apps);
     const before = new Set(events.map((e) => e.key));
     const fresh = events.length ? new Set(next.filter((e) => !before.has(e.key)).map((e) => e.key)) : new Set();
     events = next;
