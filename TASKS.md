@@ -421,10 +421,10 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <CI or local run log>
 
 ### T-B04, Explorer events timeline
-- Status: open
+- Status: claimed 2026-11-06 | Owner: Mouli | Branch: feature/t-b04-events
 - Suggested: Mouli
 - Depends-on: T-B02, T-A06
-- Touches: apps/explorer/events/
+- Touches: apps/explorer/events/, apps/explorer/src/arkiv.js, apps/explorer/index.html, apps/explorer/releases/index.html, apps/explorer/search/index.html, apps/explorer/app/index.html
 - Serves: WOW factor (judged) ; Usability (judged)
 - Acceptance: one timeline mixes releases and observations newest first, and a planted script change appears within 1 indexer run
 - Evidence: <recording>
