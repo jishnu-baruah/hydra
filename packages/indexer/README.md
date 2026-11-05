@@ -14,6 +14,11 @@ node src/main.ts --dry                          # one run, print only, no key, n
   `unknown` (no Hydra release for this site yet: still recorded, with its script hashes).
 - **Change detection:** the body says `changed: true` when a site's script set differs from the
   previous run, for every site, onboarded or not.
+- **Second view (T-A14, needs `JINA_KEY`):** Jina's reader renders each page in a browser from
+  another network. Third-party script origins seen only at runtime are recorded; with a release,
+  any the release does not list is `RUNTIME_ORIGIN` (mismatch); without one, only origins new since
+  the previous run are flagged (`NEW_RUNTIME_ORIGIN`). Sites that block us directly are read through
+  the renderer (`DIRECT_BLOCKED`), and every script is still hashed by a direct fetch.
 - **Expiry:** observations live 3 days, so "checked recently" is "an observation exists".
 - **Cost:** 20 sites = 2 transactions, about 0.0053 tGLM per run, about 0.5 tGLM per day.
 - **Limits:** 60 scripts per site (Uniswap loads 713); regex-grade HTML parsing; inline scripts

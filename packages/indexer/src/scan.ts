@@ -64,3 +64,38 @@ export function compare(pageUrl: string, seen: Seen[], manifest: Manifest | null
   }
   return { status: problems.length ? ('mismatch' as const) : ('match' as const), problems }
 }
+
+const originOf = (u: string) => {
+  try {
+    return new URL(u).origin
+  } catch {
+    return null
+  }
+}
+
+// Second view (spike T8 idea, a renderer on another network): third-party script origins that only
+// appear once the page runs in a browser, e.g. a loader pulling in a drainer at runtime. With a
+// release, any such origin the release does not list is RUNTIME_ORIGIN (a mismatch). Without one,
+// only origins new since the previous run are flagged, since many sites load analytics at runtime.
+export function runtimeProblems(o: {
+  pageUrl: string
+  raw: string[]
+  rendered: string[]
+  manifest: Manifest | null
+  previous?: string[]
+}) {
+  const own = originOf(o.pageUrl)
+  const known = new Set(o.raw.map(originOf))
+  const origins = [...new Set(o.rendered.map(originOf))]
+    .filter((x): x is string => !!x && x !== own && !known.has(x))
+    .sort()
+  let problems: string[] = []
+  if (o.manifest) {
+    const allowed = new Set(Object.keys(o.manifest.scripts ?? {}).map(originOf))
+    problems = origins.filter((x) => !allowed.has(x)).map((x) => `RUNTIME_ORIGIN ${x}`)
+  } else if (o.previous) {
+    const before = new Set(o.previous)
+    problems = origins.filter((x) => !before.has(x)).map((x) => `NEW_RUNTIME_ORIGIN ${x}`)
+  }
+  return { origins, problems }
+}

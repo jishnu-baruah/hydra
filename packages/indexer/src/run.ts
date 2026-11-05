@@ -13,7 +13,7 @@ import {
   rootCause,
   type CreateSpec,
 } from '@hydra/core'
-import { compare, scriptUrls, scriptsHash, sha256Tag, type Manifest, type Seen } from './scan.ts'
+import { compare, runtimeProblems, scriptUrls, scriptsHash, sha256Tag, type Manifest, type Seen } from './scan.ts'
 
 const MAX_SCRIPTS = 60
 const MAX_BYTES = 5 * 1024 * 1024
@@ -33,6 +33,24 @@ async function get(url: string, timeoutMs = 15_000): Promise<Uint8Array> {
   return buf
 }
 
+// The page as a browser renders it, from Jina's network (needs JINA_KEY). null when there is no
+// key, the call fails, or the result has no scripts (a bot challenge page, e.g. balancer.fi).
+async function rendered(pageUrl: string): Promise<string | null> {
+  const key = process.env.JINA_KEY
+  if (!key) return null
+  try {
+    const res = await fetch(`https://r.jina.ai/${pageUrl}`, {
+      headers: { Authorization: `Bearer ${key}`, 'X-Return-Format': 'html' },
+      signal: AbortSignal.timeout(60_000),
+    })
+    if (!res.ok) return null
+    const html = await res.text()
+    return scriptUrls(html, pageUrl).length ? html : null
+  } catch {
+    return null
+  }
+}
+
 // The newest release's manifest for a Hydra app, read through the API's trust-filtered route.
 async function manifestFor(api: string, app: string | undefined): Promise<Manifest | null> {
   if (!app) return null
@@ -48,29 +66,65 @@ async function manifestFor(api: string, app: string | undefined): Promise<Manife
 // Previous scripts_hash per domain, for "changed since last run". In memory: a restart (or a free
 // Render service waking up) forgets it, so the first run after one reports no changes.
 const last = new Map<string, string>()
+const lastRuntime = new Map<string, string[]>() // domain -> runtime-only origins from the previous run
 
 async function scan(api: string, t: Target) {
   const pageUrl = `https://${t.domain}/`
   let seen: Seen[] = []
   let problems: string[] = []
   let status: 'match' | 'mismatch' | 'unknown' = 'unknown'
+  let via: 'direct' | 'renderer' = 'direct'
+  let runtime: string[] = []
+  const renderedP = rendered(pageUrl) // in parallel with the direct fetch
   try {
-    const html = new TextDecoder().decode(await get(pageUrl))
+    let html: string
+    try {
+      html = new TextDecoder().decode(await get(pageUrl))
+    } catch (err) {
+      // Blocked or down for us: read the script list from the renderer, still hash scripts directly.
+      const r = await renderedP
+      if (!r) throw err
+      html = r
+      via = 'renderer'
+      problems.push(`DIRECT_BLOCKED ${rootCause(err)}`)
+    }
     const urls = scriptUrls(html, pageUrl)
     if (urls.length > MAX_SCRIPTS) problems.push(`TRUNCATED ${urls.length} scripts, checked ${MAX_SCRIPTS}`)
     seen = await Promise.all(
       urls.slice(0, MAX_SCRIPTS).map(async (url) => ({ url, sha256: await get(url).then(sha256Tag, () => null) })),
     )
-    const r = compare(pageUrl, seen, await manifestFor(api, t.app))
+    const manifest = await manifestFor(api, t.app)
+    const r = compare(pageUrl, seen, manifest)
     status = r.status
     problems = [...problems, ...r.problems]
+    const r2 = via === 'direct' ? await renderedP : null
+    if (r2) {
+      const rt = runtimeProblems({ pageUrl, raw: urls, rendered: scriptUrls(r2, pageUrl), manifest, previous: lastRuntime.get(t.domain) })
+      runtime = rt.origins
+      lastRuntime.set(t.domain, rt.origins)
+      problems.push(...rt.problems)
+      if (rt.problems.length && status === 'match') status = 'mismatch'
+    }
   } catch (err) {
     problems.push(`UNREACHABLE ${rootCause(err)}`)
   }
   const hash = scriptsHash(seen)
   const changed = last.has(t.domain) && last.get(t.domain) !== hash
   last.set(t.domain, hash)
-  return { t, status, seen, problems, hash, changed }
+  return { t, status, seen, problems, hash, changed, via, runtime }
+}
+
+// Runs f over items with at most n in flight, keeping order.
+async function pool<T, R>(items: T[], n: number, f: (t: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = new Array(items.length)
+  let next = 0
+  await Promise.all(Array.from({ length: n }, async () => {
+    while (next < items.length) {
+      const i = next++
+      out[i] = await f(items[i])
+    }
+  }))
+  return out
 }
 
 export interface RunSummary {
@@ -86,10 +140,9 @@ export interface RunSummary {
 export async function runOnce(o: { api: string; clients: ReturnType<typeof arkivClients> | null }): Promise<RunSummary> {
   const { targets } = JSON.parse(await readFile(new URL('../targets.json', import.meta.url), 'utf8')) as { targets: Target[] }
   const started = Date.now()
-  const results = []
-  for (const t of targets) results.push(await scan(o.api, t)) // one site at a time: polite to targets
+  const results = await pool(targets, 4, (t) => scan(o.api, t)) // 4 sites at a time, each fetched politely
   const lines = results.map((r) => {
-    const note = [r.changed ? 'CHANGED SINCE LAST RUN' : '', ...r.problems.slice(0, 3)].filter(Boolean).join('; ')
+    const note = [r.changed ? 'CHANGED SINCE LAST RUN' : '', r.runtime.length ? `runtime: ${r.runtime.join(' ')}` : '', ...r.problems.slice(0, 3)].filter(Boolean).join('; ')
     return `${r.status.padEnd(8)} ${r.t.domain.padEnd(28)} ${String(r.seen.length).padStart(3)} scripts ${note}`
   })
   const summary: RunSummary = { sites: results.length, written: 0, txs: [], errors: [], lines, ms: 0 }
@@ -103,7 +156,7 @@ export async function runOnce(o: { api: string; clients: ReturnType<typeof arkiv
         status: r.status,
         observedAt: started,
         scriptsHash: r.hash,
-        payload: { scripts: r.seen.map((s) => ({ url: s.url, sha256: s.sha256 ?? 'unreadable' })), problems: r.problems, changed: r.changed } as never,
+        payload: { scripts: r.seen.map((s) => ({ url: s.url, sha256: s.sha256 ?? 'unreadable' })), problems: r.problems, changed: r.changed, via: r.via, runtime_origins: r.runtime } as never,
       }),
       expiration: OBSERVATION_TTL(),
     }))

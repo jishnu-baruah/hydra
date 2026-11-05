@@ -414,7 +414,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <Actions run link, tx hashes>
 
 ### T-A14, Indexer second view: rendered page through Jina
-- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a14-rendered-view
+- Status: in-review | Branch: feature/t-a14-rendered-view
 - Suggested: Jishnu
 - Depends-on: T-A13
 - Touches: packages/indexer/, .github/workflows/indexer.yml
