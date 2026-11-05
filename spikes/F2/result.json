@@ -1,0 +1,41 @@
+{
+  "task": "T-F02",
+  "run_at": "2026-11-05T17:37Z",
+  "run_by": "manish",
+  "path": "B — EF public gateway, no local Bee node, no postage batch id",
+  "gateway": "https://api.gateway.ethswarm.org",
+  "fixture": "spikes/F2/fixture/ (5 files: index.html, app.js, style.css, hydra.manifest.json, greet.txt)",
+  "upload": {
+    "endpoint": "POST /bzz",
+    "content_type": "application/x-tar",
+    "headers": {
+      "Swarm-Collection": "true",
+      "Swarm-Index-Document": "index.html"
+    },
+    "stamp": "gateway envelope-stamps; no Swarm-Postage-Batch-Id sent",
+    "status": 201,
+    "reference": "bef3c15af9a3ebfefaee14cc5675f15dd3ec9080230351bf38ee340cd0d43006"
+  },
+  "readback_bytes_identical": {
+    "app.js": true,
+    "style.css": true,
+    "hydra.manifest.json": true,
+    "greet.txt": true,
+    "index.html": false
+  },
+  "pass": 4,
+  "fail": 1,
+  "html_finding": {
+    "symptom": "GET /bzz/<ref>/index.html returns 302 to https://bzz.link/forbidden?hash=<ref>",
+    "cause": "EF public gateway blocks HTML to prevent phishing; same for Accept: text/plain and Accept: application/octet-stream",
+    "subdomain_fallback": "https://<ref>.bzz.link/ does not resolve (no wildcard DNS on bzz.link for arbitrary refs)",
+    "impact_on_hydra": "Zero on the critical path. The extension fetches the manifest JSON from Swarm (works) and compares against scripts fetched from the dApp's own origin. Swarm is not asked to render HTML. The explorer's per-file Swarm link works for every non-HTML asset; linking to the 'site on Swarm' needs a different gateway or an omitted link."
+  },
+  "verify_curls": [
+    "curl -sS \"https://api.gateway.ethswarm.org/bzz/bef3c15af9a3ebfefaee14cc5675f15dd3ec9080230351bf38ee340cd0d43006/hydra.manifest.json\"",
+    "curl -sS \"https://api.gateway.ethswarm.org/bzz/bef3c15af9a3ebfefaee14cc5675f15dd3ec9080230351bf38ee340cd0d43006/app.js\"",
+    "curl -sS \"https://api.gateway.ethswarm.org/bzz/bef3c15af9a3ebfefaee14cc5675f15dd3ec9080230351bf38ee340cd0d43006/style.css\"",
+    "curl -sS \"https://api.gateway.ethswarm.org/bzz/bef3c15af9a3ebfefaee14cc5675f15dd3ec9080230351bf38ee340cd0d43006/greet.txt\""
+  ],
+  "conclusion": "Path B (EF public gateway) unblocks OP-2 and satisfies T-F02 for every content type we actually need: JSON manifest + hashed assets. Keep SWARM_POSTAGE_BATCH_ID empty in .env for this mode. Decision for Jishnu: let the API send uploads without a batch-id header against SWARM_GATEWAY_URL=https://api.gateway.ethswarm.org, or keep the own-batch path as a configurable alternative."
+}

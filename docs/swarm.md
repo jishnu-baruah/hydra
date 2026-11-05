@@ -1,0 +1,140 @@
+# Swarm in Hydra: what, where, how
+
+Owner of this doc: Manish (research/docs). Owner of the upload code: Jishnu (`apps/api`). Blocks for `T-F02` and the Arkiv + Swarm bonus (`docs/prizes.md`).
+
+Read on 2026-11-05.
+
+## 1. Why Swarm is in this project at all
+
+Arkiv is a **structured** database — 128 B per string column, 128 KiB per entity body, 32 columns per entity (`docs/ARCHITECTURE.md` § Arkiv facts). A dApp build is **unstructured** — N arbitrary files, ranging from one JS bundle to hundreds of chunks. Those two shapes don't fit together, and `packages/core/src/records.ts:68` enforces the Arkiv body cap by throwing with the hint *"trim it or store it on Swarm."*
+
+**So Swarm is Hydra's blob store, and Arkiv is Hydra's index.** Everything that a judge or a user *queries* lives on Arkiv (app, release, file, observation); everything they *download byte-for-byte* lives on Swarm (the build, the manifest). The link between the two is the single column `release.swarm_ref` (`packages/core/src/records.ts:23`).
+
+That split is also the exact shape the Arkiv + Swarm bonus wants to see (`docs/prizes.md` § Arkiv + Swarm Bonus).
+
+## 2. The exact Swarm/Arkiv split
+
+| Lives on Swarm | Lives on Arkiv |
+| --- | --- |
+| The built site files (every `/index.html`, `/assets/*.js`, etc.), uploaded as a folder | `hydra.release` entity (one per publish) |
+| The release **manifest** JSON (see § 3) | `hydra.file` entities (one per file; indexed by `app`+`sha256`+`release` key) |
+|  | `hydra.app` entity (registration metadata) |
+|  | `hydra.observation` entities (indexer records) |
+
+**Reference flow:** publish uploads the folder to Swarm → Swarm returns one `swarmRef` (64-hex content-addressed root of the folder) → the API writes that reference into `release.swarm_ref` on Arkiv → anyone reading the release from Arkiv can reach the files on Swarm by that reference.
+
+`release.swarm_ref` is a `str().indexed()` column (128 B max). A Swarm reference is 64 hex chars (32 B). Fits. Feeds and encrypted references are **not used** — the prize rules forbid encrypted references in public Arkiv entities, and our build is public anyway.
+
+## 3. The manifest
+
+Defined in `packages/core/src/records.ts:54-61`:
+
+```ts
+interface Manifest {
+  app: string;
+  version: string;
+  commit: string;
+  domains: string[];
+  files: Record<string /*path*/, string /*"sha256-<hex>"*/>;
+  scripts: Record<string /*external URL*/, string /*"sha256-<hex>"*/>;
+}
+```
+
+The manifest is uploaded to Swarm **as part of the same folder** as the build (so one `swarmRef` covers both). Convention: the manifest lives at `/hydra.manifest.json` inside the uploaded folder. The explorer and the extension fetch exactly that path from the Swarm gateway.
+
+## 4. Who touches Swarm, where
+
+Grep for `swarm`/`bee` across the repo (already done). Four live touch points:
+
+1. **`apps/api`** (Jishnu, task **T-A02**, in-flight on `feature/t-a02-publish-api`). On `POST /v1/releases`:
+   - Reads the build tarball + manifest from the request.
+   - Writes both into one Swarm folder upload → receives `swarmRef`.
+   - Passes `swarmRef` into `releaseValues({...swarmRef})` from `packages/core/src/records.ts:89`, which goes into the `hydra.release` Arkiv entity.
+   - Also writes `hydra.file` records keyed by that release's entity key.
+2. **`apps/explorer/src/main.js:58`** renders `swarm_ref` as a column. **T-B02** expands this into an app page where the ref becomes a **working gateway link** per release. **T-B03** (claimed) accepts a Swarm ref as a search input.
+3. **`apps/extension`** (task **T-C02**, not yet in `TASKS.md` body shown here but implied by `apps/extension/src/verdict.js:18`). On each page: reads latest `hydra.release` from Arkiv → fetches `/hydra.manifest.json` from `<gateway>/bzz/<swarm_ref>/hydra.manifest.json` → compares live scripts with `files`+`scripts`.
+4. **`packages/action`** (Jishnu, task **T-A05**). **Does not talk to Swarm directly.** It hashes files and POSTs the build to the API; the API is the only thing that holds the batch id.
+
+## 5. Config surface (already defined)
+
+From `.env.example:10-13`:
+
+```
+BEE_API_URL=http://localhost:1633
+SWARM_POSTAGE_BATCH_ID=
+SWARM_GATEWAY_URL=
+```
+
+- `BEE_API_URL`: the Bee endpoint the API writes to. Can be `http://localhost:1633` (own node) or a hosted URL (`https://api.gateway.ethswarm.org`, `https://gateway.etherna.io`, etc.).
+- `SWARM_POSTAGE_BATCH_ID`: required if the Bee endpoint needs us to stamp; empty if the hosted gateway envelope-stamps for us.
+- `SWARM_GATEWAY_URL`: the public URL the **explorer** and **extension** read from. Can equal `BEE_API_URL` or be a separate public gateway.
+
+## 6. The three ways to make this work — and which one we take
+
+From `docs/ARCHITECTURE.md:109` and the Phase 0 research in this chat:
+
+### Path A — Swarm stall at ETHGlobal Mumbai
+Walk up, ask for either a hosted Bee URL for the event or a testnet batch id. Takes 10 minutes if a human is there. **Try this first.**
+
+### Path B — EF public gateway (`api.gateway.ethswarm.org`) — **confirmed working, 2026-11-05**
+- Spike `T-F02` ran against it from this repo. Result: `spikes/F2/result.json`.
+- Upload: `POST /bzz` with `Content-Type: application/x-tar`, `Swarm-Collection: true`, `Swarm-Index-Document: index.html`. No `Swarm-Postage-Batch-Id` header sent. Status 201, reference returned.
+- Read: `GET /bzz/<ref>/<path>` serves JSON, JS, CSS and plain text byte-identical. HTML is **blocked** with a 302 to `https://bzz.link/forbidden?hash=<ref>` (anti-phishing). `Accept: text/plain` and `Accept: application/octet-stream` do not bypass it. `<ref>.bzz.link` subdomain does not resolve.
+- **Impact on Hydra:** none on the critical path. The extension fetches the manifest JSON from Swarm (works) and verifies scripts by hash against the dApp's own origin. Swarm is never asked to render HTML. The explorer can link to any non-HTML asset by Swarm URL; a "render the site on Swarm" link would need a different gateway and is not a demo requirement.
+- Cons: no batch id in `.env` (gateway envelope-stamps). OP-2's acceptance says "batch id is in `.env` and one upload succeeds" — this spike replaces the second half. Propose amending OP-2 to "an upload succeeds and reads back byte-identical through a gateway URL."
+- Decision for Jishnu: the API should default to **no batch-id header** against `SWARM_GATEWAY_URL=https://api.gateway.ethswarm.org`. Keep `SWARM_POSTAGE_BATCH_ID` optional so Path C (own batch) stays supported without code changes.
+
+### Path C — Run a Bee light node on Sepolia
+- Half a day of setup: Sepolia ETH faucet → sBZZ on Uniswap → Bee 2.x Docker → `POST /stamps/<amount>/<depth>` → batch id.
+- Only do this if A fails and Jishnu picks the "stamp yourself" branch of the Path B decision.
+
+**Recommendation for Hydra:** Path A today at the stall; fall back to Path B with OP-2's acceptance relaxed; only hit Path C if the bonus writeup becomes blocking.
+
+## 7. Reproducible upload + read, the minimum demo
+
+These are the exact commands we need to pass to the Arkiv + Swarm bonus prize (`/arkiv/swarm.md` asks for "reproducible steps for one upload and one read").
+
+Assuming `BEE_API_URL` is set and (if required) a `-H "swarm-postage-batch-id: ..."` header or `?batch` query param is accepted:
+
+```bash
+# Upload a folder as one Swarm folder (gets back a root reference)
+curl -sS -X POST \
+  -H "Content-Type: application/x-tar" \
+  -H "swarm-index-document: index.html" \
+  -H "swarm-postage-batch-id: ${SWARM_POSTAGE_BATCH_ID:-<batch>}" \
+  --data-binary @site.tar \
+  "${BEE_API_URL}/bzz"
+# -> {"reference":"<64-hex>"}
+
+# Read one file back from the folder, by content address
+REF=<the reference above>
+curl -sS "${SWARM_GATEWAY_URL:-$BEE_API_URL}/bzz/$REF/hydra.manifest.json"
+```
+
+(If using the EF public gateway, drop the batch-id header; the gateway stamps.)
+
+## 8. What the extension and explorer actually fetch
+
+- **Explorer app page (T-B02):** for each release row, the "Swarm link" is `${SWARM_GATEWAY_URL}/bzz/${swarm_ref}/`.
+- **Explorer "open release":** `${SWARM_GATEWAY_URL}/bzz/${swarm_ref}/hydra.manifest.json` to get the manifest JSON.
+- **Extension (T-C02):** same URL as above, called from the background worker (CORS: Swarm gateways typically allow `*`, confirm when the spike lands). Cache per `swarm_ref`; refs are immutable, so cache forever.
+
+Note from `spikes/F3/result.json` (via T-F03 findings): Uniswap serves 0 of 816 scripts from its own origin, so the extension can't fall back to same-origin-only. The Swarm manifest is the sole source of truth.
+
+## 9. Open decisions and questions (tie in with `docs/prizes.md` § stall questions)
+
+- **D-SW1 — Who stamps?** Does our API POST to Bee with a batch-id header (we own the batch), or POST to a stamp-forwarding gateway? Resolve once OP-2 is unblocked.
+- **D-SW2 — Where does the gateway URL point?** If we run our own Bee, we probably still want a public gateway URL for the explorer/extension so users don't need localhost. Consider `https://api.gateway.ethswarm.org` for the public read side regardless of what we use for writes.
+- **Q-SW1** — Does the Swarm testnet gateway allow unauthenticated reads by any `swarmRef`? (Expected yes; verify in the spike.)
+- **Q-SW2** — What is the batch depth and amount for a hackathon's worth of uploads (small; a dozen small folders at most)? Ask the Swarm stall.
+- **Q-SW3** — CORS on the gateway: does the extension need a custom header, or does the default allow it? Verify during T-C02.
+- **Q-SW4** — Encrypted-reference rule: we're plain, so no action, but call it out in `/arkiv/swarm.md`.
+
+## 10. Checklist before Phase 1 end
+
+- [ ] `OP-2` unblocked: a batch id OR an accepted gateway-stamp path, logged in `.env.example` comments and `DECISIONS.md`.
+- [ ] `T-F02` spike: 5-file folder uploaded and all 5 read back byte-identical through a gateway URL, with the ref written into `spikes/F2/result.json`.
+- [ ] `apps/api` (T-A02) can POST a folder and store the returned ref into `release.swarm_ref`.
+- [ ] A root `/arkiv/swarm.md` (pointer to this file) exists for the bonus-prize requirement. See `docs/prizes.md`.
+- [ ] One entity key with a working `swarm_ref` is linked in `/arkiv/swarm.md` for judge verification.
+- [ ] Demo video timestamp noted next to the Swarm upload moment.
