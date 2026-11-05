@@ -22,8 +22,7 @@ if (q.trim()) {
       status(`${hits.length} app(s) found in ${Math.round(performance.now())} ms.`);
       for (const h of hits) {
         const li = document.createElement("li");
-        // T-B02 adds the app page; until then the match opens as an entity.
-        const a = Object.assign(document.createElement("a"), { href: `../releases/?key=${encodeURIComponent(h.key)}` });
+        const a = Object.assign(document.createElement("a"), { href: `../app/?name=${encodeURIComponent(h.app)}` });
         const span = (cls, text) => Object.assign(document.createElement("span"), { className: cls, textContent: text });
         a.append(span("app", h.app), span("via label", `Matched by ${h.via}`), span("go", "→"));
         li.append(a);
