@@ -123,6 +123,8 @@ h1 {
   text-transform: uppercase;
 }
 h1.compact { font-size: clamp(44px, 7vw, 96px); }
+/* Addresses and app names have no spaces; let them wrap instead of widening the page. */
+.hero h1, .lede { overflow-wrap: anywhere; }
 .lede { max-width: 58ch; margin: 28px 0 0; font: 400 14px/1.75 var(--mono); color: var(--muted); }
 
 /* Search form, on the home hero and the search page. */
@@ -253,6 +255,10 @@ body.is-entity .hero-home { display: none; }
 
 @media (max-width: 640px) {
   .bar { gap: 8px; }
+  /* 4 links do not fit a phone: tighter, and the menu (not the page) scrolls sideways if needed. */
+  .bar nav { flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .bar nav::-webkit-scrollbar { display: none; }
+  .bar nav a { padding: 0 8px; letter-spacing: 0.14em; white-space: nowrap; }
   .bar .tag { display: none; }
   .find .row { flex-direction: column; gap: 8px; }
   .find input { flex: none; border-right: 1px solid var(--border); }
