@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Hydra",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Warns when a site serves scripts that are in no release on Arkiv.",
   "background": { "service_worker": "src/background.js", "type": "module" },
   "action": { "default_title": "Hydra", "default_popup": "src/popup.html" },
-  "permissions": ["tabs"]
+  "permissions": ["webRequest", "storage"],
+  "host_permissions": ["<all_urls>"]
 }
