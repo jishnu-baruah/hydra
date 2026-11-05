@@ -472,10 +472,10 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: Windows' 260-character path limit broke the first unzip inside a deep folder, though the zip's longest path is 22 characters, so users should unzip to a short path; each page sends up to 5 script hashes to the API, so its operator can see which checked sites a user visits, and the README says so
 
 ### T-B06, Deploy the explorer
-- Status: open
+- Status: claimed 2026-11-06 | Owner: Mouli | Branch: feature/t-b06-deploy-explorer
 - Suggested: Mouli
-- Depends-on: T-B05
-- Touches: apps/explorer/deploy/
+- Depends-on: T-B02
+- Touches: apps/explorer/deploy/, apps/explorer/vercel.json, apps/extension/src/ui/links.js
 - Serves: Usability (judged)
 - Acceptance: the public URL loads the home page and 1 app page in under 3 s each
 - Evidence: <URL>
