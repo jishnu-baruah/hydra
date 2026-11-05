@@ -38,6 +38,8 @@ ETHGlobal Mumbai, 5 to 7 Nov 2026. **Scope: Arkiv + Swarm only. No ENS, no walle
 - Hashing and compare logic gets its failing test first. Other code: one meaningful check.
 - Every task discovers something. Write the finding with its number into your task row.
 - Search with the `Explore` subagent. Never paste whole files, logs or JSON into a conversation.
+- Web research: `/research <q>` or `/deep <q>` (the filebus-research kit, via `scripts/research.mjs`).
+  Its answers are leads: open the cited source before a number goes into a doc.
 - Work is credited to the person who ran the agent. No AI co-author lines in commits.
 
 ## Layout
