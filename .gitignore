@@ -11,3 +11,6 @@ out/
 *.key
 .DS_Store
 apps/extension/*.zip
+
+# filebus research/orchestrator runtime (cache, bus records, generated board state)
+.filebus/bus/
