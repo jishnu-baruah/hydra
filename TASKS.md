@@ -312,23 +312,23 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <curl transcript, tx hash>
 
 ### T-B02, Explorer app page with release history
-- Status: blocked, see OP-7 | Branch: feature/t-b02-app-page
+- Status: blocked, see OP-8 | Branch: feature/t-b02-app-page
 - Suggested: Mouli
 - Depends-on: T-B01, T-A02
 - Touches: apps/explorer/app/, apps/explorer/src/arkiv.js, apps/explorer/search/page.js
 - Serves: Usability (judged)
 - Acceptance: an app page lists all releases newest first with version, commit, time, file count and a working Swarm link, for 1 real published app
-- Evidence: tests 4 of 4 in apps/explorer/app/releases.test.mjs; live Rabdi reads with the publisher filter run with 0 errors but return 0 releases, so the real-app check waits for OP-7
+- Evidence: live on Rabdi 2026-11-06: /app/?name=hydra-test-a lists its 3 releases newest first with version, commit, time and file count in 377 ms, test-dapp its 2 in 244 ms, 0 page errors; the Swarm column reads "Not on Swarm yet" because all 5 releases have swarm_ref pending (OP-8); tests 4 of 4 in apps/explorer/app/releases.test.mjs
 - Finding: the publisher wallet holds 5 tGLM and has sent 0 transactions, so the blocker is a first publish, not funding; every Hydra record comes from that 1 wallet, so the explorer now trusts only entities created by it
 
 ### T-B03, Explorer search
-- Status: blocked, see OP-7 | Branch: feature/t-b03-explorer-search
+- Status: blocked, see OP-8 | Branch: feature/t-b03-explorer-search
 - Suggested: Mouli
 - Depends-on: T-B01
 - Touches: apps/explorer/search/, apps/explorer/src/arkiv.js, apps/explorer/index.html
 - Serves: Usability (judged) ; Originality (judged)
 - Acceptance: search finds the right app from 4 kinds of input: domain, app name, file sha256 and Swarm reference
-- Evidence: https://github.com/jishnu-baruah/hydra/pull/19 (4 of 4 input kinds resolve offline; live Rabdi queries run with 0 errors but 0 Hydra records exist, so the real-app check waits for OP-1 and T-A02)
+- Evidence: live on Rabdi 2026-11-06: 2 of 4 kinds find the right app, app name (hydra-test-a, 247 ms) and file sha256 (with or without the sha256- prefix, 316 ms); Swarm reference waits for OP-8 (every swarm_ref is pending); domain waits for domain records, which the T-A03 cut defers until after the demo; tests 3 of 3 in apps/explorer/search/search.test.mjs
 - Finding: anyone can write an entity tagged hydra.app, so search and the home list must filter by the API wallet address (ownedBy) before showing real data; a bare 64-hex input is ambiguous (file sha256 or Swarm ref), so both are queried.
 
 ### T-D04, Demo dApp on a domain we control
@@ -419,24 +419,24 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <deployed URL>
 
 ### T-C02, Extension compare logic
-- Status: blocked, see OP-7 | Branch: feature/t-c02-compare
+- Status: blocked, see OP-3 | Branch: feature/t-c02-compare
 - Suggested: Mouli
 - Depends-on: T-C01, T-F03, T-A02
 - Touches: apps/extension/src/compare/, apps/extension/src/background.js, apps/extension/src/verdict.js, apps/extension/manifest.json
 - Serves: Technicality (judged) ; Usability (judged)
 - Known: spike T4 compare algorithm and T12 Next.js rules; the extension is the best vantage point against cloaking (T8). See docs/prior-learnings.md
 - Acceptance: on the demo site, green with 0 mismatches; after changing 1 line of the JS on the host, red naming that 1 file, within 1 reload
-- Evidence: 7 of 7 tests in apps/extension/src/compare/compare.test.mjs; end to end in Chromium against a local demo site and a local stand-in for the API read routes, 3 of 3 runs: green in about 2.7 s, then 1 line added to app.js on the host turns it red naming /assets/app.js within 1 reload. The live demo site check waits for OP-7 (a first publish) and T-D04
+- Evidence: 7 of 7 tests in apps/extension/src/compare/compare.test.mjs; end to end in Chromium against a local demo site and a local stand-in for the API read routes, 3 of 3 runs: green in about 2.7 s, then 1 line added to app.js on the host turns it red naming /assets/app.js within 1 reload. The live API now has 2 apps, but their builds are hosted nowhere a browser can load, so the live green and red check needs the T-D04 demo site (OP-3)
 - Finding: the API ignores domains until ownership is provable, so the extension finds the app from the page's own script hashes (1 lookup per hash, up to 5); a site whose every script was swapped would then look unknown, so the extension remembers each site's app after the first match and shows it red instead of grey
 
 ### T-C03, Warning banner and popup detail
-- Status: in-review https://github.com/jishnu-baruah/hydra/pull/37 | Branch: feature/t-c03-banner-popup
+- Status: done
 - Suggested: Mouli
 - Depends-on: T-C02
 - Touches: apps/extension/src/ui/, apps/extension/src/popup.html, apps/extension/src/popup.js, apps/extension/src/background.js, apps/extension/manifest.json, apps/extension/evidence/
 - Serves: Usability (judged) ; WOW factor (judged)
 - Acceptance: a red banner lists every mismatched script (up to 10) and links to the app's explorer page; a grey state says "no release on record" for 1 unknown site
-- Evidence: apps/extension/evidence/t-c03-*.png; end to end in Chromium, 3 of 3 runs, 10 of 10 checks: the red banner names 1 changed file and links to the explorer page, lists 10 of 12 flagged scripts then "and 2 more", comes back when the page removes it, stays dismissed, and stays styled under a page CSP of style-src 'none'; the popup reads "No release on record" on example.com
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/37; against the real deployed API (no override) on stake.lido.fi, 17 scripts are looked up and the badge and popup read "No release on record" in 8.6 s with 0 worker errors; apps/extension/evidence/t-c03-*.png; end to end in Chromium, 3 of 3 runs, 10 of 10 checks: the red banner names 1 changed file and links to the explorer page, lists 10 of 12 flagged scripts then "and 2 more", comes back when the page removes it, stays dismissed, and stays styled under a page CSP of style-src 'none'; the popup reads "No release on record" on example.com
 - Finding: a hidden attribute loses to a display rule in the same stylesheet, so the grey popup showed an empty explorer button while a test that read the attribute passed; the check now asks whether the element is visible, and fails without the fix
 
 ### T-D06, Get-started page and per-app READMEs
@@ -455,6 +455,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Suggested: Mouli
 - Depends-on: T-C03
 - Touches: apps/extension/
+- Known: before packaging, set EXPLORER in apps/extension/src/ui/links.js to the T-B06 explorer URL (it is localhost:5173 until then), and rewrite apps/extension/README.md, which still describes the T-C01 hard-coded verdict
 - Serves: Usability (judged)
 - Acceptance: a zip plus load-unpacked steps that work on 1 clean Chrome profile in under 2 minutes
 - Evidence: <zip link>
