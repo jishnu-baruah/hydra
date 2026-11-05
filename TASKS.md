@@ -360,6 +360,16 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: a new user connects a wallet, signs 1 message, gets an API key and a filled-in workflow template, and their first push lands a release on Arkiv, in under 5 minutes end to end
 - Evidence: <PR link>
 
+### T-A10, Temp activity view: everything Hydra wrote to Arkiv
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a10-activity
+- Suggested: Jishnu
+- Depends-on: T-A02, T-A09
+- Touches: apps/api/src/reads.ts, apps/api/src/server.ts, apps/api/src/main.ts, apps/site/
+- Serves: Usability (judged) ; WOW factor (judged)
+- Scope: temporary, until the explorer events timeline (T-B04) and deploy (T-B06) land; Mouli may fold it in
+- Acceptance: GET /v1/activity lists every app claim, release and file record our wallet wrote, newest block first, and /activity/ on the site shows them per app with CI run links, for at least 2 real apps
+- Evidence: <PR link>
+
 # P2, 6 Nov afternoon and night
 
 ### T-A04, Deploy the API with HTTPS
