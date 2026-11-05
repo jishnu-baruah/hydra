@@ -10,6 +10,7 @@ import { AppSchema } from '@hydra/core'
 import { keyFromSignature, signInMessage } from '../src/auth.ts'
 import { issueKey, verifyKey } from '../src/keys.ts'
 import { createApi } from '../src/server.ts'
+import { swarmUploader } from '../src/swarm.ts'
 import { tar } from '../src/tar.ts'
 
 const SECRET = 'x'.repeat(40)
@@ -194,4 +195,22 @@ test('reserve at key time: a key claims its unowned name once; another wallet is
   assert.equal(pub.status, 201)
   assert.equal(pub.json.appClaimTx, null) // already claimed at key time
   assert.equal(calls.one, before + 2) // + the release write only
+})
+
+test('swarm: the batch header is sent only when a batch id is set (gateway mode stamps for us)', async () => {
+  const real = globalThis.fetch
+  const seen: Headers[] = []
+  globalThis.fetch = (async (_u: unknown, init?: RequestInit) => {
+    seen.push(new Headers(init?.headers))
+    return new Response(JSON.stringify({ reference: 'ab'.repeat(32) }), { status: 201 })
+  }) as typeof fetch
+  try {
+    const files = [{ path: 'index.html', data: new TextEncoder().encode('x') }]
+    await swarmUploader({ beeUrl: 'https://gw.test' })(files)
+    await swarmUploader({ beeUrl: 'https://gw.test', batchId: 'cd'.repeat(32) })(files)
+  } finally {
+    globalThis.fetch = real
+  }
+  assert.equal(seen[0].has('swarm-postage-batch-id'), false)
+  assert.equal(seen[1].get('swarm-postage-batch-id'), 'cd'.repeat(32))
 })

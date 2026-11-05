@@ -30,6 +30,6 @@ proven. Every publish spends our gas and postage, so `HYDRA_ALLOWED_ADDRESSES` (
 allowlist) and `HYDRA_PUBLISHES_PER_HOUR` (default 30 per address) bound it. Two key requests
 racing for one name can both claim it; the earliest `created_at` wins on read.
 A release: the server hashes every file itself, uploads the build plus `hydra-manifest.json` to
-Swarm when `BEE_API_URL` and `SWARM_POSTAGE_BATCH_ID` are set (else `swarm_ref` is `pending`),
+Swarm when `BEE_API_URL` is set (else `swarm_ref` is `pending`),
 writes 1 `hydra.release` record, then `hydra.file` records for up to 200 code files in batches
 of 20. All writes go through core's guarded path: one transaction each, never resent.

@@ -202,14 +202,15 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Kill criterion: 20 file records take over 2 minutes, so index external scripts only and drop per-file records
 
 ### T-F02, Swarm upload and read spike
-- Status: open
+- Status: done
 - Suggested: Jishnu
 - Depends-on: OP-2
 - Touches: spikes/F2/, docs/swarm.md
 - Serves: Technicality (judged) ; Swarm bonus
 - Acceptance: a 5-file folder uploaded to the Swarm testnet and all 5 files read back byte-identical through a gateway URL; steps written in docs/swarm.md
-- Evidence: <Swarm reference and gateway URL>
+- Evidence: commit 7bfe80c, spikes/F2/result.json, https://api.gateway.ethswarm.org/bzz/bef3c15af9a3ebfefaee14cc5675f15dd3ec9080230351bf38ee340cd0d43006/hydra.manifest.json
 - Kill criterion: no working upload after 3 hours, so keep the manifest in the Arkiv payload and mark the Swarm bonus at risk in DECISIONS.md
+- Finding: 4 of 5 files read back byte-identical; the EF gateway answers every HTML read with a 302 to bzz.link/forbidden (anti-phishing), which costs Hydra nothing because only the JSON manifest is read from Swarm; the gateway stamps uploads itself, so no postage batch is needed
 
 ### T-F03, Extension can hash the scripts a page loads
 - Status: done
