@@ -136,7 +136,7 @@ Tasks in one wave touch disjoint files, so three people or three agents can hold
 | Wave | When | Parallel-safe set |
 |---|---|---|
 | P0 | Day 0, 5 Nov night | T-A00 **first, alone**; then T-A08, T-F01, T-F02, T-A01, T-B01, T-C01, T-F03, T-D01, T-D02, T-D03, T-D07 |
-| P1 | 6 Nov morning | T-A02, T-A03, T-B02, T-B03, T-D04, T-D05 |
+| P1 | 6 Nov morning | T-A02, T-A09, T-B02, T-B03, T-D04, T-D05 |
 | P2 | 6 Nov afternoon and night | T-A04, T-A05, T-A06, T-A07, T-B04, T-B05, T-C02, T-C03, T-D06 |
 | P3 | 7 Nov morning | T-J01, T-J02, T-J03, T-C04, T-B06 |
 
@@ -293,16 +293,17 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 # P1, 6 Nov morning
 
 ### T-A02, Publish API: POST /v1/releases
-- Status: open
+- Status: claimed 2026-11-05 | Owner: Jishnu | Branch: feature/t-a02-publish-api
 - Suggested: Jishnu
 - Depends-on: T-A01, T-F01, T-F02
-- Touches: apps/api/
+- Touches: apps/api/, packages/core/
 - Serves: Technicality (judged) ; Arkiv track ; Swarm bonus
+- Scope: also wallet sign-in (signed message) to stateless API keys, and read routes the site and explorer use, so the Arkiv access key stays on the server
 - Acceptance: one call with a valid key uploads the build to Swarm and writes 1 release plus N file records; a bad key gets 401 with 0 writes; returns entity keys and swarm_ref
 - Evidence: <curl transcript, tx hashes, Swarm reference>
 
 ### T-A03, Register apps and domains: POST /v1/apps
-- Status: open
+- Status: cut 2026-11-05: replaced for the temp flow by wallet sign-in keys (T-A02, T-A09); domain checks come back after the demo
 - Suggested: Jishnu
 - Depends-on: T-A02
 - Touches: apps/api/src/apps.ts
@@ -347,10 +348,20 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: a 3-minute script covering both flows and the indexer, run once against a timer, with the real time written down
 - Evidence: <doc link>
 
+### T-A09, Temp onboarding site: wallet sign-in, API key, repo template
+- Status: claimed 2026-11-05 | Owner: Jishnu | Branch: feature/t-a09-onboarding-site
+- Suggested: Jishnu
+- Depends-on: T-A02
+- Touches: apps/site/
+- Serves: Usability (judged) ; Practicality (judged)
+- Scope: temporary; Mouli merges it into the explorer later
+- Acceptance: a new user connects a wallet, signs 1 message, gets an API key and a filled-in workflow template, and their first push lands a release on Arkiv, in under 5 minutes end to end
+- Evidence: <PR link>
+
 # P2, 6 Nov afternoon and night
 
 ### T-A04, Deploy the API with HTTPS
-- Status: open
+- Status: claimed 2026-11-05 | Owner: Jishnu | Branch: feature/t-a04-deploy-api
 - Suggested: Jishnu
 - Depends-on: T-A02
 - Touches: apps/api/deploy/
@@ -359,7 +370,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <URL>
 
 ### T-A05, GitHub Action
-- Status: open
+- Status: claimed 2026-11-05 | Owner: Jishnu | Branch: feature/t-a05-publish-script
 - Suggested: Jishnu
 - Depends-on: T-A04
 - Touches: packages/action/
