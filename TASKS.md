@@ -431,10 +431,10 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: 9 of 80 live observations changed their script set between runs, all on sites with no Hydra release (1inch, across.to, zerion and others), which is natural churn; a Changes filter that counted them would bury a planted change, so it now shows only mismatches and changes on published sites (0 live). 4 sites that record 0 scripts are unreachable from the indexer host (Connect Timeout), not mis-parsed
 
 ### T-B05, Pages for sites that have not onboarded
-- Status: open
+- Status: claimed 2026-11-06 | Owner: Mouli | Branch: feature/t-b05-observed
 - Suggested: Mouli
 - Depends-on: T-B04
-- Touches: apps/explorer/observed/
+- Touches: apps/explorer/observed/, apps/explorer/src/arkiv.js, apps/explorer/events/page.js
 - Serves: Practicality (judged) ; Originality (judged)
 - Acceptance: all 15 or more indexed targets have a page labelled "observed, not published by the team" with their observation history
 - Evidence: <deployed URL>
