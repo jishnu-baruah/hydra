@@ -429,10 +429,10 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: the API ignores domains until ownership is provable, so the extension finds the app from the page's own script hashes (1 lookup per hash, up to 5); a site whose every script was swapped would then look unknown, so the extension remembers each site's app after the first match and shows it red instead of grey
 
 ### T-C03, Warning banner and popup detail
-- Status: open
+- Status: claimed 2026-11-06 | Owner: Mouli | Branch: feature/t-c03-banner-popup
 - Suggested: Mouli
 - Depends-on: T-C02
-- Touches: apps/extension/src/ui/
+- Touches: apps/extension/src/ui/, apps/extension/src/popup.html, apps/extension/src/popup.js, apps/extension/src/background.js, apps/extension/manifest.json, apps/extension/evidence/
 - Serves: Usability (judged) ; WOW factor (judged)
 - Acceptance: a red banner lists every mismatched script (up to 10) and links to the app's explorer page; a grey state says "no release on record" for 1 unknown site
 - Evidence: <screenshots>
