@@ -10,6 +10,11 @@ import { createHash } from "node:crypto";
 import { deflateRawSync, crc32 } from "node:zlib";
 import { join, relative, sep } from "node:path";
 
+if (typeof crc32 !== "function") {
+  console.error(`pack needs zlib.crc32, which Node has from 22.2 (and 20.15); this is Node ${process.versions.node}. Upgrade Node and run it again.`);
+  process.exit(1);
+}
+
 const root = join(import.meta.dirname, "..");
 const manifest = JSON.parse(readFileSync(join(root, "manifest.json"), "utf8"));
 const out = join(root, `hydra-extension-${manifest.version}.zip`);
