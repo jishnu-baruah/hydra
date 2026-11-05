@@ -214,7 +214,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: Uniswap serves 0 of 816 scripts from its own origin (780 from cdn.app.uniswap.org), so a same-origin-only fallback checks nothing; every script that changed between 2 fetches (3 in run 1, 2 in run 2) was a Cloudflare /cdn-cgi/challenge-platform/ bot check, which T-C02 must allow or Cloudflare sites go red.
 
 ### T-A01, packages/core: records, hashing, Arkiv client
-- Status: claimed 2026-11-05 | Owner: Jishnu | Branch: feature/t-a01-core
+- Status: in-review | Branch: feature/t-a01-core
 - Suggested: Jishnu
 - Depends-on: T-A00
 - Touches: packages/core/
