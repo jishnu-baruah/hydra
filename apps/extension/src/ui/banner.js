@@ -8,6 +8,8 @@
 // banner; the toolbar badge and the popup are the surfaces it cannot touch.
 export function showBanner(view) {
   const KEY = "__hydraBanner";
+  // Dismissed stays dismissed for this page, even if a later check of it is still red.
+  if (view && globalThis.__hydraDismissed) return;
   const old = globalThis[KEY];
   if (old) {
     old.observer.disconnect();
@@ -74,9 +76,11 @@ export function showBanner(view) {
     a.rel = "noopener noreferrer";
     box.append(a);
   }
-  const style = el("style");
-  style.textContent = CSS;
-  root.append(style, box);
+  // A constructed sheet, not a <style> element, so a strict page CSP (style-src) cannot block it.
+  const sheet = new CSSStyleSheet();
+  sheet.replaceSync(CSS);
+  root.adoptedStyleSheets = [sheet];
+  root.append(box);
   document.documentElement.append(host);
 
   // A page can remove the banner. Put it back, a few times, unless the user dismissed it.
@@ -88,6 +92,7 @@ export function showBanner(view) {
   observer.observe(document.documentElement, { childList: true });
   close.addEventListener("click", () => {
     dismissed = true;
+    globalThis.__hydraDismissed = true;
     observer.disconnect();
     host.remove();
   });
