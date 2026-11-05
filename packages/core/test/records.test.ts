@@ -51,7 +51,7 @@ test('app record values pass the SDK schema check', async () => {
 })
 
 test('release record values pass the SDK schema check', async () => {
-  const v = releaseValues({ app: 'demo', version: '2026-11-06.1', commit: 'abc123', swarmRef: 'f'.repeat(64), fileCount: 3, publishedAt: NOW, payload: { ci_run_url: 'https://github.com/x/y/actions/runs/1' } })
+  const v = releaseValues({ app: 'demo', publisher: '0x00000000000000000000000000000000000000aa', version: '2026-11-06.1', commit: 'abc123', swarmRef: 'f'.repeat(64), fileCount: 3, publishedAt: NOW, payload: { ci_run_url: 'https://github.com/x/y/actions/runs/1' } })
   assert.equal(await create(ReleaseSchema, v), 'network')
 })
 
@@ -66,6 +66,6 @@ test('observation record values pass the SDK schema check', async () => {
 })
 
 test('control: a bare number in a u64 time column is rejected before sending', async () => {
-  const v = { ...releaseValues({ app: 'demo', version: '1', commit: 'c', swarmRef: 'r', fileCount: 1, publishedAt: NOW, payload: {} }), published_at: NOW }
+  const v = { ...releaseValues({ app: 'demo', publisher: '0x00000000000000000000000000000000000000aa', version: '1', commit: 'c', swarmRef: 'r', fileCount: 1, publishedAt: NOW, payload: {} }), published_at: NOW }
   assert.match(await create(ReleaseSchema, v), /^invalid:/)
 })

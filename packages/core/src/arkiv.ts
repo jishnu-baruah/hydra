@@ -47,7 +47,8 @@ export function policyGas(estimate: bigint, blockGasLimit: bigint, ops = 1): big
 }
 
 // Wraps the write transport: no transport-level retries, and gas estimates go through policyGas.
-export function guardedTransport(base: Transport): Transport {
+// `ops` reports how many operations the write in flight carries, for the per-operation floor.
+export function guardedTransport(base: Transport, ops: () => number = () => 1): Transport {
   return (args) => {
     const t = base({ ...args, retryCount: 0 })
     const request = (async ({ method, params }: { method: string; params?: unknown }) => {
@@ -57,13 +58,16 @@ export function guardedTransport(base: Transport): Transport {
           method: 'eth_getBlockByNumber',
           params: ['latest', false],
         } as never)) as { gasLimit: string }
-        return toHex(policyGas(estimate, BigInt(head.gasLimit)))
+        return toHex(policyGas(estimate, BigInt(head.gasLimit), ops()))
       }
       return t.request({ method, params } as never)
     }) as typeof t.request
     return { ...t, request }
   }
 }
+
+// Operation count of the write in flight, per wallet. Safe because each wallet's writes are queued.
+const inFlightOps = new WeakMap<object, { n: number }>()
 
 // `transport` is for tests; production passes the access key and uses Rabdi's keyed RPC.
 export function arkivClients(o: {
@@ -73,12 +77,17 @@ export function arkivClients(o: {
   transport?: Transport
 }) {
   const chain = rabdi({ accessKey: o.accessKey ?? '' })
+  const ops = { n: 1 }
   const read = o.transport ?? http(o.rpcUrl, { timeout: 10_000 })
-  const write = guardedTransport(o.transport ?? http(o.rpcUrl, { timeout: 30_000, retryCount: 0 }))
+  const write = guardedTransport(
+    o.transport ?? http(o.rpcUrl, { timeout: 30_000, retryCount: 0 }),
+    () => ops.n,
+  )
   const publicClient = createPublicClient({ chain, transport: read })
   const walletClient = o.privateKey
     ? createWalletClient({ chain, transport: write, account: privateKeyToAccount(o.privateKey) })
     : undefined
+  if (walletClient) inFlightOps.set(walletClient, ops)
   return { publicClient, walletClient }
 }
 
@@ -139,46 +148,80 @@ export class WriteNotVerifiedError extends Error {
 type Wallet = NonNullable<ReturnType<typeof arkivClients>['walletClient']>
 type Reader = ReturnType<typeof arkivClients>['publicClient']
 type CreateArgs = Parameters<Wallet['createEntity']>
+type TxParams = { nonce: number; gasPrice: bigint }
+
+export interface CreateSpec {
+  schema: CreateArgs[0]
+  values: CreateArgs[1]
+  expiration: CreateArgs[2]['expiration']
+}
 
 // One signer, one queue: writes from the same wallet run strictly one after another.
 const queues = new WeakMap<object, Promise<unknown>>()
 
-export function guardedCreate(c: {
-  walletClient: Wallet
-  publicClient: Reader
-  schema: CreateArgs[0]
-  values: CreateArgs[1]
-  expiration: CreateArgs[2]['expiration']
-}) {
-  const before = queues.get(c.walletClient) ?? Promise.resolve()
-  const run = before.catch(() => undefined).then(() => createOnce(c))
-  queues.set(c.walletClient, run)
+function enqueue<T>(wallet: Wallet, job: () => Promise<T>): Promise<T> {
+  const before = queues.get(wallet) ?? Promise.resolve()
+  const run = before.catch(() => undefined).then(job)
+  queues.set(wallet, run)
   return run
 }
 
-async function createOnce(c: Parameters<typeof guardedCreate>[0]) {
+export function guardedCreate(c: { walletClient: Wallet; publicClient: Reader } & CreateSpec) {
+  return enqueue(c.walletClient, () =>
+    submitOnce(c.walletClient, c.publicClient, 1, (tx) =>
+      c.walletClient.createEntity(c.schema, c.values, { expiration: c.expiration }, tx),
+    ),
+  )
+}
+
+// Up to MAX_BATCH creates in one transaction, with the gas floor scaled by the number of
+// operations. Returns the keys in the order given.
+export const MAX_BATCH = 20
+
+export function guardedBatch(c: { walletClient: Wallet; publicClient: Reader; creates: CreateSpec[] }) {
+  if (c.creates.length === 0 || c.creates.length > MAX_BATCH) {
+    throw new Error(`a batch holds 1 to ${MAX_BATCH} creates, got ${c.creates.length}; split it`)
+  }
+  return enqueue(c.walletClient, () =>
+    submitOnce(c.walletClient, c.publicClient, c.creates.length, (tx) =>
+      c.walletClient.executeBatch(
+        { creates: c.creates.map((x) => ({ schema: x.schema, values: x.values, expiration: x.expiration })) as never },
+        tx,
+      ),
+    ),
+  )
+}
+
+async function submitOnce<R extends { txHash: Hex }>(
+  wallet: Wallet,
+  reader: Reader,
+  ops: number,
+  send: (tx: TxParams) => Promise<R>,
+): Promise<R> {
   let phase: WriteNotVerifiedError['phase'] = 'preflight'
   let txHash: Hex | undefined
+  const opsRef = inFlightOps.get(wallet)
   try {
-    const address = c.walletClient.account.address
-    if ((await c.publicClient.getChainId()) !== RABDI_CHAIN_ID) throw new Error('RPC is not Rabdi')
-    const nonce = await c.publicClient.getTransactionCount({ address, blockTag: 'latest' })
-    const gasPrice = await c.publicClient.getGasPrice()
+    const address = wallet.account.address
+    if ((await reader.getChainId()) !== RABDI_CHAIN_ID) throw new Error('RPC is not Rabdi')
+    const nonce = await reader.getTransactionCount({ address, blockTag: 'latest' })
+    const gasPrice = await reader.getGasPrice()
+    if (opsRef) opsRef.n = ops
     phase = 'submission_unknown'
-    const result = await c.walletClient.createEntity(
-      c.schema,
-      c.values,
-      { expiration: c.expiration },
-      { nonce, gasPrice },
-    )
+    const result = await send({ nonce, gasPrice })
     txHash = result.txHash
     phase = 'submitted'
-    const receipt = await c.publicClient.getTransactionReceipt({ hash: result.txHash })
+    const receipt = await reader.getTransactionReceipt({ hash: result.txHash })
     if (receipt.status !== 'success') throw new Error(`receipt status is ${receipt.status}`)
     return result
   } catch (err) {
     // A failure before anything was signed is still preflight.
     if (isPermanent(err)) phase = phase === 'submission_unknown' ? 'preflight' : phase
+    // The SDK's EntityMutationError carries the hash of a mined but reverted transaction.
+    const carried = (err as { txHash?: unknown })?.txHash
+    if (!txHash && typeof carried === 'string' && /^0x[0-9a-f]{64}$/i.test(carried)) txHash = carried as Hex
     throw new WriteNotVerifiedError(phase, txHash, rootCause(err))
+  } finally {
+    if (opsRef) opsRef.n = 1
   }
 }

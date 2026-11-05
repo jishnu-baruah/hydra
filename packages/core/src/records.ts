@@ -18,6 +18,7 @@ export const AppSchema = defineSchema('hydra.app', {
 
 export const ReleaseSchema = defineSchema('hydra.release', {
   app: str().indexed(),
+  publisher: str().indexed(), // wallet address that signed in for the API key
   version: str().indexed(),
   commit: str().indexed(),
   swarm_ref: str().indexed(),
@@ -88,6 +89,7 @@ export const appValues = (a: {
 
 export const releaseValues = (r: {
   app: string
+  publisher: string
   version: string
   commit: string
   swarmRef: string
@@ -96,6 +98,7 @@ export const releaseValues = (r: {
   payload: unknown
 }) => ({
   app: fitStr(r.app),
+  publisher: r.publisher.toLowerCase(),
   version: fitStr(r.version),
   commit: fitStr(r.commit),
   swarm_ref: fitStr(r.swarmRef),

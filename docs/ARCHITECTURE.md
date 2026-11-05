@@ -77,7 +77,7 @@ builders there (`releaseValues` and friends), never hand-built objects. Payloads
 | Schema | Written by | Indexed columns | Other columns | `body` payload | Expiry |
 | --- | --- | --- | --- | --- | --- |
 | `hydra.app` | API, on registration (one record per domain) | `app`, `domain`, `publisher`, `created_at` (u64) | | `{ name, domains[], repo? }` | long |
-| `hydra.release` | API, on publish | `app`, `version`, `commit`, `swarm_ref`, `published_at` (u64) | `file_count` (u64), `source` = `ci` | `{ manifest summary, ci_run_url }` | long |
+| `hydra.release` | API, on publish | `app`, `publisher` (lowercase wallet address from the API key), `version`, `commit`, `swarm_ref`, `published_at` (u64) | `file_count` (u64), `source` = `ci` | `{ manifest summary, ci_run_url }` | long |
 | `hydra.file` | API, on publish | `app`, `sha256`, `release` (entity key) | `path` | none | long |
 | `hydra.observation` | Indexer | `domain`, `status` (`match`, `mismatch`, `unknown`), `observed_at` (u64), `scripts_hash` | `app` (optional) | `{ scripts: [{url, sha256}] }` | 3 days |
 

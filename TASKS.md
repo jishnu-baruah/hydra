@@ -293,7 +293,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 # P1, 6 Nov morning
 
 ### T-A02, Publish API: POST /v1/releases
-- Status: claimed 2026-11-05 | Owner: Jishnu | Branch: feature/t-a02-publish-api
+- Status: in-review | Branch: feature/t-a02-publish-api
 - Suggested: Jishnu
 - Depends-on: T-A01, T-F01, T-F02
 - Touches: apps/api/, packages/core/

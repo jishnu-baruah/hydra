@@ -6,6 +6,7 @@ import {
   GasBoundError,
   WriteNotVerifiedError,
   arkivClients,
+  guardedBatch,
   guardedCreate,
   guardedTransport,
   policyGas,
@@ -61,7 +62,7 @@ function fakeNode(o: { sendFails?: boolean } = {}) {
 }
 
 const values = () =>
-  releaseValues({ app: 'demo', version: '1', commit: 'c', swarmRef: 'r', fileCount: 1, publishedAt: 1793880000000, payload: {} })
+  releaseValues({ app: 'demo', publisher: '0x00000000000000000000000000000000000000aa', version: '1', commit: 'c', swarmRef: 'r', fileCount: 1, publishedAt: 1793880000000, payload: {} })
 
 test('guardedTransport hands the SDK 2 x the estimate (floored) and never retries', async () => {
   const { transport, seen } = fakeNode()
@@ -100,4 +101,31 @@ test('guardedCreate reports a bad value as preflight, with 0 transactions sent',
     (err: Error) => err instanceof WriteNotVerifiedError && err.phase === 'preflight',
   )
   assert.equal(seen.filter((m) => m === 'eth_sendRawTransaction').length, 0)
+})
+
+test('guardedTransport scales the floor by the operation count of the write in flight', async () => {
+  const { transport } = fakeNode()
+  const t = guardedTransport(transport, () => 3)({ chain: undefined, retryCount: 3 } as never)
+  const gas = await t.request({ method: 'eth_estimateGas', params: [{}] } as never)
+  assert.equal(BigInt(gas as string), 1_800_000n) // 1,000,000 + 2 x 400,000
+})
+
+test('guardedBatch sends 3 creates as 1 transaction and does not resend', async () => {
+  const { transport, seen } = fakeNode()
+  const { walletClient, publicClient } = arkivClients({ privateKey: generatePrivateKey(), transport })
+  const spec = { schema: ReleaseSchema, values: values(), expiration: LONG() }
+  await assert.rejects(
+    guardedBatch({ walletClient: walletClient!, publicClient, creates: [spec, spec, spec] }),
+    (err: Error) => err instanceof WriteNotVerifiedError && err.phase === 'submission_unknown',
+  )
+  assert.equal(seen.filter((m) => m === 'eth_sendRawTransaction').length, 1)
+})
+
+test('guardedBatch refuses 0 or more than 20 creates before touching the network', () => {
+  const { transport, seen } = fakeNode()
+  const { walletClient, publicClient } = arkivClients({ privateKey: generatePrivateKey(), transport })
+  const spec = { schema: ReleaseSchema, values: values(), expiration: LONG() }
+  assert.throws(() => guardedBatch({ walletClient: walletClient!, publicClient, creates: [] }), /1 to 20/)
+  assert.throws(() => guardedBatch({ walletClient: walletClient!, publicClient, creates: Array(21).fill(spec) }), /1 to 20/)
+  assert.equal(seen.length, 0)
 })
