@@ -320,13 +320,14 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <deployed URL>
 
 ### T-B03, Explorer search
-- Status: claimed 2026-11-05 | Owner: Mouli | Branch: feature/t-b03-explorer-search
+- Status: blocked, see OP-1 | Branch: feature/t-b03-explorer-search
 - Suggested: Mouli
 - Depends-on: T-B01
 - Touches: apps/explorer/search/, apps/explorer/src/arkiv.js, apps/explorer/index.html
 - Serves: Usability (judged) ; Originality (judged)
 - Acceptance: search finds the right app from 4 kinds of input: domain, app name, file sha256 and Swarm reference
-- Evidence: <deployed URL, recording>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/19 (4 of 4 input kinds resolve offline; live Rabdi queries run with 0 errors but 0 Hydra records exist, so the real-app check waits for OP-1 and T-A02)
+- Finding: anyone can write an entity tagged hydra.app, so search and the home list must filter by the API wallet address (ownedBy) before showing real data; a bare 64-hex input is ambiguous (file sha256 or Swarm ref), so both are queried.
 
 ### T-D04, Demo dApp on a domain we control
 - Status: open
