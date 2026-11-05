@@ -202,7 +202,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Kill criterion: no working upload after 3 hours, so keep the manifest in the Arkiv payload and mark the Swarm bonus at risk in DECISIONS.md
 
 ### T-F03, Extension can hash the scripts a page loads
-- Status: open
+- Status: claimed 2026-11-05 | Owner: Mouli | Branch: feature/t-f03-script-hashing
 - Suggested: Mouli
 - Depends-on: none
 - Touches: spikes/F3/
