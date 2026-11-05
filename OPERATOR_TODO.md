@@ -82,7 +82,7 @@ Status values: `open` | `claimed <date> | Owner: <name>` | `done <date>: <result
 - Done when: `GET /v1/apps/<app>/releases` on the API returns 1 release, and its app name is written here.
 
 ### OP-8, Turn on Swarm uploads on the deployed API
-- Status: open
+- Status: claimed 2026-11-06 | Owner: Manish
 - Owner: Jishnu
 - Needed by: 2026-11-06 midday
 - Unblocks: T-B02, T-B03
