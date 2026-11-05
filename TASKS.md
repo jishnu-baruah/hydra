@@ -152,18 +152,18 @@ repo, and the extension goes red when we change a file on the live site.
 - Status: in-review | Branch: feature/t-a00-board
 - Suggested: Jishnu
 - Depends-on: none
-- Touches: CLAUDE.md, TASKS.md, OPERATOR_TODO.md, DECISIONS.md, .github/, scripts/board.mjs, .claude/
+- Touches: CLAUDE.md, TASKS.md, OPERATOR_TODO.md, DECISIONS.md, README.md, .env.example, docs/ARCHITECTURE.md, .github/, scripts/board.mjs, .claude/
 - Serves: unblocks every task ; Practicality (judged)
 - Acceptance: board lint passes on 30 rows; a claim PR that edits a non-Status line fails CI in 1 run
 - Evidence: <PR link>
 
-### T-F01, Arkiv limits spike
+### T-F01, Arkiv on Rabdi: write, query, timings
 - Status: open
 - Suggested: Jishnu
 - Depends-on: OP-1
 - Touches: spikes/F1/
 - Serves: Technicality (judged) ; Arkiv track
-- Acceptance: 1 `release` and 20 `file` records written with ARCHITECTURE.md attributes; all 21 queried back by project+type; max allowed expiry and median create time written in result.json
+- Acceptance: on Rabdi (chain 7794095) with an access key, 1 `release` and 20 `file` records written with ARCHITECTURE.md attributes and the maximum lifetime; all 21 queried back by project+type; lowercase-name and u64 rules re-confirmed; median create time and the SDK version written in result.json. Limits are already documented, so target 45 minutes.
 - Evidence: <spikes/F1/result.json at a commit, tx hashes>
 - Kill criterion: 20 file records take over 2 minutes, so index external scripts only and drop per-file records
 

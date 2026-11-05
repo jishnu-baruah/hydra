@@ -30,8 +30,8 @@ Status values: `open` | `claimed <date> | Owner: <name>` | `done <date>: <result
 - Owner: Jishnu
 - Needed by: 2026-11-05 night
 - Unblocks: T-F01, T-A02, T-A06
-- What exactly: create a fresh testnet wallet for the API, claim GLM at hub.arkiv.network/faucet (wallet connect and sign-in, so a human does it), and a second wallet for the indexer. Keys go in `.env` only.
-- Done when: both addresses hold GLM; the addresses (not keys) are written here.
+- What exactly: on the **Rabdi** testnet (chain 7794095), create a fresh wallet for the API and a second for the indexer, claim tGLM at hub.arkiv.network/faucet (wallet connect and sign-in, so a human does it), and create an access key at hub.arkiv.network/access-keys (the public RPC is rate limited). Keys go in `.env` only.
+- Done when: both addresses hold tGLM and the access key works for one query; the addresses (not keys) are written here.
 
 ### OP-2, Swarm testnet postage batch
 - Status: open

@@ -17,7 +17,7 @@ ETHGlobal Mumbai, 5 to 7 Nov 2026. **Scope: Arkiv + Swarm only. No ENS, no walle
 
 ## Non-negotiable
 
-- **Testnets only:** Arkiv Tiramisu (chain 7738577) and the Swarm testnet. No mainnet funds.
+- **Testnets only:** Arkiv Rabdi (chain 7794095; Tiramisu is replaced) and the Swarm testnet. No mainnet funds.
 - **No secrets in git.** Wallet keys, postage batch ids and API keys live in `.env` or in host
   secrets. The `gates` job fails on a committed `.env` or key.
 - Only `apps/api` holds keys. The explorer and the extension read public data and never sign.

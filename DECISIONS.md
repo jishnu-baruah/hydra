@@ -18,3 +18,4 @@ The Why column is one sentence. Reasoning and the options that lost go on the OP
 | 2026-11-05 | Cold start | An indexer records what popular dApp frontends serve, before they onboard. | The judge suggested indexing; it makes the explorer and extension useful on day one. | chat, 5 Nov |
 | 2026-11-05 | Process | The agon-dev protocol: claim PR, then feature PR, board lint in CI, OP queue for humans. | Three people and their agents work in parallel without stepping on each other. | T-A00 |
 | 2026-11-05 | Pre-event spikes | Nothing is copied from the pre-event spike repo into this repo. | The event rules; we reuse what the spikes taught, not their code. | README |
+| 2026-11-05 | Arkiv network | Use the Rabdi testnet (chain 7794095) with an access key, not Tiramisu. | Arkiv's docs list Tiramisu as "Replaced by Rabdi"; our spike ran on Tiramisu. | docs.arkiv.network/networks |

@@ -36,6 +36,6 @@ Read [TASKS.md](TASKS.md) sections 1 to 3 before writing code. In short: claim a
 
 ## Rules
 
-- **Testnets only:** Arkiv Tiramisu testnet and the Swarm testnet. No mainnet funds.
+- **Testnets only:** Arkiv Rabdi testnet and the Swarm testnet. No mainnet funds.
 - **No secrets in git.** Keys go in `.env` (see `.env.example`), which is gitignored.
 - Nothing is copied from the pre-event spike repo. We use what it taught us; the code here is new.
