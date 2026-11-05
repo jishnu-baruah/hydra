@@ -1,0 +1,13 @@
+{
+  "name": "@hydra/site",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node dev-server.ts"
+  },
+  "devDependencies": {
+    "@hydra/api": "workspace:*",
+    "@hydra/core": "workspace:*"
+  }
+}

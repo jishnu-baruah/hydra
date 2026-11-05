@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hydra: publish your builds to Arkiv</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">/Hydra</p>
+      <h1>Every build of your dApp, on public record.</h1>
+      <p class="lead">Connect a wallet, get an API key, add one workflow file. Each push records the build on Arkiv and stores it on Swarm.</p>
+    </header>
+
+    <section class="step" id="step-wallet">
+      <h2><span class="n">1</span> Connect your wallet</h2>
+      <p class="hint">The wallet only signs a message. No transaction, no gas.</p>
+      <button id="connect">Connect wallet</button>
+      <p class="value" id="address" hidden></p>
+    </section>
+
+    <section class="step" id="step-key" hidden>
+      <h2><span class="n">2</span> Name your app and get a key</h2>
+      <label for="app">App name <span class="hint">lowercase letters, digits and dashes</span></label>
+      <input id="app" autocomplete="off" spellcheck="false" placeholder="my-dapp" pattern="[a-z0-9][a-z0-9-]{1,39}">
+      <button id="sign">Sign in and get API key</button>
+      <div id="key-box" hidden>
+        <p class="hint">Shown once. Store it as a repo secret named <code>HYDRA_API_KEY</code>.</p>
+        <div class="copyrow"><code id="key"></code><button class="ghost" data-copy="key">Copy</button></div>
+      </div>
+    </section>
+
+    <section class="step" id="step-repo" hidden>
+      <h2><span class="n">3</span> Add Hydra to your repo</h2>
+      <ol>
+        <li>Add the secret: <span class="hint">Settings, then Secrets and variables, then Actions, then New repository secret</span>, or run
+          <div class="copyrow"><code id="gh-cmd">gh secret set HYDRA_API_KEY</code><button class="ghost" data-copy="gh-cmd">Copy</button></div>
+        </li>
+        <li>Set your build output folder: <input id="build-dir" value="dist" spellcheck="false"></li>
+        <li>Commit this as <code>.github/workflows/hydra.yml</code>:
+          <div class="copyrow block"><pre id="yaml"></pre><button class="ghost" data-copy="yaml">Copy</button></div>
+        </li>
+        <li>Push to <code>main</code>. The run prints the Arkiv transaction.</li>
+      </ol>
+    </section>
+
+    <section class="step" id="step-releases" hidden>
+      <h2><span class="n">4</span> Your releases on Arkiv <button class="ghost" id="refresh">Refresh</button></h2>
+      <p class="hint" id="releases-empty">No releases yet. Push once and refresh.</p>
+      <ul id="releases"></ul>
+    </section>
+
+    <p class="error" id="error" role="alert" hidden></p>
+    <footer>API: <code id="api"></code> · temporary onboarding page for ETHGlobal Mumbai</footer>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

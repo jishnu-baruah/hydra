@@ -349,7 +349,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <doc link>
 
 ### T-A09, Temp onboarding site: wallet sign-in, API key, repo template
-- Status: claimed 2026-11-05 | Owner: Jishnu | Branch: feature/t-a09-onboarding-site
+- Status: in-review | Branch: feature/t-a09-onboarding-site
 - Suggested: Jishnu
 - Depends-on: T-A02
 - Touches: apps/site/
