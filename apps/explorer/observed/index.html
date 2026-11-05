@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Observed sites, Hydra explorer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
+    <link rel="stylesheet" href="../assets/hydra.css" />
+    <link rel="stylesheet" href="../events/events.css" />
+    <link rel="stylesheet" href="observed.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="bar">
+      <a class="mark" href="../">Hydra</a>
+      <nav aria-label="Main">
+        <a href="../releases/">Releases</a>
+        <a href="../events/">Events</a>
+        <a href="../search/">Search</a>
+      </nav>
+      <span class="tag">Arkiv Rabdi / 7794095</span>
+    </header>
+    <span class="rail label" aria-hidden="true">Observed</span>
+
+    <main id="main">
+      <section class="hero">
+        <p class="eyebrow">Registry <span id="crumb">/ Observed sites</span></p>
+        <h1 class="compact" id="title">Observed sites</h1>
+        <p class="lede" id="lede">Live dApp frontends the indexer checks every 15 minutes, published on Hydra or not.</p>
+        <div class="unpublished" id="unpublished" hidden>
+          <p class="label">Observed, not published by the team</p>
+          <p>This team has not published a release on Hydra, so these scripts cannot be checked against one. Hydra only records what the site served, and flags when that changes.</p>
+        </div>
+      </section>
+
+      <section class="section">
+        <p id="status" role="status">Reading Arkiv...</p>
+        <div id="view" class="view"></div>
+      </section>
+
+      <footer class="colophon label">
+        <span>Read only</span>
+        <span>No backend</span>
+        <span>Arkiv SDK 1.0.1</span>
+      </footer>
+    </main>
+    <script type="module" src="page.js"></script>
+  </body>
+</html>

@@ -41,7 +41,7 @@ function item(e, fresh) {
     what.append(el("span", "kind", "Release"), link(e.app, `../app/?name=${encodeURIComponent(e.app)}`), el("span", "chip", e.version));
     detail.textContent = `commit ${e.commit.slice(0, 12)}, ${e.files} file${e.files === 1 ? "" : "s"}`;
   } else {
-    what.append(el("span", "kind", "Observed"), link(e.domain, `../releases/?key=${encodeURIComponent(e.key)}`), el("span", `chip ${e.status}`, e.status));
+    what.append(el("span", "kind", "Observed"), link(e.domain, `../observed/?domain=${encodeURIComponent(e.domain)}`), el("span", `chip ${e.status}`, e.status));
     // A site with no release churns its scripts on its own (spike F3), so a change there is news,
     // not an alarm. On a published site it is the alarm.
     if (e.changed) what.append(el("span", e.status === "unknown" ? "chip churn" : "chip changed", e.status === "unknown" ? "Script set changed" : "Scripts changed"));
