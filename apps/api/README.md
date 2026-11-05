@@ -23,10 +23,11 @@ Keys are stateless (`hyd_<claims>.<hmac>`), expire after 30 days, and rotating
 
 **Trust and spend.** Anyone can write `hydra.*` records to Arkiv with their own wallet, so reads
 keep only records created by our publisher wallet. An app name belongs to the first address that
-publishes it (an `hydra.app` record); other addresses get 403 for both keys and publishes, and
+gets a key for it: issuing the key writes the `hydra.app` record at once (at most 5 new names per
+address per hour), so the name cannot be taken between key and first publish; other addresses get 403 for both keys and publishes, and
 their records are dropped from reads. Client `domains` are ignored until domain ownership can be
 proven. Every publish spends our gas and postage, so `HYDRA_ALLOWED_ADDRESSES` (optional
-allowlist) and `HYDRA_PUBLISHES_PER_HOUR` (default 30 per address) bound it. Two first publishes
+allowlist) and `HYDRA_PUBLISHES_PER_HOUR` (default 30 per address) bound it. Two key requests
 racing for one name can both claim it; the earliest `created_at` wins on read.
 A release: the server hashes every file itself, uploads the build plus `hydra-manifest.json` to
 Swarm when `BEE_API_URL` and `SWARM_POSTAGE_BATCH_ID` are set (else `swarm_ref` is `pending`),

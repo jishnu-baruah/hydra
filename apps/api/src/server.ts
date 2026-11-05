@@ -12,7 +12,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { rootCause, WriteNotVerifiedError } from '@hydra/core'
 import { APP_NAME, checkInput, keyFromSignature, signInMessage } from './auth.ts'
 import { verifyKey } from './keys.ts'
-import { publish, type PublishDeps } from './publish.ts'
+import { claimApp, ownedError, publish, type PublishDeps } from './publish.ts'
 
 export interface ApiDeps {
   secret: string
@@ -22,6 +22,7 @@ export interface ApiDeps {
   ownerOf?: (app: string) => Promise<string | null> // lowercased owner, or null if unclaimed
   allowedAddresses?: Set<string> // lowercased; when set, only these may get keys and publish
   publishesPerHour?: number // per address; default 30
+  claimsPerHour?: number // new app names reserved per address; default 5
   releasesFor?: (app: string) => Promise<unknown>
   filesByHash?: (sha256: string) => Promise<unknown>
   health?: Record<string, unknown>
@@ -58,19 +59,20 @@ async function readJson(req: IncomingMessage, limit: number): Promise<Record<str
 export function createApi(deps: ApiDeps) {
   // Every publish spends the server wallet's gas and the postage batch, so access is limited:
   // an optional allowlist, app names owned by their first publisher, and a per-address rate.
-  const recent = new Map<string, number[]>()
+  // A key reserves its app name on Arkiv at once (one write), so key requests are limited too.
   const allowed = (address: string) => !deps.allowedAddresses || deps.allowedAddresses.has(address.toLowerCase())
-  const takeSlot = (address: string, now = Date.now()) => {
-    const key = address.toLowerCase()
-    const times = (recent.get(key) ?? []).filter((t) => now - t < 3_600_000)
-    if (times.length >= (deps.publishesPerHour ?? 30)) return false
-    recent.set(key, [...times, now])
-    return true
+  const limiter = (perHour: number) => {
+    const recent = new Map<string, number[]>()
+    return (address: string, now = Date.now()) => {
+      const key = address.toLowerCase()
+      const times = (recent.get(key) ?? []).filter((t) => now - t < 3_600_000)
+      if (times.length >= perHour) return false
+      recent.set(key, [...times, now])
+      return true
+    }
   }
-  const notOwner = async (address: string, app: string) => {
-    const owner = deps.ownerOf ? await deps.ownerOf(app) : null
-    return owner && owner !== address.toLowerCase() ? owner : null
-  }
+  const takeSlot = limiter(deps.publishesPerHour ?? 30)
+  const takeClaim = limiter(deps.claimsPerHour ?? 5)
 
   const send = (res: ServerResponse, status: number, body: unknown, type = 'application/json') => {
     res.writeHead(status, {
@@ -108,9 +110,16 @@ export function createApi(deps: ApiDeps) {
         const out = await keyFromSignature(deps.secret, await readJson(req, SMALL))
         if (!out.ok) return send(res, out.status, { error: out.error })
         if (!allowed(out.value.address)) return send(res, 403, { error: 'this test server only issues keys to allowlisted addresses' })
-        const owner = await notOwner(out.value.address, out.value.app)
-        if (owner) return send(res, 403, { error: `app "${out.value.app}" is owned by ${owner}; pick another name` })
-        return send(res, 200, out.value)
+        const { address, app } = out.value
+        const owner = deps.ownerOf ? await deps.ownerOf(app) : null
+        if (owner && owner !== address.toLowerCase()) return send(res, 403, { error: ownedError(app, owner) })
+        // Unclaimed: reserve the name now, so nobody can take it between key and first publish.
+        let claimTx: string | null = null
+        if (!owner && deps.ownerOf && deps.publish) {
+          if (!takeClaim(address)) return send(res, 429, { error: 'too many new app names for this address; try again within the hour' })
+          claimTx = (await claimApp(deps.publish, app, address, Date.now())).txHash
+        }
+        return send(res, 200, { ...out.value, claimTx })
       }
 
       if (req.method === 'POST' && path === '/v1/releases') {

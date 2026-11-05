@@ -29,6 +29,19 @@ export interface PublishDeps {
   now?: () => number
 }
 
+export const ownedError = (app: string, owner: string) =>
+  `app "${app}" is owned by ${owner}; get a new key on the Hydra site with another app name`
+
+// Writes the hydra.app record that makes `publisher` the owner of `app`. Called when a key is
+// issued, and at publish time for an app that somehow has no record yet.
+export function claimApp(deps: Pick<PublishDeps, 'createOne'>, app: string, publisher: string, now: number) {
+  return deps.createOne({
+    schema: AppSchema,
+    values: appValues({ app, domain: 'none', publisher: publisher.toLowerCase(), createdAt: now, payload: { name: app, domains: [] } }),
+    expiration: LONG(),
+  })
+}
+
 export const MAX_FILES = 2000
 export const MAX_INDEXED_FILES = 200 // file records are written for code files, up to this many
 const CODE = /\.(html?|m?js|css|wasm)$/i
@@ -101,7 +114,7 @@ export async function publish(
   const me = claims.address.toLowerCase()
   const owner = deps.ownerOf ? await deps.ownerOf(claims.app) : me
   if (owner && owner !== me) {
-    return { ok: false, status: 403, error: `app "${claims.app}" is owned by ${owner}; pick another name` }
+    return { ok: false, status: 403, error: ownedError(claims.app, owner) }
   }
 
   const manifest: Manifest = { app: claims.app, version, commit, domains, files: hashes, scripts }
@@ -111,13 +124,7 @@ export async function publish(
     ? await deps.swarm([...files, { path: 'hydra-manifest.json', data: Buffer.from(manifestJson) }])
     : 'pending'
 
-  const appClaim = owner
-    ? undefined
-    : await deps.createOne({
-        schema: AppSchema,
-        values: appValues({ app: claims.app, domain: 'none', publisher: me, createdAt: now, payload: { name: claims.app, domains: [] } }),
-        expiration: LONG(),
-      })
+  const appClaim = owner ? undefined : await claimApp(deps, claims.app, me, now)
 
   // The full manifest rides in the release payload when it fits; otherwise Swarm holds it.
   const payload = manifestJson.length <= 100_000 ? { manifest, ci_run_url: ciRunUrl } : { ci_run_url: ciRunUrl, manifest_on_swarm: true }

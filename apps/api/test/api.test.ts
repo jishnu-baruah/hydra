@@ -168,3 +168,30 @@ test('auth routes: message, then key, over HTTP', async () => {
   assert.equal(status, 200)
   assert.equal(verifyKey(SECRET, json.apiKey as string)?.address, account.address)
 })
+
+test('reserve at key time: a key claims its unowned name once; another wallet is refused before any publish', async () => {
+  const getKey = async (who: typeof account, app: string) => {
+    const msg = await (await fetch(`${base()}/v1/auth/message?address=${who.address}&app=${app}`)).json() as { message: string; issuedAt: string }
+    const signature = await who.signMessage({ message: msg.message })
+    return post('/v1/auth/key', { address: who.address, app, issuedAt: msg.issuedAt, signature })
+  }
+  const before = calls.one
+  const first = await getKey(account, 'fresh-app')
+  assert.equal(first.status, 200)
+  assert.ok(first.json.claimTx)
+  assert.equal(owners.get('fresh-app'), account.address.toLowerCase())
+  assert.equal(calls.one, before + 1) // exactly 1 claim write
+
+  const again = await getKey(account, 'fresh-app') // the owner asking again: no second claim
+  assert.equal(again.status, 200)
+  assert.equal(again.json.claimTx, null)
+
+  const rival = await getKey(intruder, 'fresh-app')
+  assert.equal(rival.status, 403)
+  assert.match(String(rival.json.error), /get a new key on the Hydra site/)
+
+  const pub = await post('/v1/releases', build, first.json.apiKey as string)
+  assert.equal(pub.status, 201)
+  assert.equal(pub.json.appClaimTx, null) // already claimed at key time
+  assert.equal(calls.one, before + 2) // + the release write only
+})
