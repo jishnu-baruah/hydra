@@ -30,6 +30,10 @@ function unlock(n) {
 // steps follow: connected unlocks step 2; disconnected before a key goes back to step 1.
 let wallet;
 function onAccount(address) {
+  // The key on screen belongs to the account that signed for it. Say so if the wallet switches.
+  if (state.key && address && address !== state.address) {
+    return show("e2", `Your wallet switched to ${short(address)}, but this key is for ${short(state.address)}. Reload the page to get a key for the new account.`);
+  }
   if (address && address !== state.address) {
     state.address = address;
     show("address", `Connected ${short(address)}`);
