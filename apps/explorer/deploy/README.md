@@ -41,4 +41,9 @@ The first run asks you to sign in and to name the project; accept `.` as the dir
 | `Referrer-Policy` | `no-referrer`: the Swarm and Arkiv links do not learn which explorer page sent you |
 | `Permissions-Policy` | no camera, microphone, location or payment |
 
+`/publish/` has its own policy: RainbowKit loads from `esm.sh` through an inline import map, which the
+policy allows by its sha256 hash, and sets inline styles, so `style-src` allows `'unsafe-inline'` on that
+page only. Scripts stay strict everywhere. Editing the import map in `publish/index.html` changes its
+hash, so update the hash in `vercel.json` with it.
+
 Anything the pages start loading from a new origin must be added to the CSP, or the browser blocks it.

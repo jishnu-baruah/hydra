@@ -26,27 +26,34 @@ function unlock(n) {
   for (const el of $(`p${n}`).querySelectorAll("input, button")) el.disabled = false;
 }
 
-$("connect").onclick = async () => {
-  show("e1");
-  if (!window.ethereum) {
-    return show("e1", "No browser wallet found. Install MetaMask or another wallet, then reload this page.");
-  }
-  $("connect").disabled = true;
-  $("connect").textContent = "Waiting for your wallet...";
-  try {
-    const [address] = await window.ethereum.request({ method: "eth_requestAccounts" });
+// RainbowKit (wallet.js) draws the connect button and its modal. When the account changes, the
+// steps follow: connected unlocks step 2; disconnected before a key goes back to step 1.
+let wallet;
+function onAccount(address) {
+  if (address && address !== state.address) {
     state.address = address;
     show("address", `Connected ${short(address)}`);
-    $("connect").hidden = true;
+    show("e1");
     step(1, "done");
-    unlock(2);
-    $("app").focus();
-  } catch (e) {
-    show("e1", `The wallet did not connect: ${e.message ?? e}. Try again, and approve the request in your wallet.`);
-    $("connect").disabled = false;
-    $("connect").textContent = "Connect wallet";
+    if (!state.key) {
+      unlock(2);
+      $("app").focus();
+    }
+  } else if (!address && state.address && !state.key) {
+    state.address = null;
+    show("address");
+    step(1, "current");
+    step(2, "locked");
+    for (const el of $("p2").querySelectorAll("input, button")) el.disabled = true;
   }
-};
+}
+try {
+  wallet = await import("./wallet.js");
+  $("wallet-root").replaceChildren();
+  wallet.mount($("wallet-root"), onAccount);
+} catch (e) {
+  show("e1", `Could not load the wallet library from esm.sh (${e.message ?? e}). Check that the CDN is reachable from this network, then reload.`);
+}
 
 // The name is checked as you type, and again on submit.
 $("app").oninput = () => {
@@ -69,7 +76,7 @@ $("sign").onclick = async () => {
   try {
     const q = new URLSearchParams({ address: state.address, app });
     const { message, issuedAt } = await api(`/v1/auth/message?${q}`);
-    const signature = await window.ethereum.request({ method: "personal_sign", params: [message, state.address] });
+    const signature = await wallet.sign(message);
     const { apiKey } = await api("/v1/auth/key", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

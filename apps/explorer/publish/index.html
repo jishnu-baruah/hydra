@@ -9,6 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
     <link rel="stylesheet" href="../assets/hydra.css" />
+    <script type="importmap">{"imports":{"react":"https://esm.sh/react@18.3.1","react/jsx-runtime":"https://esm.sh/react@18.3.1/jsx-runtime","react-dom":"https://esm.sh/react-dom@18.3.1?external=react","react-dom/client":"https://esm.sh/react-dom@18.3.1/client?external=react","@tanstack/react-query":"https://esm.sh/@tanstack/react-query@5.106.1?external=react","wagmi":"https://esm.sh/wagmi@2.19.5?external=react,@tanstack/react-query&deps=viem@2.57.16","wagmi/actions":"https://esm.sh/wagmi@2.19.5/actions?external=react,@tanstack/react-query&deps=viem@2.57.16","wagmi/chains":"https://esm.sh/wagmi@2.19.5/chains?external=react,@tanstack/react-query&deps=viem@2.57.16","wagmi/connectors":"https://esm.sh/wagmi@2.19.5/connectors?external=react,@tanstack/react-query&deps=viem@2.57.16","@rainbow-me/rainbowkit":"https://esm.sh/@rainbow-me/rainbowkit@2.2.11?external=react,react-dom,@tanstack/react-query,wagmi&deps=viem@2.57.16","@rainbow-me/rainbowkit/wallets":"https://esm.sh/@rainbow-me/rainbowkit@2.2.11/wallets?external=react,react-dom,@tanstack/react-query,wagmi&deps=viem@2.57.16"}}</script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@rainbow-me/rainbowkit@2.2.11/dist/index.css" />
     <link rel="stylesheet" href="publish.css" />
   </head>
   <body>
@@ -42,7 +44,8 @@
       <section class="panel" id="p1" data-state="current" aria-labelledby="h1-title">
         <h2 id="h1-title"><span class="n">01</span> Connect your wallet</h2>
         <p class="why">Your wallet proves who owns the app name. It signs a message only: no transaction, no gas.</p>
-        <button class="btn" id="connect" type="button">Connect wallet</button>
+        <div id="wallet-root"><button class="btn" type="button" disabled>Loading wallets...</button></div>
+        <p class="help">No wallet yet? Install MetaMask or Rainbow in this browser, then reload.</p>
         <p class="ok" id="address" hidden></p>
         <p class="err" id="e1" role="alert" hidden></p>
       </section>
