@@ -19,6 +19,9 @@ const client = createPublicClient({ chain: rabdi({ accessKey: "" }), transport: 
 // as apps/api/src/reads.ts.
 export const PUBLISHER = "0xdD0d4167959291A2eb930Fe82Fed58070134348b";
 
+// Observations come from the indexer's own wallet (packages/indexer), and only from it.
+export const INDEXER = "0xc4e52D70880a83331E1cCd0AD745059D12565ea9";
+
 // Newest Hydra releases. Queried by the schema tag rather than through packages/core, so the
 // explorer has no build step; the tag name is ReleaseSchema's in packages/core/src/records.ts.
 export async function latestReleases(limit = 20) {
@@ -33,6 +36,18 @@ export async function latestReleases(limit = 20) {
 }
 
 export const entity = (key) => client.getEntity(key);
+
+// Newest indexer observations. Each lives 3 days, so this is the recent record of every site.
+export async function latestObservations(limit = 100) {
+  const page = await client
+    .select({ $key: true, $attributes: true })
+    .where(eq("arkiv.schema", "hydra.observation"))
+    .createdBy(INDEXER)
+    .orderBy(desc("observed_at", "u64"))
+    .limit(limit)
+    .fetch();
+  return page.entities;
+}
 
 // Hydra entities of one schema whose indexed `field` equals `value`, written by the publisher.
 export async function find(schema, field, value, limit = 100) {
