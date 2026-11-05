@@ -28,10 +28,37 @@ function row(e: Record<string, unknown>) {
   return out
 }
 
-const fetchRows = (reader: unknown, writer: Hex, schema: unknown, cols: Record<string, true>, filter: unknown) =>
-  readWithRetry(() =>
-    (reader as Reader).select(cols as never).from(schema).where(filter).createdBy(writer).limit(50).fetch(),
-  ).then((page) => page.entities.map(row))
+const fetchRows = (reader: unknown, writer: Hex, schema: unknown, cols: Record<string, true>, filter?: unknown, limit = 50) =>
+  readWithRetry(() => {
+    const q = (reader as Reader).select(cols as never).from(schema)
+    return (filter === undefined ? q : q.where(filter)).createdBy(writer).limit(limit).fetch()
+  }).then((page) => page.entities.map(row))
+
+const ciRunUrl = (body: unknown): string | null => {
+  try {
+    const url = JSON.parse(hexToString(body as Hex))?.ci_run_url
+    return typeof url === 'string' && url.startsWith('https://github.com/') ? url : null
+  } catch {
+    return null
+  }
+}
+
+// Everything our wallet wrote, newest block first: app claims, releases and file records. A temp
+// activity feed until the explorer's events timeline lands; `limit` is per record type.
+export async function activity(reader: unknown, writer: Hex, limit = 100) {
+  const [apps, releases, files] = await Promise.all([
+    fetchRows(reader, writer, AppSchema, { $key: true, $createdAt: true, app: true, publisher: true }, undefined, limit),
+    fetchRows(reader, writer, ReleaseSchema, { $key: true, $createdAt: true, app: true, publisher: true, version: true, commit: true, file_count: true, swarm_ref: true, body: true }, undefined, limit),
+    fetchRows(reader, writer, FileSchema, { $key: true, $createdAt: true, app: true, path: true, sha256: true, release: true }, undefined, limit),
+  ])
+  const order = { app: 0, release: 1, file: 2 }
+  const events = [
+    ...apps.map((r) => ({ kind: 'app' as const, ...r })),
+    ...releases.map(({ body, ...r }) => ({ kind: 'release' as const, ...r, ci_run_url: ciRunUrl(body) })),
+    ...files.map((r) => ({ kind: 'file' as const, ...r })),
+  ].map(({ $createdAt, ...e }) => ({ block: Number($createdAt ?? 0), ...e }))
+  return events.sort((a, b) => b.block - a.block || order[a.kind] - order[b.kind])
+}
 
 // The lowercased address that owns `app`, or null if nobody has published it yet.
 export async function ownerOf(reader: unknown, writer: Hex, app: string): Promise<string | null> {

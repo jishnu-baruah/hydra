@@ -361,7 +361,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <PR link>
 
 ### T-A10, Temp activity view: everything Hydra wrote to Arkiv
-- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a10-activity
+- Status: in-review | Branch: feature/t-a10-activity
 - Suggested: Jishnu
 - Depends-on: T-A02, T-A09
 - Touches: apps/api/src/reads.ts, apps/api/src/server.ts, apps/api/src/main.ts, apps/site/

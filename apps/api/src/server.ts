@@ -7,6 +7,7 @@
 //   POST /v1/releases                  Authorization: Bearer <apiKey>
 //   GET  /v1/apps/:app/releases
 //   GET  /v1/files/:sha256
+//   GET  /v1/activity                 everything our wallet wrote, newest block first
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { rootCause, WriteNotVerifiedError } from '@hydra/core'
@@ -25,6 +26,7 @@ export interface ApiDeps {
   claimsPerHour?: number // new app names reserved per address; default 5
   releasesFor?: (app: string) => Promise<unknown>
   filesByHash?: (sha256: string) => Promise<unknown>
+  activity?: () => Promise<unknown>
   health?: Record<string, unknown>
 }
 
@@ -139,6 +141,10 @@ export function createApi(deps: ApiDeps) {
         const app = decodeURIComponent(appRoute[1])
         if (!APP_NAME.test(app)) return send(res, 400, { error: 'invalid app name' })
         return send(res, 200, { app, releases: await deps.releasesFor(app) })
+      }
+
+      if (req.method === 'GET' && path === '/v1/activity' && deps.activity) {
+        return send(res, 200, { events: await deps.activity() })
       }
 
       const fileRoute = /^\/v1\/files\/(sha256-[0-9a-f]{64})$/.exec(path)
