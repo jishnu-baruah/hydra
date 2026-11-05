@@ -70,6 +70,7 @@ async function site(arkiv, domain) {
   $("unpublished").hidden = summary.published;
 
   const latestRow = rows.find((r) => r.$key === summary.latest.key);
+  // Plain text, never links: these URLs come from a third-party site and may be hostile.
   const served = decode(latestRow?.$attributes?.body?.value)?.scripts ?? [];
   if (served.length) {
     $("view").append(
