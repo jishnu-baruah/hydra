@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "notes": "Indexer target list. Owner: Manish. Add or remove entries here; the indexer re-reads this file on each run. Each entry must be a public dApp frontend reachable without wallet connect or auth.",
+  "targets": [
+    {
+      "app": "polymarket",
+      "domain": "polymarket.com",
+      "category": "prediction-market",
+      "notes": "Motivating case: frontend was the attack surface during the UI incident."
+    },
+    {
+      "app": "uniswap",
+      "domain": "app.uniswap.org",
+      "category": "dex",
+      "notes": "Next.js App Router; use scripts-only compare (see prior-learnings T12)."
+    },
+    {
+      "app": "aave",
+      "domain": "app.aave.com",
+      "category": "lending"
+    },
+    {
+      "app": "curve",
+      "domain": "curve.fi",
+      "category": "dex"
+    },
+    {
+      "app": "1inch",
+      "domain": "app.1inch.io",
+      "category": "dex-aggregator"
+    },
+    {
+      "app": "sushiswap",
+      "domain": "www.sushi.com",
+      "category": "dex"
+    },
+    {
+      "app": "balancer",
+      "domain": "balancer.fi",
+      "category": "dex"
+    },
+    {
+      "app": "pancakeswap",
+      "domain": "pancakeswap.finance",
+      "category": "dex"
+    },
+    {
+      "app": "across",
+      "domain": "app.across.to",
+      "category": "bridge"
+    },
+    {
+      "app": "stargate",
+      "domain": "stargate.finance",
+      "category": "bridge"
+    },
+    {
+      "app": "hop",
+      "domain": "app.hop.exchange",
+      "category": "bridge"
+    },
+    {
+      "app": "lido",
+      "domain": "stake.lido.fi",
+      "category": "liquid-staking"
+    },
+    {
+      "app": "rocketpool",
+      "domain": "stake.rocketpool.net",
+      "category": "liquid-staking"
+    },
+    {
+      "app": "gmx",
+      "domain": "app.gmx.io",
+      "category": "perps"
+    },
+    {
+      "app": "hyperliquid",
+      "domain": "app.hyperliquid.xyz",
+      "category": "perps"
+    },
+    {
+      "app": "safe",
+      "domain": "app.safe.global",
+      "category": "wallet"
+    },
+    {
+      "app": "zerion",
+      "domain": "app.zerion.io",
+      "category": "wallet"
+    },
+    {
+      "app": "metamask-portfolio",
+      "domain": "portfolio.metamask.io",
+      "category": "wallet"
+    },
+    {
+      "app": "morpho",
+      "domain": "app.morpho.org",
+      "category": "lending"
+    },
+    {
+      "app": "opensea",
+      "domain": "opensea.io",
+      "category": "nft-marketplace"
+    }
+  ],
+  "candidates_name_com_affected": {
+    "note": "The TASKS.md asked to include a Name.com-affected site if live. Confirm which specific dApp frontends were affected during the Name.com DNS/registrar incident before adding — Manish to verify at the event or via https://name.com status notes. Candidates mentioned in community reports include leveraged-DeFi UIs that routed through affected registrars; left blank intentionally rather than guessing."
+  }
+}
