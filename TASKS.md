@@ -534,6 +534,15 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: a landing page plus the releases, search and entity views share 1 token set with text contrast of at least 4.5:1; 0 page errors and no horizontal scroll at 375 px and 1440 px; reduced motion turns off smooth scroll and every animation
 - Evidence: https://github.com/jishnu-baruah/hydra/pull/28 (0 page errors and no horizontal scroll at 1440 px and 375 px on 5 views; text contrast 5.7:1 to 16.9:1; reduced motion stops all 4 kinds of motion)
 - Finding: the template look needs none of its about 60 packages: 1 CSS file, a 20-line split-flap and Lenis reproduce it, and IntersectionObserver replaces GSAP in about 15 lines.
+
+### T-B08, Publish page in the explorer, from the T-A09 onboarding flow
+- Status: claimed 2026-11-06 | Owner: Mouli | Branch: feature/t-b08-publish-page
+- Suggested: Mouli
+- Depends-on: T-A09, T-B07
+- Touches: apps/explorer/publish/, apps/explorer/src/api.js, apps/explorer/events/, apps/explorer/vercel.json, apps/explorer/index.html, apps/explorer/releases/index.html, apps/explorer/search/index.html, apps/explorer/app/index.html, apps/explorer/observed/index.html
+- Serves: Usability (judged) ; Practicality (judged)
+- Acceptance: the explorer's /publish/ page runs the whole T-A09 flow (connect a wallet, sign 1 message, get a key, copy the agent block or the workflow, see the first release) in the explorer design, tested end to end against the API's 3 routes; the events feed also shows app name claims and CI run links from the publisher wallet
+- Evidence: <PR link, screenshots>
 ### T-J01, Public action repo for the Marketplace
 - Status: open
 - Suggested: Jishnu
