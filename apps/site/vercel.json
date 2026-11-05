@@ -2,5 +2,10 @@
   "framework": null,
   "installCommand": "",
   "buildCommand": "",
-  "outputDirectory": "."
+  "outputDirectory": ".",
+  "rewrites": [{ "source": "/llm.txt", "destination": "/llms.txt" }],
+  "headers": [
+    { "source": "/llms.txt", "headers": [{ "key": "Content-Type", "value": "text/plain; charset=utf-8" }] },
+    { "source": "/skill/:path*", "headers": [{ "key": "Content-Type", "value": "text/plain; charset=utf-8" }] }
+  ]
 }

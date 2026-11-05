@@ -1,0 +1,80 @@
+# Hydra
+
+> Hydra keeps a public, tamper-evident record of every build of a dApp frontend. Each push to
+> main uploads the build to Swarm and records it on Arkiv (Rabdi testnet, chain 7794095), so
+> anyone can check that the site they load matches a published release. Teams add it with one
+> API key and one GitHub Actions workflow. Testnet only: no mainnet funds, no gas for the team.
+
+Site: https://hydra-site-one.vercel.app
+API: https://hydra-api-5xmn.onrender.com (free tier; the first request after idle can take 30 to 60 s)
+Agent skill: https://hydra-site-one.vercel.app/skill/hydra-publish/SKILL.md
+
+## Add Hydra to a repo (what an agent should do)
+
+1. A human gets the API key: open the site, connect a wallet, pick an app name (2 to 40
+   lowercase letters, digits, dashes), sign one message (no transaction, no gas). The key is
+   shown once. An agent cannot do this step and must never ask for the key in chat.
+2. The human stores it as a repo secret: `gh secret set HYDRA_API_KEY` (paste when prompted), or
+   Settings, Secrets and variables, Actions, New repository secret.
+3. The agent adds `.github/workflows/hydra.yml` (template below), with the repo's real install
+   and build commands and its build output folder (Vite `dist`, CRA `build`, Next static export
+   `out`, Astro `dist`, SvelteKit static `build`).
+4. Push to main. The run prints the Arkiv transaction link. Check with
+   `GET https://hydra-api-5xmn.onrender.com/v1/apps/<app>/releases`.
+
+## Workflow template
+
+```yaml
+name: hydra
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci && npm run build # replace with the repo's install and build
+      - name: Publish to Hydra
+        env:
+          HYDRA_API_URL: https://hydra-api-5xmn.onrender.com
+          HYDRA_API_KEY: ${{ secrets.HYDRA_API_KEY }}
+        run: |
+          curl -fsSL "$HYDRA_API_URL/publish.mjs" -o hydra-publish.mjs
+          node hydra-publish.mjs dist # replace dist with the build output folder
+```
+
+## Publish script
+
+`publish.mjs` (served by the API) has no dependencies. It reads every file in the build folder,
+hashes the external `https` scripts the HTML loads, and POSTs the release. Optional env:
+`HYDRA_VERSION` (default `<date>.<short sha>`). Limits: the build must contain `/index.html`, at
+most 2000 files and 20 MB. Rate limit: 30 publishes per hour per address.
+
+## API
+
+- `GET /health`: is the server configured to write to Arkiv and Swarm.
+- `GET /v1/auth/message?address=&app=`: the exact message the wallet signs.
+- `POST /v1/auth/key` `{ address, app, issuedAt, signature }`: returns `{ apiKey }`, valid 30 days.
+- `POST /v1/releases` with `Authorization: Bearer <apiKey>`: used by `publish.mjs`.
+- `GET /v1/apps/<app>/releases`: releases on Arkiv, newest first.
+- `GET /v1/files/<sha256-hex>`: which app and release a file hash belongs to.
+
+## Errors and what to do
+
+- 401: key missing, wrong or expired. Get a new key on the site and update the secret.
+- 403 "owned by": the first address to publish an app name owns it. Pick another name.
+- 429: publish limit for this address. Wait for the hour to pass.
+- 400: the message names the problem (no `/index.html`, bad path, too many files).
+- 502 with `phase: submitted` or `submission_unknown`: a transaction may exist. Do not re-run
+  the publish; check the releases route first. `phase: preflight` is safe to re-run later.
+
+## Rules
+
+- Never put the API key in code, logs, chat or a URL. It lives only in the repo secret.
+- Testnets only. Hydra pays the gas; nobody needs funds.
