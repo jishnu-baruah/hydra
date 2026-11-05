@@ -144,6 +144,28 @@ Exit checks. **P1:** a manual `curl` to the API creates a release whose manifest
 whose records are on Arkiv, and the explorer shows it. **P2:** the GitHub Action runs on the demo
 repo, and the extension goes red when we change a file on the live site.
 
+## 6. Qualification checklist, per prize
+
+From pre-event research (28 Oct): Arkiv runs three tracks of $4,000 (1st $3k each) plus the
+Arkiv + Swarm bonus of $1,000. T-D02 replaces this list with the exact rule text; until then, this
+is what we must be able to show. Tick in a `board/` PR as items land.
+
+**Arkiv track**
+- [ ] Arkiv is on the critical path: `release`, `file` and `observation` records written and read live (T-A02, T-A06, T-B02)
+- [ ] The explorer reads Arkiv directly in the browser, no backend (T-B01)
+- [ ] README section "How we used Arkiv" with explorer links to at least 2 transactions and the query we run
+- [ ] Builder feedback in docs/FEEDBACK.md (T-J03)
+- [ ] Which of the three Arkiv tracks we enter is confirmed (OP-4, T-D02)
+
+**Arkiv + Swarm bonus**
+- [ ] Every release's build and manifest is on Swarm, with `swarm_ref` on its Arkiv record (T-A02)
+- [ ] A Swarm gateway link a judge can open from the explorer (T-B02)
+- [ ] README section "How we used Swarm" with at least 1 reference
+
+**ETHGlobal submission**
+- [ ] Code a judge can open: the repo is private today (OP-6)
+- [ ] Demo video within the event's rules, every submission field filled (T-J02, T-J03)
+
 ---
 
 # P0, day 0. Nothing branches until T-A00 lands.
@@ -152,7 +174,7 @@ repo, and the extension goes red when we change a file on the live site.
 - Status: in-review | Branch: feature/t-a00-board
 - Suggested: Jishnu
 - Depends-on: none
-- Touches: CLAUDE.md, TASKS.md, OPERATOR_TODO.md, DECISIONS.md, README.md, .env.example, docs/ARCHITECTURE.md, .github/, scripts/board.mjs, .claude/
+- Touches: CLAUDE.md, TASKS.md, OPERATOR_TODO.md, DECISIONS.md, README.md, .env.example, docs/ARCHITECTURE.md, docs/prior-learnings.md, .github/, scripts/board.mjs, .claude/
 - Serves: unblocks every task ; Practicality (judged)
 - Acceptance: board lint passes on 30 rows; a claim PR that edits a non-Status line fails CI in 1 run
 - Evidence: <PR link>
@@ -163,6 +185,7 @@ repo, and the extension goes red when we change a file on the live site.
 - Depends-on: OP-1
 - Touches: spikes/F1/
 - Serves: Technicality (judged) ; Arkiv track
+- Known: spike T7 (Tiramisu): SDK 0.8.1 works; creates took 3 to 7 s; uppercase names revert; numbers default to i32. See docs/prior-learnings.md
 - Acceptance: on Rabdi (chain 7794095) with an access key, 1 `release` and 20 `file` records written with ARCHITECTURE.md attributes and the maximum lifetime; all 21 queried back by project+type; lowercase-name and u64 rules re-confirmed; median create time and the SDK version written in result.json. Limits are already documented, so target 45 minutes.
 - Evidence: <spikes/F1/result.json at a commit, tx hashes>
 - Kill criterion: 20 file records take over 2 minutes, so index external scripts only and drop per-file records
@@ -183,6 +206,7 @@ repo, and the extension goes red when we change a file on the live site.
 - Depends-on: none
 - Touches: spikes/F3/
 - Serves: Technicality (judged) ; Usability (judged)
+- Known: spike T4: fetch() decodes gzip and brotli, so re-fetched hashes match served bytes; T12: on Next.js, check scripts by policy, not HTML
 - Acceptance: on 5 real dApp pages, the extension background worker lists every script URL and hashes it; 5 of 5 pages succeed, CORS failures counted
 - Evidence: <spikes/F3/result.json>
 - Kill criterion: over 2 of 5 pages fail for CORS, so hash only same-origin scripts and say so in the UI
@@ -193,6 +217,7 @@ repo, and the extension goes red when we change a file on the live site.
 - Depends-on: T-A00
 - Touches: packages/core/
 - Serves: Technicality (judged)
+- Known: spike T7: lowercase attribute names and u64(BigInt(ms)) timestamps are mandatory; print the innermost viem cause on revert
 - Acceptance: sha256 helper matches `sha256sum` on 3 fixture files; Arkiv wrapper retries 3 times; 1 test per record type encodes lowercase attributes and u64 times
 - Evidence: <PR link>
 
@@ -285,6 +310,7 @@ repo, and the extension goes red when we change a file on the live site.
 - Depends-on: OP-3
 - Touches: demo/
 - Serves: WOW factor (judged)
+- Known: spike T6: Vercel previews inject a vercel.live script and are login-protected, so demo and check the production deployment only
 - Acceptance: a 1-page static site with 1 JS file and 1 vendor script, live on Vercel at our domain, deployed from its own repo
 - Evidence: <live URL>
 
@@ -323,6 +349,7 @@ repo, and the extension goes red when we change a file on the live site.
 - Depends-on: T-A01, T-D03
 - Touches: packages/indexer/
 - Serves: WOW factor (judged) ; Arkiv track
+- Known: spike T4 algorithm (1-byte change caught next poll, 0 false positives in 30 min) and T12 Next.js policy (6 of 6 attacks, 0 false positives). See docs/prior-learnings.md
 - Acceptance: runs every 15 minutes over all targets and writes 1 observation per target per run; a changed script flips status to mismatch within 1 run
 - Evidence: <tx hashes, explorer link>
 
@@ -359,6 +386,7 @@ repo, and the extension goes red when we change a file on the live site.
 - Depends-on: T-C01, T-F03, T-A02
 - Touches: apps/extension/src/compare/
 - Serves: Technicality (judged) ; Usability (judged)
+- Known: spike T4 compare algorithm and T12 Next.js rules; the extension is the best vantage point against cloaking (T8). See docs/prior-learnings.md
 - Acceptance: on the demo site, green with 0 mismatches; after changing 1 line of the JS on the host, red naming that 1 file, within 1 reload
 - Evidence: <recording>
 
@@ -424,5 +452,6 @@ repo, and the extension goes red when we change a file on the live site.
 - Depends-on: T-D02
 - Touches: docs/submission/, docs/FEEDBACK.md
 - Serves: Arkiv track ; Swarm bonus
+- Known: docs/prior-learnings.md lists 4 Arkiv doc issues from the spike; recheck each on Rabdi before filing
 - Acceptance: every submission field filled; 1 section each for Arkiv and Swarm with at least 2 tx hashes and 1 Swarm reference; FEEDBACK.md lists at least 3 builder issues
 - Evidence: <submission link>

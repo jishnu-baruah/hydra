@@ -64,3 +64,11 @@ Status values: `open` | `claimed <date> | Owner: <name>` | `done <date>: <result
 - Unblocks: T-A00
 - What exactly: require a pull request and green `secrets`, `checks` and `hygiene` before merging to `main`. GitHub only allows this on a private personal repo with a paid plan; otherwise make the repo public or rely on the `board` lock job.
 - Done when: a direct push to `main` is refused, or the decision is in DECISIONS.md.
+
+### OP-6, Code judges can open
+- Status: open
+- Owner: Jishnu
+- Needed by: 2026-11-07 morning, before submitting
+- Unblocks: T-J03
+- What exactly: the repo is private. Before submitting, either make jishnu-baruah/hydra public or publish a public mirror of `main`, after a final secret scan. Decide which and log it in DECISIONS.md.
+- Done when: the submission's repo link opens in a private browser window.
