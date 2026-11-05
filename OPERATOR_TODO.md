@@ -72,3 +72,11 @@ Status values: `open` | `claimed <date> | Owner: <name>` | `done <date>: <result
 - Unblocks: T-J03
 - What exactly: the repo is private. Before submitting, either make jishnu-baruah/hydra public or publish a public mirror of `main`, after a final secret scan. Decide which and log it in DECISIONS.md.
 - Done when: the submission's repo link opens in a private browser window.
+
+### OP-7, Publish 1 demo release through the live API
+- Status: open
+- Owner: Mouli
+- Needed by: 2026-11-06 morning
+- Unblocks: T-B02, T-B03, T-C02
+- What exactly: the publisher wallet (0xdD0d4167959291A2eb930Fe82Fed58070134348b) holds 5 tGLM and has sent 0 transactions, so Arkiv has 0 Hydra records and the explorer and extension have nothing real to show. A person signs in on the onboarding site (apps/site, T-A09) with a wallet, gets an API key, and publishes 1 small build (the demo dApp from T-D04, or any folder with an index.html) via `node publish.mjs`. An agent cannot do this: it needs a wallet signature and handles an API key.
+- Done when: `GET /v1/apps/<app>/releases` on the API returns 1 release, and its app name is written here.

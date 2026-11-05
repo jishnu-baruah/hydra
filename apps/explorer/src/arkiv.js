@@ -14,12 +14,18 @@ export const EXPLORER = "https://rabdi.explorer.arkiv.network";
 
 const client = createPublicClient({ chain: rabdi({ accessKey: "" }), transport: http() });
 
+// Anyone can write an entity tagged hydra.*, so every read keeps only what the Hydra API wrote:
+// entities created by its publisher wallet (GET /health on the API reports it). Same trust rule
+// as apps/api/src/reads.ts.
+export const PUBLISHER = "0xdD0d4167959291A2eb930Fe82Fed58070134348b";
+
 // Newest Hydra releases. Queried by the schema tag rather than through packages/core, so the
 // explorer has no build step; the tag name is ReleaseSchema's in packages/core/src/records.ts.
 export async function latestReleases(limit = 20) {
   const page = await client
     .select({ $key: true, $owner: true, $attributes: true })
     .where(eq("arkiv.schema", "hydra.release"))
+    .createdBy(PUBLISHER)
     .orderBy(desc("published_at", "u64"))
     .limit(limit)
     .fetch();
@@ -28,13 +34,12 @@ export async function latestReleases(limit = 20) {
 
 export const entity = (key) => client.getEntity(key);
 
-// Hydra entities of one schema whose indexed `field` equals `value`. Used by search.
-// Not yet filtered by owner: anyone can write a hydra.* tag. Add .ownedBy(<API wallet>) once
-// OP-1 gives the wallet an address, before real data is shown as on record.
+// Hydra entities of one schema whose indexed `field` equals `value`, written by the publisher.
 export async function find(schema, field, value, limit = 100) {
   const page = await client
     .select({ $key: true, $attributes: true })
     .where(and(eq("arkiv.schema", schema), eq(field, value)))
+    .createdBy(PUBLISHER)
     .limit(limit)
     .fetch();
   return page.entities;
