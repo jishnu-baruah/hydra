@@ -1,0 +1,24 @@
+# Fly.io config for the publish API. Deploy from the repo root:
+#   fly deploy . --config apps/api/deploy/fly.toml --dockerfile apps/api/deploy/Dockerfile
+# Secrets go in with `fly secrets set`, never in this file.
+app = "hydra-api"
+primary_region = "bom"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8787"
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = "off"
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/health"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
