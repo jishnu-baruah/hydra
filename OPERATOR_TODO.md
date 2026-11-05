@@ -86,7 +86,7 @@ Status values: `open` | `claimed <date> | Owner: <name>` | `done <date>: <result
 - Owner: Jishnu
 - Needed by: 2026-11-06 midday
 - Unblocks: T-B02, T-B03
-- What exactly: `GET /health` on the deployed API reports `"swarm": false`, so all 5 live releases have `swarm_ref = pending` and the explorer has no Swarm link to show. On the API host set `BEE_API_URL` and `SWARM_GATEWAY_URL` to `https://api.gateway.ethswarm.org`, leave `SWARM_POSTAGE_BATCH_ID` empty (the gateway stamps for us, OP-2), redeploy, then publish once. Until T-A12 merges, set `SWARM_POSTAGE_BATCH_ID` to any non-empty value instead (the gateway ignores it).
+- What exactly: `GET /health` on the deployed API reports `"swarm": false`, so all 5 live releases have `swarm_ref = pending` and the explorer has no Swarm link to show. On the API host set `BEE_API_URL` and `SWARM_GATEWAY_URL` to `https://api.gateway.ethswarm.org`, leave `SWARM_POSTAGE_BATCH_ID` empty (the gateway stamps for us, OP-2), redeploy, then publish once. T-A12 is merged, so no batch id is needed.
 - Done when: `/health` reports `"swarm": true` and the next release's `swarm_ref` is 64 hex characters whose `hydra-manifest.json` opens through the gateway.
 
 ### OP-9, Hand-time the extension install in Chrome
