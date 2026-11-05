@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { arkivClients, guardedBatch, guardedCreate } from '@hydra/core'
 import type { Hex } from 'viem'
-import { activity, filesByHash, ownerOf, releasesFor } from './reads.ts'
+import { activity, claimOf, filesByHash, releasesFor } from './reads.ts'
 import { createApi, type ApiDeps } from './server.ts'
 import { swarmUploader } from './swarm.ts'
 
@@ -38,16 +38,16 @@ const deps: ApiDeps = {
   publish: walletClient
     ? {
         createOne: (spec) => guardedCreate({ walletClient, publicClient, ...spec }),
-        createMany: (specs) => guardedBatch({ walletClient, publicClient, creates: specs }),
+        createMany: (specs, extensions) => guardedBatch({ walletClient, publicClient, creates: specs, extensions }),
         swarm,
       }
     : undefined,
-  ownerOf: writer ? (app) => ownerOf(publicClient, writer, app) : undefined,
+  claimOf: writer ? (app) => claimOf(publicClient, writer, app) : undefined,
   allowedAddresses: allow.length ? new Set(allow) : undefined,
   publishesPerHour: env.HYDRA_PUBLISHES_PER_HOUR ? Number(env.HYDRA_PUBLISHES_PER_HOUR) : undefined,
   releasesFor: async (app) => (writer ? releasesFor(publicClient, writer, app) : []),
   filesByHash: async (sha) => (writer ? filesByHash(publicClient, writer, sha) : []),
-  activity: async () => (writer ? activity(publicClient, writer) : []),
+  activity: async () => (writer ? activity(publicClient, writer) : { head: null, events: [] }),
   health: { publisherWallet: walletClient?.account.address ?? null, accessKey: Boolean(env.ARKIV_ACCESS_KEY) },
 }
 

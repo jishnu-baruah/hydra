@@ -23,7 +23,7 @@ createApi({
   secret: 'dev-only-secret-'.repeat(3),
   corsOrigin: '*',
   publishScript: () => readFile(join(here, '../../packages/action/publish.mjs'), 'utf8'),
-  ownerOf: async (app) => owners.get(app) ?? null,
+  claimOf: async (app) => (owners.has(app) ? { owner: owners.get(app)!, key: `0x${'aa'.repeat(32)}` as const } : null),
   releasesFor: async (app) => releases.filter((r) => r.app === app).toReversed(),
   publish: {
     createOne: async (spec) => {

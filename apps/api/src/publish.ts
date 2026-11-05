@@ -5,6 +5,7 @@
 import {
   AppSchema,
   FileSchema,
+  LEASE,
   LONG,
   MAX_BATCH,
   ReleaseSchema,
@@ -13,6 +14,7 @@ import {
   releaseValues,
   sha256Tag,
   type CreateSpec,
+  type ExtendSpec,
   type Manifest,
 } from '@hydra/core'
 import type { Hex } from 'viem'
@@ -22,10 +24,10 @@ import type { TarFile } from './tar.ts'
 
 export interface PublishDeps {
   createOne: (spec: CreateSpec) => Promise<{ entityKey: Hex; txHash: Hex }>
-  createMany: (specs: CreateSpec[]) => Promise<{ createdEntities: Hex[]; txHash: Hex }>
+  createMany: (specs: CreateSpec[], extensions?: ExtendSpec[]) => Promise<{ createdEntities: Hex[]; txHash: Hex }>
   swarm?: (files: TarFile[]) => Promise<string>
-  // Lowercased owner of an app name, or null if unclaimed. Without it, ownership is not checked.
-  ownerOf?: (app: string) => Promise<string | null>
+  // The live claim on an app name, or null if unclaimed. Without it, ownership is not checked.
+  claimOf?: (app: string) => Promise<{ owner: string; key: Hex } | null>
   now?: () => number
 }
 
@@ -38,7 +40,7 @@ export function claimApp(deps: Pick<PublishDeps, 'createOne'>, app: string, publ
   return deps.createOne({
     schema: AppSchema,
     values: appValues({ app, domain: 'none', publisher: publisher.toLowerCase(), createdAt: now, payload: { name: app, domains: [] } }),
-    expiration: LONG(),
+    expiration: LEASE(),
   })
 }
 
@@ -112,7 +114,8 @@ export async function publish(
 
   // First come, first served: the first address to publish an app name owns it.
   const me = claims.address.toLowerCase()
-  const owner = deps.ownerOf ? await deps.ownerOf(claims.app) : me
+  const claim = deps.claimOf ? await deps.claimOf(claims.app) : { owner: me, key: undefined }
+  const owner = claim?.owner
   if (owner && owner !== me) {
     return { ok: false, status: 403, error: ownedError(claims.app, owner) }
   }
@@ -144,14 +147,21 @@ export async function publish(
   })
 
   const indexed = Object.entries(hashes).filter(([p]) => CODE.test(p)).slice(0, MAX_INDEXED_FILES)
+  const fileSpecs = indexed.map(([path, sha256]) => ({
+    schema: FileSchema,
+    values: fileValues({ app: claims.app, sha256, path, release: release.entityKey }),
+    expiration: LONG(),
+  }))
+  // A publish renews the name's lease to LONG inside the first file batch: no extra transaction.
+  // LONG counts from now, so it never moves an expiry earlier (Arkiv rejects that).
+  const leaseKey = claim?.key ?? appClaim?.entityKey
+  const renew: ExtendSpec[] = leaseKey ? [{ entityKey: leaseKey, expiration: LONG() }] : []
   const fileTxs: Hex[] = []
-  for (let i = 0; i < indexed.length; i += MAX_BATCH) {
-    const specs = indexed.slice(i, i + MAX_BATCH).map(([path, sha256]) => ({
-      schema: FileSchema,
-      values: fileValues({ app: claims.app, sha256, path, release: release.entityKey }),
-      expiration: LONG(),
-    }))
-    fileTxs.push((await deps.createMany(specs)).txHash)
+  for (let i = 0; i < fileSpecs.length; ) {
+    const ext = i === 0 ? renew : []
+    const chunk = fileSpecs.slice(i, i + MAX_BATCH - ext.length)
+    fileTxs.push((await deps.createMany(chunk, ext)).txHash)
+    i += chunk.length
   }
 
   return {
@@ -167,6 +177,7 @@ export async function publish(
       filesIndexed: indexed.length,
       fileTxs,
       appClaimTx: appClaim?.txHash ?? null,
+      leaseRenewed: renew.length > 0,
       domainsIgnored,
     },
   }

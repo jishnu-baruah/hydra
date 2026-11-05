@@ -125,7 +125,20 @@ test('guardedBatch refuses 0 or more than 20 creates before touching the network
   const { transport, seen } = fakeNode()
   const { walletClient, publicClient } = arkivClients({ privateKey: generatePrivateKey(), transport })
   const spec = { schema: ReleaseSchema, values: values(), expiration: LONG() }
-  assert.throws(() => guardedBatch({ walletClient: walletClient!, publicClient, creates: [] }), /1 to 20/)
-  assert.throws(() => guardedBatch({ walletClient: walletClient!, publicClient, creates: Array(21).fill(spec) }), /1 to 20/)
+  assert.throws(() => guardedBatch({ walletClient: walletClient!, publicClient, creates: [] }), /1 to 20 operations/)
+  assert.throws(() => guardedBatch({ walletClient: walletClient!, publicClient, creates: Array(21).fill(spec) }), /1 to 20 operations/)
   assert.equal(seen.length, 0)
+})
+
+test('guardedBatch counts extensions as operations: 19 creates + 2 extensions is refused, 1 + 1 is 1 transaction', async () => {
+  const { transport, seen } = fakeNode()
+  const { walletClient, publicClient } = arkivClients({ privateKey: generatePrivateKey(), transport })
+  const spec = { schema: ReleaseSchema, values: values(), expiration: LONG() }
+  const ext = { entityKey: `0x${'ab'.repeat(32)}` as const, expiration: LONG() }
+  assert.throws(() => guardedBatch({ walletClient: walletClient!, publicClient, creates: Array(19).fill(spec), extensions: [ext, ext] }), /got 21/)
+  await assert.rejects(
+    guardedBatch({ walletClient: walletClient!, publicClient, creates: [spec], extensions: [ext] }),
+    (err: Error) => err instanceof WriteNotVerifiedError && err.phase === 'submission_unknown',
+  )
+  assert.equal(seen.filter((m) => m === 'eth_sendRawTransaction').length, 1)
 })

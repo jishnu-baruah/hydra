@@ -76,6 +76,8 @@ most 2000 files and 20 MB. Rate limit: 30 publishes per hour per address.
 - 401: key missing, wrong or expired. Get a new key on the site and update the secret.
 - 403 "owned by": getting a key reserves the app name for that wallet on Arkiv, so the site
   refuses a key for that name to any other wallet. Get a new key on the site with another name.
+  The reservation is a 30-day lease; every publish renews it to about 6 months, and a name with no
+  publish in that time frees itself.
 - 429: publish limit for this address. Wait for the hour to pass.
 - 400: the message names the problem (no `/index.html`, bad path, too many files).
 - 502 with `phase: submitted` or `submission_unknown`: a transaction may exist. Do not re-run

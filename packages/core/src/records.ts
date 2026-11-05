@@ -49,6 +49,9 @@ export const SCHEMAS = [AppSchema, ReleaseSchema, FileSchema, ObservationSchema]
 // "long" in ARCHITECTURE.md is the network maximum, about 182.5 days.
 export const LONG = (): ExpirationTime => ExpirationTime.max()
 export const OBSERVATION_TTL = (): ExpirationTime => ExpirationTime.fromDays(3)
+// An app-name claim is a lease: it lives as long as an API key (30 days) unless a publish renews it
+// to LONG, so names nobody publishes under free themselves.
+export const LEASE = (): ExpirationTime => ExpirationTime.fromDays(30)
 
 export type ObservationStatus = 'match' | 'mismatch' | 'unknown'
 

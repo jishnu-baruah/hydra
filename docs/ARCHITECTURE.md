@@ -76,9 +76,16 @@ builders there (`releaseValues` and friends), never hand-built objects. Payloads
 
 | Schema | Written by | Indexed columns | Other columns | `body` payload | Expiry |
 | --- | --- | --- | --- | --- | --- |
-| `hydra.app` | API, on registration (one record per domain) | `app`, `domain`, `publisher`, `created_at` (u64) | | `{ name, domains[], repo? }` | long |
+| `hydra.app` | API, when the first key for a name is issued (the name claim) | `app`, `domain`, `publisher`, `created_at` (u64) | | `{ name, domains[], repo? }` | lease: 30 days, renewed to long by every publish |
 | `hydra.release` | API, on publish | `app`, `publisher` (lowercase wallet address from the API key), `version`, `commit`, `swarm_ref`, `published_at` (u64) | `file_count` (u64), `source` = `ci` | `{ manifest summary, ci_run_url }` | long |
 | `hydra.file` | API, on publish | `app`, `sha256`, `release` (entity key) | `path` | none | long |
+
+**Expiry as a feature.** An app name is a lease: the claim lives 30 days (one API key's life), and
+each publish extends it to long inside the first file batch, so active apps keep their name and
+unused names free themselves with no cleanup job. Arkiv rejects an extension that moves an expiry
+earlier, so renewals only ever extend to long (which counts from now). Reads ignore expired claims
+because Arkiv no longer returns them. Next uses: observations with a 3 day TTL as freshness, and
+self-clearing incident flags kept alive by renewal.
 | `hydra.observation` | Indexer | `domain`, `status` (`match`, `mismatch`, `unknown`), `observed_at` (u64), `scripts_hash` | `app` (optional) | `{ scripts: [{url, sha256}] }` | 3 days |
 
 ## Manifest (stored on Swarm, referenced by `release.swarm_ref`)

@@ -372,7 +372,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <PR link>
 
 ### T-A11, Expiry as a feature: app-name leases renewed by publishing
-- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a11-expiry-leases
+- Status: in-review | Branch: feature/t-a11-expiry-leases
 - Suggested: Jishnu
 - Depends-on: T-A02, T-A10
 - Touches: packages/core/, apps/api/, apps/site/, docs/ARCHITECTURE.md
