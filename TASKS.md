@@ -383,14 +383,15 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <PR link>
 
 ### T-A12, API uploads to Swarm with no postage batch
-- Status: in-review https://github.com/jishnu-baruah/hydra/pull/61 | Branch: feature/t-a12-swarm-no-batch
+- Status: done
 - Suggested: Manish
 - Depends-on: T-A02, OP-2
 - Touches: apps/api/src/swarm.ts, apps/api/src/main.ts, apps/api/test/api.test.ts, apps/api/README.md, apps/api/deploy/README.md, docs/swarm.md, arkiv/swarm.md
 - Serves: Swarm bonus ; Technicality (judged)
 - Scope: Swarm turns on from `BEE_API_URL` alone and the batch header is sent only when `SWARM_POSTAGE_BATCH_ID` is set, so the EF gateway path (OP-2) works with the batch id empty; today an empty batch id leaves Swarm off and every release gets `swarm_ref = pending`
 - Acceptance: with `BEE_API_URL` set and no batch id, 1 upload sends 0 `Swarm-Postage-Batch-Id` headers; with a batch id it sends 1; all API tests pass
-- Evidence: <PR link>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/61 (merged as cdb0cf3; test sends 0 batch headers without a batch id and 1 with one; apps/api tests 12 pass, 0 fail)
+- Finding: the `BEE_API_URL && SWARM_POSTAGE_BATCH_ID` gate in main.ts kept Swarm off on the gateway path, which is why all 5 live releases are `swarm_ref = pending`; OP-8 now needs only `BEE_API_URL` on the host
 
 ### T-D08, README section "How we used Swarm"
 - Status: open
