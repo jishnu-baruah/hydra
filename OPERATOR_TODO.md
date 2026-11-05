@@ -74,9 +74,17 @@ Status values: `open` | `claimed <date> | Owner: <name>` | `done <date>: <result
 - Done when: the submission's repo link opens in a private browser window.
 
 ### OP-7, Publish 1 demo release through the live API
-- Status: open
+- Status: done 2026-11-06: Jishnu published hydra-test-a (3 releases) and test-dapp (2 releases) through the live API; the publisher wallet sent 12 transactions
 - Owner: Mouli
 - Needed by: 2026-11-06 morning
 - Unblocks: T-B02, T-B03, T-C02
 - What exactly: the publisher wallet (0xdD0d4167959291A2eb930Fe82Fed58070134348b) holds 5 tGLM and has sent 0 transactions, so Arkiv has 0 Hydra records and the explorer and extension have nothing real to show. A person signs in on the onboarding site (apps/site, T-A09) with a wallet, gets an API key, and publishes 1 small build (the demo dApp from T-D04, or any folder with an index.html) via `node publish.mjs`. An agent cannot do this: it needs a wallet signature and handles an API key.
 - Done when: `GET /v1/apps/<app>/releases` on the API returns 1 release, and its app name is written here.
+
+### OP-8, Turn on Swarm uploads on the deployed API
+- Status: open
+- Owner: Jishnu
+- Needed by: 2026-11-06 midday
+- Unblocks: T-B02, T-B03
+- What exactly: `GET /health` on the deployed API reports `"swarm": false`, so all 5 live releases have `swarm_ref = pending` and the explorer has no Swarm link to show. docs/swarm.md (Path B) needs no code change: on the API host set `BEE_API_URL` and `SWARM_GATEWAY_URL` to `https://api.gateway.ethswarm.org` and `SWARM_POSTAGE_BATCH_ID` to any non-empty value (the gateway ignores it), then publish once.
+- Done when: `/health` reports `"swarm": true` and the next release's `swarm_ref` is 64 hex characters whose `hydra-manifest.json` opens through the gateway.
