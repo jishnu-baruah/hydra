@@ -34,6 +34,8 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the record formats.
 
 Read [TASKS.md](TASKS.md) sections 1 to 3 before writing code. In short: claim a task with a one-line `claim/t-<id>` PR, do the work in a `feature/t-<id>-<slug>` PR, and fill in the PR template. CI (`board` and `gates`) enforces the rules. Human-only blockers go in [OPERATOR_TODO.md](OPERATOR_TODO.md), decisions in [DECISIONS.md](DECISIONS.md). Claude sessions pick up [CLAUDE.md](CLAUDE.md) automatically.
 
+**Research kit (optional).** For `/research`, `/deep` and `/swarm` in Claude Code, clone `jishnu-baruah/filebus-research` next to this repo (or set `HYDRA_RESEARCH_KIT` to its folder), copy its `.env.example` to `.env` and add your Groq, GLM, Tavily and Jina keys there. The keys never go in this repo. `scripts/research.mjs` runs the kit from its own folder, so nothing it writes lands here.
+
 ## Rules
 
 - **Testnets only:** Arkiv Rabdi testnet and the Swarm testnet. No mainnet funds.

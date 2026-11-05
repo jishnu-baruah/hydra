@@ -269,7 +269,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <PR link>
 
 ### T-D07, Research kit wired into the repo
-- Status: claimed 2026-11-05 | Owner: Jishnu | Branch: feature/t-d07-research-kit
+- Status: in-review | Branch: feature/t-d07-research-kit
 - Suggested: Jishnu
 - Depends-on: none
 - Touches: scripts/research.mjs, .claude/commands/, CLAUDE.md, README.md
