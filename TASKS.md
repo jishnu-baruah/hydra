@@ -320,7 +320,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <deployed URL>
 
 ### T-B03, Explorer search
-- Status: open
+- Status: claimed 2026-11-05 | Owner: Mouli | Branch: feature/t-b03-explorer-search
 - Suggested: Mouli
 - Depends-on: T-B01
 - Touches: apps/explorer/search/
