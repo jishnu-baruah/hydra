@@ -234,13 +234,14 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <PR link>
 
 ### T-B01, Explorer scaffold that reads Arkiv in the browser
-- Status: claimed 2026-11-05 | Owner: Mouli | Branch: feature/t-b01-explorer-scaffold
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/15 | Branch: feature/t-b01-explorer-scaffold
 - Suggested: Mouli
 - Depends-on: T-A00
 - Touches: apps/explorer/
 - Serves: Usability (judged) ; Arkiv track
 - Acceptance: the explorer page renders 1 record read live from Arkiv testnet in the browser with no backend, in under 3 s
-- Evidence: <PR link, screenshot>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/15, screenshot apps/explorer/evidence/t-b01-entity.png (a live Rabdi entity with 31 attributes rendered in 682 to 1103 ms over 9 runs, public RPC, no key)
+- Finding: Arkiv SDK 1.0.1 ESM does not load on Node 22.17 (ERR_REQUIRE_CYCLE_MODULE on a 0-byte dist chunk) but loads in the browser from jsdelivr in about 2 s; mixing 2 CDNs broke every query; 0 hydra.release records exist yet, so home shows the empty state.
 
 ### T-C01, Extension scaffold with a 3-state badge
 - Status: in-review https://github.com/jishnu-baruah/hydra/pull/6 | Branch: feature/t-c01-extension-scaffold
