@@ -23,15 +23,16 @@ Read `package.json` and the lockfile. Work out:
 
 Run the build locally if you can and confirm the folder contains `index.html`.
 
-## 2. Ask the human for the key (you cannot do this step)
+## 2. Get the key
 
-Tell the user:
+If the user pasted a block from the Hydra site with `HYDRA_API_KEY`, use it: run
+`gh secret set HYDRA_API_KEY --body "<key>"` and skip to step 3. Otherwise tell the user:
 1. Open https://hydra-site-one.vercel.app, connect a wallet, choose an app name (2 to 40
    lowercase letters, digits, dashes), sign the message. No transaction, no gas.
 2. Copy the key shown once and run `gh secret set HYDRA_API_KEY` in this repo, pasting it when
    prompted (or add it under Settings, Secrets and variables, Actions).
 
-Never ask for the key in chat, never write it to a file, never echo it.
+Never write the key to a file or commit it, and don't echo it back in your replies.
 
 ## 3. Write `.github/workflows/hydra.yml`
 

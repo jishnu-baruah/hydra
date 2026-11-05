@@ -48,6 +48,26 @@ function renderYaml() {
   $('yaml').textContent = TEMPLATE.replace('__HYDRA_API_URL__', API_URL).replace('__BUILD_DIR__', dir)
 }
 
+// Everything an agent needs in one paste: who, what, the key, and how to check it worked.
+function renderHandoff(app, key) {
+  $('handoff').textContent = `Set up Hydra in this repo so every push to main records the build on Arkiv.
+Docs: ${location.origin}/llms.txt
+
+App name: ${app} (reserved for your wallet; the key works only for this name)
+HYDRA_API_KEY: ${key}
+HYDRA_API_URL: ${API_URL}
+
+1. Store the key as a GitHub Actions secret (never commit it or write it to a file):
+   gh secret set HYDRA_API_KEY --body "${key}"
+   (from inside the repo clone, or add -R <owner>/<repo>)
+2. Add .github/workflows/hydra.yml from the docs template, with this repo's real install and build
+   commands and its build output folder (the folder that contains index.html).
+3. Commit and push to main, then watch the run: gh run watch
+4. Confirm the release: curl ${API_URL}/v1/apps/${app}/releases
+If a step fails, read the error section of the docs before retrying. A 401 or 403 means the key
+cannot be used: ask the human for a new block from the Hydra site; never retry with the same key.`
+}
+
 $('connect').onclick = async () => {
   showError('')
   if (!window.ethereum) return showError('No browser wallet found. Install MetaMask or another wallet and reload.')
@@ -82,6 +102,7 @@ $('sign').onclick = async () => {
     $('step-repo').hidden = false
     $('step-releases').hidden = false
     renderYaml()
+    renderHandoff(app, apiKey)
     loadReleases()
   } catch (e) {
     showError(`Could not get a key: ${e.message ?? e}`)
