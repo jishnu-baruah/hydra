@@ -31,8 +31,11 @@ test("red lists at most 10 scripts, then says how many more", () => {
   assert.deepEqual(v.link, { href: "http://localhost:5173/app/?name=demo-dex", text: "Open demo-dex on Hydra" });
 });
 
-test("one mismatch reads in the singular", () => {
+test("one of anything reads in the singular", () => {
   assert.equal(present(red(1), opts).message.slice(0, 33), "1 script is not in demo-dex 1.0.0");
+  const one = present({ verdict: "green", app: "demo-dex", version: "1.0.0", matched: 1, ignored: 2, mismatches: [] }, opts);
+  assert.equal(one.message, "The 1 script matches demo-dex 1.0.0.");
+  assert.equal(one.note, "2 scripts injected by the host were not judged.");
 });
 
 test("green says what matched and links to the app", () => {
