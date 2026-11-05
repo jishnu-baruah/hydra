@@ -232,13 +232,14 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <PR link, screenshot>
 
 ### T-C01, Extension scaffold with a 3-state badge
-- Status: claimed 2026-11-05 | Owner: Mouli | Branch: feature/t-c01-extension-scaffold
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/6 | Branch: feature/t-c01-extension-scaffold
 - Suggested: Mouli
 - Depends-on: T-A00
 - Touches: apps/extension/
 - Serves: Usability (judged)
 - Acceptance: loads unpacked in Chrome; the badge shows all 3 states (green, red, grey) driven by a hard-coded verdict
-- Evidence: <PR link, screenshot>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/6 (unpacked into Chromium, 3 of 3 badge states read back via chrome.action.getBadgeText, 0 service worker errors)
+- Finding: tab-scoped badge state is kept by Chrome, so 3 tabs showed 3 different badges at once with 0 lines of storage code; non-web pages (chrome://, file://) get no badge so grey only means "a site with no release".
 
 ### T-D01, Research: what data is already on Arkiv
 - Status: open
