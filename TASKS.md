@@ -213,7 +213,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Kill criterion: over 2 of 5 pages fail for CORS, so hash only same-origin scripts and say so in the UI
 
 ### T-A01, packages/core: records, hashing, Arkiv client
-- Status: open
+- Status: claimed 2026-11-05 | Owner: Jishnu | Branch: feature/t-a01-core
 - Suggested: Jishnu
 - Depends-on: T-A00
 - Touches: packages/core/
