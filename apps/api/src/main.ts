@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { arkivClients, guardedBatch, guardedCreate } from '@hydra/core'
 import type { Hex } from 'viem'
-import { filesByHash, releasesFor } from './reads.ts'
+import { filesByHash, ownerOf, releasesFor } from './reads.ts'
 import { createApi, type ApiDeps } from './server.ts'
 import { swarmUploader } from './swarm.ts'
 
@@ -27,6 +27,10 @@ const swarm =
 
 const script = fileURLToPath(new URL('../../../packages/action/publish.mjs', import.meta.url))
 
+// Reads trust only records our own wallet created; set HYDRA_PUBLISHER_ADDRESS for a read-only API.
+const writer = (walletClient?.account.address ?? env.HYDRA_PUBLISHER_ADDRESS) as Hex | undefined
+const allow = (env.HYDRA_ALLOWED_ADDRESSES ?? '').split(',').map((a) => a.trim().toLowerCase()).filter(Boolean)
+
 const deps: ApiDeps = {
   secret,
   corsOrigin: env.HYDRA_CORS_ORIGIN,
@@ -38,8 +42,11 @@ const deps: ApiDeps = {
         swarm,
       }
     : undefined,
-  releasesFor: (app) => releasesFor(publicClient, app),
-  filesByHash: (sha) => filesByHash(publicClient, sha),
+  ownerOf: writer ? (app) => ownerOf(publicClient, writer, app) : undefined,
+  allowedAddresses: allow.length ? new Set(allow) : undefined,
+  publishesPerHour: env.HYDRA_PUBLISHES_PER_HOUR ? Number(env.HYDRA_PUBLISHES_PER_HOUR) : undefined,
+  releasesFor: async (app) => (writer ? releasesFor(publicClient, writer, app) : []),
+  filesByHash: async (sha) => (writer ? filesByHash(publicClient, writer, sha) : []),
   health: { publisherWallet: walletClient?.account.address ?? null, accessKey: Boolean(env.ARKIV_ACCESS_KEY) },
 }
 

@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { after, test } from 'node:test'
 import type { AddressInfo } from 'node:net'
 import { privateKeyToAccount, generatePrivateKey } from 'viem/accounts'
+import { AppSchema } from '@hydra/core'
 import { keyFromSignature, signInMessage } from '../src/auth.ts'
 import { issueKey, verifyKey } from '../src/keys.ts'
 import { createApi } from '../src/server.ts'
@@ -13,13 +14,17 @@ import { tar } from '../src/tar.ts'
 
 const SECRET = 'x'.repeat(40)
 const account = privateKeyToAccount(generatePrivateKey())
+const intruder = privateKeyToAccount(generatePrivateKey())
+const FAR = Date.parse('2100-01-01T00:00:00Z')
+const keyFor = (address: string, app = 'demo', exp = FAR) => issueKey(SECRET, { address, app, iat: 1, exp })
 
 test('keys: a key verifies, and a tampered or foreign one does not', () => {
-  const key = issueKey(SECRET, { address: account.address, app: 'demo', iat: 1 })
-  assert.deepEqual(verifyKey(SECRET, key), { address: account.address, app: 'demo', iat: 1 })
+  const key = keyFor(account.address)
+  assert.deepEqual(verifyKey(SECRET, key), { address: account.address, app: 'demo', iat: 1, exp: FAR })
+  assert.equal(verifyKey(SECRET, keyFor(account.address, 'demo', Date.now() - 1)), null) // expired
   assert.equal(verifyKey('y'.repeat(40), key), null)
   const [body, mac] = key.slice(4).split('.')
-  const forged = Buffer.from(JSON.stringify({ address: account.address, app: 'other', iat: 1 })).toString('base64url')
+  const forged = Buffer.from(JSON.stringify({ address: account.address, app: 'other', iat: 1, exp: FAR })).toString('base64url')
   assert.equal(verifyKey(SECRET, `hyd_${forged}.${mac}`), null)
   assert.equal(verifyKey(SECRET, `hyd_${body}.`), null)
   assert.equal(verifyKey(SECRET, 'garbage'), null)
@@ -54,13 +59,16 @@ test('tar: system tar lists and extracts what we wrote', () => {
   assert.equal(execFileSync('tar', ['-xOf', 'b.tar', 'assets/app.js'], cwd).toString().length, 700)
 })
 
-// End-to-end through HTTP with fake Arkiv and Swarm writers.
+// End-to-end through HTTP with fake Arkiv and Swarm writers. App claims land in `owners`.
 const calls = { one: 0, many: 0, swarm: 0, lastMany: 0 }
+const owners = new Map<string, string>()
 const server = createApi({
   secret: SECRET,
+  ownerOf: async (app) => owners.get(app) ?? null,
   publish: {
-    createOne: async () => {
+    createOne: async (spec) => {
       calls.one++
+      if (spec.schema === AppSchema) owners.set(String(spec.values.app), String(spec.values.publisher))
       return { entityKey: `0x${'11'.repeat(32)}`, txHash: `0x${'22'.repeat(32)}` }
     },
     createMany: async (specs) => {
@@ -97,18 +105,54 @@ test('publish: no key or a bad key gets 401 with 0 writes', async () => {
   assert.deepEqual([calls.one, calls.many, calls.swarm], [0, 0, 0])
 })
 
-test('publish: a valid key uploads to Swarm once, writes 1 release and 1 batch of 2 code files', async () => {
-  const key = issueKey(SECRET, { address: account.address, app: 'demo', iat: 1 })
-  const { status, json } = await post('/v1/releases', build, key)
+test('publish: the first publish claims the app, uploads to Swarm once, writes 1 release and 1 batch of 2 code files', async () => {
+  const { status, json } = await post('/v1/releases', { ...build, domains: ['app.uniswap.org'] }, keyFor(account.address))
   assert.equal(status, 201, JSON.stringify(json))
   assert.equal(json.swarmRef, 'ab'.repeat(32))
   assert.equal(json.publisher, account.address)
   assert.equal(json.filesIndexed, 2) // index.html and app.js; logo.png is not code
-  assert.deepEqual([calls.one, calls.many, calls.swarm, calls.lastMany], [1, 1, 1, 2])
+  assert.equal(json.domainsIgnored, 1) // unverified domains never reach the manifest
+  assert.ok(json.appClaimTx)
+  assert.equal(owners.get('demo'), account.address.toLowerCase())
+  // 2 single writes (app claim, release), 1 batch
+  assert.deepEqual([calls.one, calls.many, calls.swarm, calls.lastMany], [2, 1, 1, 2])
+})
+
+test('ownership: another address cannot get a key for, or publish to, an owned app (0 writes)', async () => {
+  const before = { ...calls }
+  const pub = await post('/v1/releases', build, keyFor(intruder.address))
+  assert.equal(pub.status, 403)
+  const msg = await (await fetch(`${base()}/v1/auth/message?address=${intruder.address}&app=demo`)).json() as { message: string; issuedAt: string }
+  const signature = await intruder.signMessage({ message: msg.message })
+  const key = await post('/v1/auth/key', { address: intruder.address, app: 'demo', issuedAt: msg.issuedAt, signature })
+  assert.equal(key.status, 403)
+  assert.equal(key.json.apiKey, undefined)
+  assert.deepEqual(calls, before)
+})
+
+test('spend limits: allowlist and per-address publish rate', async () => {
+  let writes = 0
+  const fake = async () => (writes++, { entityKey: `0x${'11'.repeat(32)}` as const, txHash: `0x${'22'.repeat(32)}` as const })
+  const limited = createApi({
+    secret: SECRET,
+    allowedAddresses: new Set([account.address.toLowerCase()]),
+    publishesPerHour: 1,
+    publish: { createOne: fake, createMany: async () => ({ createdEntities: [], txHash: `0x${'44'.repeat(32)}` }) },
+  }).listen(0)
+  try {
+    const url = `http://127.0.0.1:${(limited.address() as AddressInfo).port}/v1/releases`
+    const go = (key: string) => fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${key}` }, body: JSON.stringify(build) }).then((r) => r.status)
+    assert.equal(await go(keyFor(intruder.address)), 403)
+    assert.equal(await go(keyFor(account.address)), 201)
+    assert.equal(await go(keyFor(account.address)), 429)
+    assert.equal(writes, 1) // only the one allowed release
+  } finally {
+    limited.close()
+  }
 })
 
 test('publish: path traversal and a build without index.html are refused with 0 new writes', async () => {
-  const key = issueKey(SECRET, { address: account.address, app: 'demo', iat: 1 })
+  const key = keyFor(account.address)
   const before = calls.one
   const evil = await post('/v1/releases', { files: { '/index.html': b64('x'), '/../etc/passwd': b64('x') } }, key)
   assert.equal(evil.status, 400)

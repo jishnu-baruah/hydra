@@ -3,10 +3,12 @@
 // script hashes, which it fetched at build time.
 
 import {
+  AppSchema,
   FileSchema,
   LONG,
   MAX_BATCH,
   ReleaseSchema,
+  appValues,
   fileValues,
   releaseValues,
   sha256Tag,
@@ -22,6 +24,8 @@ export interface PublishDeps {
   createOne: (spec: CreateSpec) => Promise<{ entityKey: Hex; txHash: Hex }>
   createMany: (specs: CreateSpec[]) => Promise<{ createdEntities: Hex[]; txHash: Hex }>
   swarm?: (files: TarFile[]) => Promise<string>
+  // Lowercased owner of an app name, or null if unclaimed. Without it, ownership is not checked.
+  ownerOf?: (app: string) => Promise<string | null>
   now?: () => number
 }
 
@@ -88,8 +92,17 @@ export async function publish(
 
   const commit = str(body.commit, 100) ?? 'unknown'
   const version = str(body.version, 100) ?? `${new Date(now).toISOString().slice(0, 10)}.${commit.slice(0, 7)}`
-  const domains = Array.isArray(body.domains) ? body.domains.filter((d) => typeof d === 'string').slice(0, 20) : []
+  // Domains are not taken from the client until domain ownership can be proven (hydra.txt).
+  const domains: string[] = []
+  const domainsIgnored = Array.isArray(body.domains) ? body.domains.length : 0
   const ciRunUrl = str(body.ciRunUrl, 500)
+
+  // First come, first served: the first address to publish an app name owns it.
+  const me = claims.address.toLowerCase()
+  const owner = deps.ownerOf ? await deps.ownerOf(claims.app) : me
+  if (owner && owner !== me) {
+    return { ok: false, status: 403, error: `app "${claims.app}" is owned by ${owner}; pick another name` }
+  }
 
   const manifest: Manifest = { app: claims.app, version, commit, domains, files: hashes, scripts }
   const manifestJson = JSON.stringify(manifest, null, 2)
@@ -97,6 +110,14 @@ export async function publish(
   const swarmRef = deps.swarm
     ? await deps.swarm([...files, { path: 'hydra-manifest.json', data: Buffer.from(manifestJson) }])
     : 'pending'
+
+  const appClaim = owner
+    ? undefined
+    : await deps.createOne({
+        schema: AppSchema,
+        values: appValues({ app: claims.app, domain: 'none', publisher: me, createdAt: now, payload: { name: claims.app, domains: [] } }),
+        expiration: LONG(),
+      })
 
   // The full manifest rides in the release payload when it fits; otherwise Swarm holds it.
   const payload = manifestJson.length <= 100_000 ? { manifest, ci_run_url: ciRunUrl } : { ci_run_url: ciRunUrl, manifest_on_swarm: true }
@@ -138,6 +159,8 @@ export async function publish(
       releaseTx: release.txHash,
       filesIndexed: indexed.length,
       fileTxs,
+      appClaimTx: appClaim?.txHash ?? null,
+      domainsIgnored,
     },
   }
 }
