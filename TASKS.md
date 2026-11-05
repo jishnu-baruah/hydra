@@ -202,15 +202,16 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Kill criterion: no working upload after 3 hours, so keep the manifest in the Arkiv payload and mark the Swarm bonus at risk in DECISIONS.md
 
 ### T-F03, Extension can hash the scripts a page loads
-- Status: claimed 2026-11-05 | Owner: Mouli | Branch: feature/t-f03-script-hashing
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/10 | Branch: feature/t-f03-script-hashing
 - Suggested: Mouli
 - Depends-on: none
 - Touches: spikes/F3/
 - Serves: Technicality (judged) ; Usability (judged)
 - Known: spike T4: fetch() decodes gzip and brotli, so re-fetched hashes match served bytes; T12: on Next.js, check scripts by policy, not HTML
 - Acceptance: on 5 real dApp pages, the extension background worker lists every script URL and hashes it; 5 of 5 pages succeed, CORS failures counted
-- Evidence: <spikes/F3/result.json>
+- Evidence: spikes/F3/result.json in https://github.com/jishnu-baruah/hydra/pull/10 (5 of 5 pages, 1081 of 1081 scripts hashed, 0 worker failures; 2 of 1081 page-context fetches failed CORS or network)
 - Kill criterion: over 2 of 5 pages fail for CORS, so hash only same-origin scripts and say so in the UI
+- Finding: Uniswap serves 0 of 816 scripts from its own origin (780 from cdn.app.uniswap.org), so a same-origin-only fallback checks nothing; every script that changed between 2 fetches (3 in run 1, 2 in run 2) was a Cloudflare /cdn-cgi/challenge-platform/ bot check, which T-C02 must allow or Cloudflare sites go red.
 
 ### T-A01, packages/core: records, hashing, Arkiv client
 - Status: open
