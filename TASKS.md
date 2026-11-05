@@ -323,7 +323,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Status: claimed 2026-11-05 | Owner: Mouli | Branch: feature/t-b03-explorer-search
 - Suggested: Mouli
 - Depends-on: T-B01
-- Touches: apps/explorer/search/
+- Touches: apps/explorer/search/, apps/explorer/src/arkiv.js, apps/explorer/index.html
 - Serves: Usability (judged) ; Originality (judged)
 - Acceptance: search finds the right app from 4 kinds of input: domain, app name, file sha256 and Swarm reference
 - Evidence: <deployed URL, recording>
