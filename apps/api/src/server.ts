@@ -19,6 +19,9 @@ export interface ApiDeps {
   corsOrigin?: string
   publishScript?: () => Promise<string>
   publish?: PublishDeps // undefined: no funded Arkiv wallet configured
+  ownerOf?: (app: string) => Promise<string | null> // lowercased owner, or null if unclaimed
+  allowedAddresses?: Set<string> // lowercased; when set, only these may get keys and publish
+  publishesPerHour?: number // per address; default 30
   releasesFor?: (app: string) => Promise<unknown>
   filesByHash?: (sha256: string) => Promise<unknown>
   health?: Record<string, unknown>
@@ -53,6 +56,22 @@ async function readJson(req: IncomingMessage, limit: number): Promise<Record<str
 }
 
 export function createApi(deps: ApiDeps) {
+  // Every publish spends the server wallet's gas and the postage batch, so access is limited:
+  // an optional allowlist, app names owned by their first publisher, and a per-address rate.
+  const recent = new Map<string, number[]>()
+  const allowed = (address: string) => !deps.allowedAddresses || deps.allowedAddresses.has(address.toLowerCase())
+  const takeSlot = (address: string, now = Date.now()) => {
+    const key = address.toLowerCase()
+    const times = (recent.get(key) ?? []).filter((t) => now - t < 3_600_000)
+    if (times.length >= (deps.publishesPerHour ?? 30)) return false
+    recent.set(key, [...times, now])
+    return true
+  }
+  const notOwner = async (address: string, app: string) => {
+    const owner = deps.ownerOf ? await deps.ownerOf(app) : null
+    return owner && owner !== address.toLowerCase() ? owner : null
+  }
+
   const send = (res: ServerResponse, status: number, body: unknown, type = 'application/json') => {
     res.writeHead(status, {
       'Content-Type': type,
@@ -87,15 +106,22 @@ export function createApi(deps: ApiDeps) {
 
       if (req.method === 'POST' && path === '/v1/auth/key') {
         const out = await keyFromSignature(deps.secret, await readJson(req, SMALL))
-        return out.ok ? send(res, 200, out.value) : send(res, out.status, { error: out.error })
+        if (!out.ok) return send(res, out.status, { error: out.error })
+        if (!allowed(out.value.address)) return send(res, 403, { error: 'this test server only issues keys to allowlisted addresses' })
+        const owner = await notOwner(out.value.address, out.value.app)
+        if (owner) return send(res, 403, { error: `app "${out.value.app}" is owned by ${owner}; pick another name` })
+        return send(res, 200, out.value)
       }
 
       if (req.method === 'POST' && path === '/v1/releases') {
         const auth = req.headers.authorization ?? ''
         const claims = verifyKey(deps.secret, auth.startsWith('Bearer ') ? auth.slice(7) : undefined)
         if (!claims) return send(res, 401, { error: 'missing or invalid API key; get one from the Hydra site' })
+        if (!allowed(claims.address)) return send(res, 403, { error: 'this address is no longer allowlisted' })
         if (!deps.publish) return send(res, 503, { error: 'publishing is not configured on this server (no funded Arkiv wallet)' })
-        const out = await publish(claims, await readJson(req, LARGE), deps.publish)
+        const body = await readJson(req, LARGE)
+        if (!takeSlot(claims.address)) return send(res, 429, { error: 'publish limit reached for this address; try again within the hour' })
+        const out = await publish(claims, body, { ...deps.publish, ownerOf: deps.ownerOf })
         return out.ok ? send(res, 201, out.value) : send(res, out.status, { error: out.error })
       }
 

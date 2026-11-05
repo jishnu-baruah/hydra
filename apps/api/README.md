@@ -18,7 +18,16 @@ pnpm test                                 # offline: fake Arkiv and Swarm writer
 | `GET /v1/apps/:app/releases` | releases on Arkiv, newest first |
 | `GET /v1/files/:sha256` | which app and release a file hash belongs to |
 
-Keys are stateless (`hyd_<claims>.<hmac>`); rotating `HYDRA_KEY_SECRET` revokes all of them.
+Keys are stateless (`hyd_<claims>.<hmac>`), expire after 30 days, and rotating
+`HYDRA_KEY_SECRET` revokes all of them.
+
+**Trust and spend.** Anyone can write `hydra.*` records to Arkiv with their own wallet, so reads
+keep only records created by our publisher wallet. An app name belongs to the first address that
+publishes it (an `hydra.app` record); other addresses get 403 for both keys and publishes, and
+their records are dropped from reads. Client `domains` are ignored until domain ownership can be
+proven. Every publish spends our gas and postage, so `HYDRA_ALLOWED_ADDRESSES` (optional
+allowlist) and `HYDRA_PUBLISHES_PER_HOUR` (default 30 per address) bound it. Two first publishes
+racing for one name can both claim it; the earliest `created_at` wins on read.
 A release: the server hashes every file itself, uploads the build plus `hydra-manifest.json` to
 Swarm when `BEE_API_URL` and `SWARM_POSTAGE_BATCH_ID` are set (else `swarm_ref` is `pending`),
 writes 1 `hydra.release` record, then `hydra.file` records for up to 200 code files in batches
