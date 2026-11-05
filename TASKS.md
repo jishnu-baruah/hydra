@@ -135,7 +135,7 @@ Tasks in one wave touch disjoint files, so three people or three agents can hold
 
 | Wave | When | Parallel-safe set |
 |---|---|---|
-| P0 | Day 0, 5 Nov night | T-A00 **first, alone**; then T-F01, T-F02, T-A01, T-B01, T-C01, T-F03, T-D01, T-D02, T-D03, T-D07 |
+| P0 | Day 0, 5 Nov night | T-A00 **first, alone**; then T-A08, T-F01, T-F02, T-A01, T-B01, T-C01, T-F03, T-D01, T-D02, T-D03, T-D07 |
 | P1 | 6 Nov morning | T-A02, T-A03, T-B02, T-B03, T-D04, T-D05 |
 | P2 | 6 Nov afternoon and night | T-A04, T-A05, T-A06, T-A07, T-B04, T-B05, T-C02, T-C03, T-D06 |
 | P3 | 7 Nov morning | T-J01, T-J02, T-J03, T-C04, T-B06 |
@@ -180,6 +180,16 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: https://github.com/jishnu-baruah/hydra/pull/1 (merged as cef6743; hygiene, checks and secrets green)
 - Finding: GitHub showed the PR on a stale head for over 2 minutes after a push and refused the merge as out of date; closing and reopening the PR resynced it at once.
 
+### T-A08, Core write safety and key hygiene
+- Status: claimed 2026-11-05 | Owner: Jishnu | Branch: feature/t-a08-write-safety
+- Suggested: Jishnu
+- Depends-on: T-A01
+- Touches: packages/core/, docs/ARCHITECTURE.md
+- Serves: Technicality (judged) ; Arkiv track
+- Known: Arkiv guides/known-issues and guides/quickstart (SDK 1.0.1): no automatic write resend; explicit latest nonce and gasPrice; gas >= max(1,000,000, 2 x estimate) and <= half the block gas limit; receipt.status must be success; keyed RPC URLs are secrets; eth_getLogs only reaches about 1,000 blocks back
+- Acceptance: writes go through 1 guarded path that sends at most 1 transaction per call with the gas rule applied; reads retry up to 3 times; 0 errors contain an RPC URL; all tests pass offline
+- Evidence: <PR link>
+
 ### T-F01, Arkiv on Rabdi: write, query, timings
 - Status: open
 - Suggested: Jishnu
@@ -214,7 +224,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: Uniswap serves 0 of 816 scripts from its own origin (780 from cdn.app.uniswap.org), so a same-origin-only fallback checks nothing; every script that changed between 2 fetches (3 in run 1, 2 in run 2) was a Cloudflare /cdn-cgi/challenge-platform/ bot check, which T-C02 must allow or Cloudflare sites go red.
 
 ### T-A01, packages/core: records, hashing, Arkiv client
-- Status: claimed 2026-11-05 | Owner: Jishnu | Branch: feature/t-a01-core
+- Status: in-review | Branch: feature/t-a01-core
 - Suggested: Jishnu
 - Depends-on: T-A00
 - Touches: packages/core/
