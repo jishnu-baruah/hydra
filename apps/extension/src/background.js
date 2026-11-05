@@ -64,7 +64,10 @@ function schedule(tabId) {
   timers.set(tabId, setTimeout(() => check(tabId), SETTLE_MS));
 }
 
-async function sha256Hex(url) {
+// One retry before a script counts as unreadable, so a CDN hiccup is not a red badge.
+const sha256Hex = (url) => sha256Once(url).catch(() => sha256Once(url));
+
+async function sha256Once(url) {
   // Script bytes are data: hashed, never evaluated. no-store, so we hash what the host serves now.
   const res = await fetch(url, { cache: "no-store", credentials: "omit" });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -109,8 +112,10 @@ async function check(tabId) {
       if (!found) {
         result = { verdict: "grey", app, reason: `No release of ${app} on record.` };
       } else {
-        if (!known) await chrome.storage.local.set({ [`app:${origin}`]: app });
         result = { ...compare(found.manifest, origin, scripts), app, version: found.release.version };
+        // Remember the site's app only after a full match, so a stray hash match on a shared
+        // file cannot bind a site to the wrong app for good.
+        if (!known && result.verdict === "green") await chrome.storage.local.set({ [`app:${origin}`]: app });
       }
     }
   } catch (e) {
