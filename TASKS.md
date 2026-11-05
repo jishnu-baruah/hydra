@@ -312,10 +312,10 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <curl transcript, tx hash>
 
 ### T-B02, Explorer app page with release history
-- Status: open
+- Status: claimed 2026-11-05 | Owner: Mouli | Branch: feature/t-b02-app-page
 - Suggested: Mouli
 - Depends-on: T-B01, T-A02
-- Touches: apps/explorer/app/
+- Touches: apps/explorer/app/, apps/explorer/src/arkiv.js, apps/explorer/search/page.js
 - Serves: Usability (judged)
 - Acceptance: an app page lists all releases newest first with version, commit, time, file count and a working Swarm link, for 1 real published app
 - Evidence: <deployed URL>
@@ -420,7 +420,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Status: open
 - Suggested: Mouli
 - Depends-on: T-C01, T-F03, T-A02
-- Touches: apps/extension/src/compare/
+- Touches: apps/extension/src/compare/, apps/extension/src/background.js, apps/extension/src/verdict.js, apps/extension/manifest.json
 - Serves: Technicality (judged) ; Usability (judged)
 - Known: spike T4 compare algorithm and T12 Next.js rules; the extension is the best vantage point against cloaking (T8). See docs/prior-learnings.md
 - Acceptance: on the demo site, green with 0 mismatches; after changing 1 line of the JS on the host, red naming that 1 file, within 1 reload
