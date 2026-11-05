@@ -27,7 +27,7 @@ That split is also the exact shape the Arkiv + Swarm bonus wants to see (`docs/p
 
 **Belt-and-braces:** when the manifest JSON is ≤ 100 KB, `apps/api/src/publish.ts:123` *also* puts the full manifest into the Arkiv `release.body` payload. Over that size, only `{ manifest_on_swarm: true }` is written to Arkiv and the manifest only lives on Swarm. Either way, the pointer `swarm_ref` is authoritative.
 
-**Fallback:** if `BEE_API_URL` or `SWARM_POSTAGE_BATCH_ID` is missing (`apps/api/src/main.ts:24`), the API still publishes with `swarm_ref = "pending"`. Explorer and extension must tolerate `pending` as a read-only mode.
+**Fallback:** if `BEE_API_URL` is missing (`apps/api/src/main.ts:23`), the API still publishes with `swarm_ref = "pending"`. Explorer and extension must tolerate `pending` as a read-only mode.
 
 ## 3. The manifest
 
@@ -86,9 +86,8 @@ Walk up, ask for either a hosted Bee URL for the event or a testnet batch id. Ta
 - Read: `GET /bzz/<ref>/<path>` serves JSON, JS, CSS and plain text byte-identical. HTML is **blocked** with a 302 to `https://bzz.link/forbidden?hash=<ref>` (anti-phishing). `Accept: text/plain` and `Accept: application/octet-stream` do not bypass it. `<ref>.bzz.link` subdomain does not resolve.
 - **Batch-id header is ignored by the gateway.** Verified 2026-11-05: `Swarm-Postage-Batch-Id:` (empty) and 64-zero dummy both return HTTP 201 with a valid reference. The gateway envelope-stamps regardless. So we don't need a real batch id to run Path B against the current API code.
 - **Impact on Hydra:** none on the critical path. The extension fetches the manifest JSON from Swarm (works) and verifies scripts by hash against the dApp's own origin. Swarm is never asked to render HTML. The explorer can link to any non-HTML asset by Swarm URL; a "render the site on Swarm" link would need a different gateway and is not a demo requirement.
-- **How to run it today, zero code change:** set `BEE_API_URL=https://api.gateway.ethswarm.org`, `SWARM_GATEWAY_URL=https://api.gateway.ethswarm.org`, and `SWARM_POSTAGE_BATCH_ID=` **to any non-empty string** (e.g., 64 zeros) so the `main.ts:24` guard passes. The gateway ignores the value. Lazy, working.
-- **Cleaner fix for Jishnu (one line):** change `env.BEE_API_URL && env.SWARM_POSTAGE_BATCH_ID` in `apps/api/src/main.ts:24` to `env.BEE_API_URL`, and make the `Swarm-Postage-Batch-Id` header conditional in `apps/api/src/swarm.ts:11`. Keeps Path C compatible.
-- OP-2's acceptance says "batch id is in `.env` and one upload succeeds" — Path B satisfies the second half, not the first. Propose amending OP-2 to "an upload succeeds and reads back byte-identical through a gateway URL."
+- **How to run it:** set `BEE_API_URL=https://api.gateway.ethswarm.org` and `SWARM_GATEWAY_URL=https://api.gateway.ethswarm.org`, and leave `SWARM_POSTAGE_BATCH_ID` empty. The API then sends no batch header (`apps/api/src/swarm.ts`); with a batch id set it sends one, so Path C still works.
+- OP-2 is amended to "an upload succeeds and reads back byte-identical through a gateway URL" and marked decided (DECISIONS.md, 2026-11-06).
 
 ### Path C — Run a Bee light node on Sepolia
 - Half a day of setup: Sepolia ETH faucet → sBZZ on Uniswap → Bee 2.x Docker → `POST /stamps/<amount>/<depth>` → batch id.
