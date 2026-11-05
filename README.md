@@ -2,7 +2,7 @@
 
 Hydra keeps a public, tamper-evident record of every dApp frontend build on **Arkiv**, with the build itself stored on **Swarm**, so anyone can check whether the site they are using is a build the team actually released.
 
-Built at ETHGlobal Mumbai (5–7 Nov 2026). Scope for the event: **Arkiv + Swarm only.**
+Built at ETHGlobal Mumbai (5 to 7 Nov 2026). Scope for the event: **Arkiv + Swarm only.**
 
 ## Two flows
 
@@ -28,7 +28,11 @@ A team adds the Hydra GitHub Action to their deploy workflow with one secret, `H
 | `apps/extension` | Chrome MV3 extension | Mouli |
 | `docs/` | Architecture, tasks, research, submission | Manish |
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the record formats and [docs/TASKS.md](docs/TASKS.md) for who does what.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the record formats.
+
+## How we work
+
+Read [TASKS.md](TASKS.md) sections 1 to 3 before writing code. In short: claim a task with a one-line `claim/t-<id>` PR, do the work in a `feature/t-<id>-<slug>` PR, and fill in the PR template. CI (`board` and `gates`) enforces the rules. Human-only blockers go in [OPERATOR_TODO.md](OPERATOR_TODO.md), decisions in [DECISIONS.md](DECISIONS.md). Claude sessions pick up [CLAUDE.md](CLAUDE.md) automatically.
 
 ## Rules
 

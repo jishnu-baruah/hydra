@@ -1,0 +1,428 @@
+# TASKS.md, the Hydra board
+
+The board and the lock. Nothing else is the board: not an issue tracker, not a chat message.
+
+**If you are an agent or a person about to write code, read sections 1 to 3 first. They are the
+whole protocol. Then claim exactly one task and work only on that task.**
+
+Scope and record formats: `docs/ARCHITECTURE.md`. Decisions taken since: `DECISIONS.md`, which
+wins where the two disagree, because it is dated. Human-only blockers: `OPERATOR_TODO.md`.
+
+Event: ETHGlobal Mumbai. Day 0 is 2026-11-05 (evening), day 1 is 2026-11-06, submission is the
+morning of 2026-11-07 (check the exact deadline on the ETHGlobal dashboard and write it here).
+
+**Goal by submission:** a judge watches one live run of both flows. (1) A demo team's GitHub
+Action publishes a release that lands on Swarm and Arkiv and shows in the explorer. (2) We change
+one file on the live demo site; the extension turns red and the explorer shows the mismatch.
+
+---
+
+## 1. The lock: claim before you write code
+
+One task, one owner, one branch, one PR. The race is settled by git, not by asking.
+
+`main` takes pull requests only. A claim is a tiny PR carrying one line, and that is what keeps
+the race resolvable: the second claim PR on the same task conflicts on that exact line and cannot
+merge.
+
+```bash
+git checkout main && git pull --ff-only origin main
+git checkout -b claim/t-a02
+# edit ONLY the `- Status:` line of the task you want, nothing else in the file
+git commit -am "claim T-A02" && git push -u origin claim/t-a02
+gh pr create --fill --base main && gh pr merge --auto --squash --delete-branch
+```
+
+If the merge is refused for a conflict, or the board lint says the task is already claimed,
+**someone beat you to it. Pick another task. Never work on a task claimed by someone else.**
+
+Then branch off the updated `main` and do the work:
+
+```bash
+git checkout main && git pull --ff-only origin main
+git checkout -b feature/t-a02-publish-api
+```
+
+Rules the `board` CI job enforces:
+
+- A claim PR is branch `claim/t-<id>` and may change **only** `- Status:` lines in `TASKS.md` and
+  `OPERATOR_TODO.md`. Anything else in that diff fails.
+- A work PR is branch `feature/t-<id>-<slug>` and must match the `Branch:` in the row you claimed.
+- Adding, cutting or rewording a task goes in a `board/<slug>` PR that touches only `TASKS.md`,
+  `OPERATOR_TODO.md` and `DECISIONS.md`.
+- Two owners on one task fails the lint. `Status: done` without a real `Evidence:` fails the lint.
+- `secrets`, `checks` and `hygiene` must be green before merging.
+
+Status values: `open` | `claimed <date> | Owner: <name> | Branch: <branch>` |
+`blocked, see OP-N` | `in-review <PR link>` | `done` | `cut <date>: <reason>`.
+
+Hackathon speed rule: a claim PR needs no reviewer. Merge it the moment CI is green.
+
+## 2. Every task ships as a pull request
+
+No exceptions: one-line changes and docs included.
+
+1. Branch from `main` after claiming.
+2. Commit small. Hashing and compare logic gets its failing test first
+   (`superpowers:test-driven-development`). Other code: one meaningful check per change.
+3. Run `/code-review` at medium. Add `/security-review` when the diff touches `apps/api`, a key,
+   or anything that signs or sends a transaction.
+4. Run `superpowers:verification-before-completion` before you call it done.
+5. Open the PR into `main`. Fill in every line of the template. Squash-merge.
+6. Write the finding you measured into your task row, with its number ("a create took 4.1 s",
+   "21 of 20 targets load a vendor script").
+
+A second human reviews only what CI cannot see: anything in `apps/api` that holds a key or signs,
+and changes to the record contract (`docs/ARCHITECTURE.md`, `packages/core/src/records.ts`), which
+need the owners of the API, explorer and extension to agree. CI reviews the rest.
+
+## 3. Rules for agent sessions
+
+- Ponytail is on at level `full` through the `UserPromptSubmit` hook in `.claude/settings.json`.
+  It restates itself every turn. Follow it.
+- One agent session per claimed task, in its own worktree (`superpowers:using-git-worktrees`).
+  Parallel agents never share a checkout.
+- CI red or a spike fails: `superpowers:systematic-debugging` before you change any code.
+- Hit something only a human can do (faucet sign-in, postage batch, a domain, a sponsor question)?
+  Write an `OP-N` entry in `OPERATOR_TODO.md`, set your task to `blocked, see OP-N`, and move to
+  another task. **Never fake a transaction hash, a Swarm reference or a measurement.**
+- Search through the `Explore` subagent. Never paste whole files, logs or JSON into the
+  conversation. One agent per task; multi-agent workflows only when a human asks for one.
+- Work is credited to the person who ran the agent. No AI co-author lines in commits.
+- You may edit only the files in your task's `Touches:` line. Need a file another task owns? Say
+  so in the PR and let that owner change it.
+
+Default tool per step:
+
+| Step | Tool |
+|---|---|
+| Scope every change | Ponytail, level `full`, always on |
+| Set up the workspace | `superpowers:using-git-worktrees` |
+| Find code | `Explore` subagent |
+| Library docs (Arkiv SDK, Bee, Chrome MV3) | Context7, then the vendor docs |
+| Hashing, manifest and compare code | `superpowers:test-driven-development` |
+| CI red or a spike fails | `superpowers:systematic-debugging` |
+| Before opening a PR | `/code-review` at medium, plus `/security-review` on `apps/api` and keys |
+| Claiming a task done | `superpowers:verification-before-completion` |
+| Research, copy, submission text (Manish) | Claude with web search; cite every source in the doc |
+
+## 4. Task row format
+
+```
+### T-X01, Example task
+- Status: open
+- Suggested: <name>
+- Depends-on: T-F01
+- Touches: apps/example/
+- Serves: Technicality (judged) ; Arkiv track
+- Acceptance: 3 of 3 sample records read back with matching payloads in under 2 s each
+- Evidence: <link to the PR, a tx hash, a Swarm reference, a recording>
+- Kill criterion: still failing after 2 hours, so fall back to <plan B>
+```
+
+`Serves:` must name an ETHGlobal judged criterion (Technicality, Originality, Practicality,
+Usability, WOW factor) or a prize (Arkiv track, Swarm bonus), or a measured metric. `Acceptance:`
+must contain a number. Both are linted. `Suggested:` is who the plan expects to take it; anyone
+may claim any open task.
+
+ID ranges: `T-A` API, chain and CI (Jishnu). `T-B` explorer, `T-C` extension (Mouli). `T-D`
+research, demo and docs (Manish). `T-F` feasibility spikes, each with a `Kill criterion:`. `T-J`
+submission deliverables. `OP-N` operator items.
+
+## 5. Priority, and what can run at the same time
+
+Tasks in one wave touch disjoint files, so three people or three agents can hold one each.
+
+| Wave | When | Parallel-safe set |
+|---|---|---|
+| P0 | Day 0, 5 Nov night | T-A00 **first, alone**; then T-F01, T-F02, T-A01, T-B01, T-C01, T-F03, T-D01, T-D02, T-D03 |
+| P1 | 6 Nov morning | T-A02, T-A03, T-B02, T-B03, T-D04, T-D05 |
+| P2 | 6 Nov afternoon and night | T-A04, T-A05, T-A06, T-A07, T-B04, T-B05, T-C02, T-C03, T-D06 |
+| P3 | 7 Nov morning | T-J01, T-J02, T-J03, T-C04, T-B06 |
+
+Exit checks. **P1:** a manual `curl` to the API creates a release whose manifest is on Swarm and
+whose records are on Arkiv, and the explorer shows it. **P2:** the GitHub Action runs on the demo
+repo, and the extension goes red when we change a file on the live site.
+
+---
+
+# P0, day 0. Nothing branches until T-A00 lands.
+
+### T-A00, Workspace, CI and the board
+- Status: in-review (this PR)
+- Suggested: Jishnu
+- Depends-on: none
+- Touches: CLAUDE.md, TASKS.md, OPERATOR_TODO.md, DECISIONS.md, .github/, scripts/board.mjs, .claude/
+- Serves: unblocks every task ; Practicality (judged)
+- Acceptance: board lint passes on 30 rows; a claim PR that edits a non-Status line fails CI in 1 run
+- Evidence: <PR link>
+
+### T-F01, Arkiv limits spike
+- Status: open
+- Suggested: Jishnu
+- Depends-on: OP-1
+- Touches: spikes/F1/
+- Serves: Technicality (judged) ; Arkiv track
+- Acceptance: 1 `release` and 20 `file` records written with ARCHITECTURE.md attributes; all 21 queried back by project+type; max allowed expiry and median create time written in result.json
+- Evidence: <spikes/F1/result.json at a commit, tx hashes>
+- Kill criterion: 20 file records take over 2 minutes, so index external scripts only and drop per-file records
+
+### T-F02, Swarm upload and read spike
+- Status: open
+- Suggested: Jishnu
+- Depends-on: OP-2
+- Touches: spikes/F2/, docs/swarm.md
+- Serves: Technicality (judged) ; Swarm bonus
+- Acceptance: a 5-file folder uploaded to the Swarm testnet and all 5 files read back byte-identical through a gateway URL; steps written in docs/swarm.md
+- Evidence: <Swarm reference and gateway URL>
+- Kill criterion: no working upload after 3 hours, so keep the manifest in the Arkiv payload and mark the Swarm bonus at risk in DECISIONS.md
+
+### T-F03, Extension can hash the scripts a page loads
+- Status: open
+- Suggested: Mouli
+- Depends-on: none
+- Touches: spikes/F3/
+- Serves: Technicality (judged) ; Usability (judged)
+- Acceptance: on 5 real dApp pages, the extension background worker lists every script URL and hashes it; 5 of 5 pages succeed, CORS failures counted
+- Evidence: <spikes/F3/result.json>
+- Kill criterion: over 2 of 5 pages fail for CORS, so hash only same-origin scripts and say so in the UI
+
+### T-A01, packages/core: records, hashing, Arkiv client
+- Status: open
+- Suggested: Jishnu
+- Depends-on: T-A00
+- Touches: packages/core/
+- Serves: Technicality (judged)
+- Acceptance: sha256 helper matches `sha256sum` on 3 fixture files; Arkiv wrapper retries 3 times; 1 test per record type encodes lowercase attributes and u64 times
+- Evidence: <PR link>
+
+### T-B01, Explorer scaffold that reads Arkiv in the browser
+- Status: open
+- Suggested: Mouli
+- Depends-on: T-A00
+- Touches: apps/explorer/
+- Serves: Usability (judged) ; Arkiv track
+- Acceptance: the explorer page renders 1 record read live from Arkiv testnet in the browser with no backend, in under 3 s
+- Evidence: <PR link, screenshot>
+
+### T-C01, Extension scaffold with a 3-state badge
+- Status: open
+- Suggested: Mouli
+- Depends-on: T-A00
+- Touches: apps/extension/
+- Serves: Usability (judged)
+- Acceptance: loads unpacked in Chrome; the badge shows all 3 states (green, red, grey) driven by a hard-coded verdict
+- Evidence: <PR link, screenshot>
+
+### T-D01, Research: what data is already on Arkiv
+- Status: open
+- Suggested: Manish
+- Depends-on: none
+- Touches: docs/research-arkiv-data.md
+- Serves: Originality (judged) ; Arkiv track
+- Acceptance: at least 3 existing Arkiv datasets or apps described (including sourcify.arkiv.network), each with a working query example and 1 idea for using it in the explorer or extension
+- Evidence: <doc link>
+
+### T-D02, Prize rules for Arkiv and the Arkiv + Swarm bonus
+- Status: open
+- Suggested: Manish
+- Depends-on: none
+- Touches: docs/prizes.md
+- Serves: Arkiv track ; Swarm bonus
+- Acceptance: the exact qualification text for 2 prizes copied with links, and a checklist of every item we must show
+- Evidence: <doc link>
+
+### T-D03, Indexer target list
+- Status: open
+- Suggested: Manish
+- Depends-on: none
+- Touches: packages/indexer/targets.json
+- Serves: Practicality (judged) ; WOW factor (judged)
+- Acceptance: 15 to 20 live dApp frontends with name, domain and category, each opened in a browser to confirm it loads
+- Evidence: <PR link>
+
+# P1, 6 Nov morning
+
+### T-A02, Publish API: POST /v1/releases
+- Status: open
+- Suggested: Jishnu
+- Depends-on: T-A01, T-F01, T-F02
+- Touches: apps/api/
+- Serves: Technicality (judged) ; Arkiv track ; Swarm bonus
+- Acceptance: one call with a valid key uploads the build to Swarm and writes 1 release plus N file records; a bad key gets 401 with 0 writes; returns entity keys and swarm_ref
+- Evidence: <curl transcript, tx hashes, Swarm reference>
+
+### T-A03, Register apps and domains: POST /v1/apps
+- Status: open
+- Suggested: Jishnu
+- Depends-on: T-A02
+- Touches: apps/api/src/apps.ts
+- Serves: Practicality (judged)
+- Acceptance: registering checks /.well-known/hydra.txt on 1 real domain and writes 1 app record; a domain without the file is refused with the reason
+- Evidence: <curl transcript, tx hash>
+
+### T-B02, Explorer app page with release history
+- Status: open
+- Suggested: Mouli
+- Depends-on: T-B01, T-A02
+- Touches: apps/explorer/app/
+- Serves: Usability (judged)
+- Acceptance: an app page lists all releases newest first with version, commit, time, file count and a working Swarm link, for 1 real published app
+- Evidence: <deployed URL>
+
+### T-B03, Explorer search
+- Status: open
+- Suggested: Mouli
+- Depends-on: T-B01
+- Touches: apps/explorer/search/
+- Serves: Usability (judged) ; Originality (judged)
+- Acceptance: search finds the right app from 4 kinds of input: domain, app name, file sha256 and Swarm reference
+- Evidence: <deployed URL, recording>
+
+### T-D04, Demo dApp on a domain we control
+- Status: open
+- Suggested: Manish
+- Depends-on: OP-3
+- Touches: demo/
+- Serves: WOW factor (judged)
+- Acceptance: a 1-page static site with 1 JS file and 1 vendor script, live on Vercel at our domain, deployed from its own repo
+- Evidence: <live URL>
+
+### T-D05, Demo script, timed
+- Status: open
+- Suggested: Manish
+- Depends-on: none
+- Touches: docs/demo.md
+- Serves: WOW factor (judged)
+- Acceptance: a 3-minute script covering both flows and the indexer, run once against a timer, with the real time written down
+- Evidence: <doc link>
+
+# P2, 6 Nov afternoon and night
+
+### T-A04, Deploy the API with HTTPS
+- Status: open
+- Suggested: Jishnu
+- Depends-on: T-A02
+- Touches: apps/api/deploy/
+- Serves: Practicality (judged)
+- Acceptance: the public URL answers 3 of 3 health checks; the wallet key is in host secrets only, confirmed by 0 matches in the repo
+- Evidence: <URL>
+
+### T-A05, GitHub Action
+- Status: open
+- Suggested: Jishnu
+- Depends-on: T-A04
+- Touches: packages/action/
+- Serves: Practicality (judged) ; Usability (judged)
+- Acceptance: on the demo repo, 1 push to main hashes the build and its external scripts, calls the API and prints the explorer link, in under 2 minutes
+- Evidence: <Actions run link>
+
+### T-A06, Indexer on a timer
+- Status: open
+- Suggested: Jishnu
+- Depends-on: T-A01, T-D03
+- Touches: packages/indexer/
+- Serves: WOW factor (judged) ; Arkiv track
+- Acceptance: runs every 15 minutes over all targets and writes 1 observation per target per run; a changed script flips status to mismatch within 1 run
+- Evidence: <tx hashes, explorer link>
+
+### T-A07, End-to-end test against testnet
+- Status: open
+- Suggested: Jishnu
+- Depends-on: T-A05
+- Touches: scripts/e2e.mjs
+- Serves: Technicality (judged)
+- Acceptance: one command publishes a release, reads it back from Arkiv and Swarm and checks 1 bad key is refused; passes 3 runs in a row
+- Evidence: <CI or local run log>
+
+### T-B04, Explorer events timeline
+- Status: open
+- Suggested: Mouli
+- Depends-on: T-B02, T-A06
+- Touches: apps/explorer/events/
+- Serves: WOW factor (judged) ; Usability (judged)
+- Acceptance: one timeline mixes releases and observations newest first, and a planted script change appears within 1 indexer run
+- Evidence: <recording>
+
+### T-B05, Pages for sites that have not onboarded
+- Status: open
+- Suggested: Mouli
+- Depends-on: T-B04
+- Touches: apps/explorer/observed/
+- Serves: Practicality (judged) ; Originality (judged)
+- Acceptance: all 15 or more indexed targets have a page labelled "observed, not published by the team" with their observation history
+- Evidence: <deployed URL>
+
+### T-C02, Extension compare logic
+- Status: open
+- Suggested: Mouli
+- Depends-on: T-C01, T-F03, T-A02
+- Touches: apps/extension/src/compare/
+- Serves: Technicality (judged) ; Usability (judged)
+- Acceptance: on the demo site, green with 0 mismatches; after changing 1 line of the JS on the host, red naming that 1 file, within 1 reload
+- Evidence: <recording>
+
+### T-C03, Warning banner and popup detail
+- Status: open
+- Suggested: Mouli
+- Depends-on: T-C02
+- Touches: apps/extension/src/ui/
+- Serves: Usability (judged) ; WOW factor (judged)
+- Acceptance: a red banner lists every mismatched script (up to 10) and links to the app's explorer page; a grey state says "no release on record" for 1 unknown site
+- Evidence: <screenshots>
+
+### T-D06, Get-started page and per-app READMEs
+- Status: open
+- Suggested: Manish
+- Depends-on: T-A05
+- Touches: docs/get-started.md, apps/*/README.md, packages/*/README.md
+- Serves: Usability (judged) ; Practicality (judged)
+- Acceptance: a new team can publish from the doc alone in 3 steps; tested once by someone who did not write the action
+- Evidence: <doc link, name of the tester>
+
+# P3, 7 Nov morning
+
+### T-C04, Package the extension
+- Status: open
+- Suggested: Mouli
+- Depends-on: T-C03
+- Touches: apps/extension/
+- Serves: Usability (judged)
+- Acceptance: a zip plus load-unpacked steps that work on 1 clean Chrome profile in under 2 minutes
+- Evidence: <zip link>
+
+### T-B06, Deploy the explorer
+- Status: open
+- Suggested: Mouli
+- Depends-on: T-B05
+- Touches: apps/explorer/deploy/
+- Serves: Usability (judged)
+- Acceptance: the public URL loads the home page and 1 app page in under 3 s each
+- Evidence: <URL>
+
+### T-J01, Public action repo for the Marketplace
+- Status: open
+- Suggested: Jishnu
+- Depends-on: T-A05
+- Touches: packages/action/
+- Serves: Practicality (judged)
+- Acceptance: a public repo with action.yml at its root, used by the demo repo in 1 green run
+- Evidence: <repo link, run link>
+
+### T-J02, Backup demo video
+- Status: open
+- Suggested: Manish
+- Depends-on: T-C02, T-A05
+- Touches: docs/submission/
+- Serves: WOW factor (judged)
+- Acceptance: a recording of the full demo under 4 minutes, covering both flows
+- Evidence: <video link>
+
+### T-J03, Submission text and Arkiv feedback
+- Status: open
+- Suggested: Manish
+- Depends-on: T-D02
+- Touches: docs/submission/, docs/FEEDBACK.md
+- Serves: Arkiv track ; Swarm bonus
+- Acceptance: every submission field filled; 1 section each for Arkiv and Swarm with at least 2 tx hashes and 1 Swarm reference; FEEDBACK.md lists at least 3 builder issues
+- Evidence: <submission link>

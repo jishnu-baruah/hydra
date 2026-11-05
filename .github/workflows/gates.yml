@@ -1,0 +1,77 @@
+name: gates
+
+# Every push. No keys, no paid API. Fails fast and short.
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: gates-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    # First, because a leaked key is the one failure you cannot undo by pushing a fix.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Secret scan
+        env:
+          GITLEAKS_VERSION: 8.24.3
+        run: |
+          set -euo pipefail
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C /tmp gitleaks
+          /tmp/gitleaks dir . --redact --no-banner --exit-code 1
+
+      - name: No .env or key file is committed
+        run: |
+          set -euo pipefail
+          if git ls-files | grep -Ei '(^|/)\.env$|\.env\.(local|production)$|\.pem$|\.key$|keystore.*\.json$'; then
+            echo "::error::A .env or key file is committed. Keys live in .env or host secrets, never in the repo."
+            exit 1
+          fi
+
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Is the workspace installed yet?
+        id: ws
+        run: |
+          if [ -f pnpm-lock.yaml ]; then echo "ready=true" >> "$GITHUB_OUTPUT"; else echo "ready=false" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: pnpm/action-setup@v4
+        if: steps.ws.outputs.ready == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.ws.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        if: steps.ws.outputs.ready == 'true'
+        run: pnpm install --frozen-lockfile
+
+      # Separate steps, so a red run names the one thing that broke.
+      - name: Lint
+        if: steps.ws.outputs.ready == 'true'
+        run: pnpm -r --if-present lint
+
+      - name: Test
+        if: steps.ws.outputs.ready == 'true'
+        # Offline: tests must not need a key or the network. Live testnet runs are scripts/e2e.mjs.
+        run: pnpm -r --if-present test
+
+      - name: Build
+        if: steps.ws.outputs.ready == 'true'
+        run: pnpm -r --if-present build

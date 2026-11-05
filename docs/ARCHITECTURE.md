@@ -23,7 +23,7 @@ The API is the only thing that holds keys: the Arkiv wallet and the Swarm postag
 - **Attribute names must be lowercase** (`checked_at`, not `checkedAt`). Uppercase reverts on chain, and the SDK doesn't warn you.
 - **Numbers default to i32.** Timestamps must be `u64(BigInt(ms))`.
 - Expiry uses `expires: ExpirationTime.fromSeconds(n)`. Expired entities drop out of queries.
-- A create took about 3–7 s on testnet. Batch where we can.
+- A create took about 3 to 7 s on testnet. Batch where we can.
 
 ## Records
 
