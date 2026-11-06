@@ -484,12 +484,12 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Kill criterion: not merged by 6 Nov 16:00 IST, so bind domains in targets.json by hand for the demo and say so
 
 ### T-A20, Coverage: DefiLlama discovery, write on change, background run
-- Status: open
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a20-coverage
 - Suggested: Jishnu
 - Depends-on: T-A19
-- Touches: packages/indexer/, apps/api/src/server.ts, apps/api/src/main.ts, .github/workflows/indexer.yml
+- Touches: packages/indexer/, packages/core/src/arkiv.ts, packages/core/src/index.ts, packages/core/test/, apps/api/, apps/site/indexed/, docs/ARCHITECTURE.md, .github/workflows/indexer.yml
 - Serves: WOW factor (judged) ; Practicality (judged)
-- Known: DefiLlama lists 5,253 protocols with a URL, 227 above $100M TVL (measured 6 Nov). 2 of the last 100 site runs changed, and 20 sites take 80 s, so 227 sites every run would mean about 1,100 Arkiv tx and 10,900 Jina reads a day
+- Known: Render free sleeps between 30-minute runs, so "previous observation" must be read from Arkiv, not memory; Arkiv queries return at most 100 rows per page (SDK MAX_LIMIT), so reads page with offset. DefiLlama lists 5,253 protocols with a URL, 227 above $100M TVL (measured 6 Nov). 2 of the last 100 site runs changed, and 20 sites take 80 s, so 227 sites every run would mean about 1,100 Arkiv tx and 10,900 Jina reads a day
 - Scope: daily list of the top 227 by TVL from api.llama.fi (cached; an outage keeps yesterday's list) plus targets.json; write an observation only when status, scripts or problems change, plus 1 heartbeat a day; Jina only for changed sites and once a day; POST /v1/indexer/run returns 202 and scans in the background
 - Acceptance: a run covers at least 200 sites inside 30 minutes and writes under 10 tx when nothing changed
 - Evidence: <Actions run, tx hashes>
