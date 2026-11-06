@@ -7,12 +7,14 @@ export const LIST_URL = "https://raw.githubusercontent.com/MetaMask/eth-phishing
 export const SOURCE = "MetaMask's phishing list";
 const MAX_BYTES = 10 * 1024 * 1024;
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const TRUST_MS = 14 * MAX_AGE_MS; // a copy that could not be refreshed for this long is no longer used
+const HOSTNAME = /^[a-z0-9.-]+$/;
 const MIN_ENTRIES = 1000; // a real list has about 100,000; a tiny answer is an error page, not a list
 const KEY = "blocklist";
 
 // { black, white } as lower-case strings, or null when the answer is not a plausible list.
 export function parseList(json, { min = MIN_ENTRIES } = {}) {
-  const strings = (a) => (Array.isArray(a) ? a.filter((x) => typeof x === "string" && x).map((x) => x.toLowerCase()) : []);
+  const strings = (a) => (Array.isArray(a) ? a.filter((x) => typeof x === "string").map((x) => x.toLowerCase()).filter((x) => HOSTNAME.test(x)) : []);
   if (!json || typeof json !== "object" || !Array.isArray(json.blacklist)) return null;
   const black = strings(json.blacklist);
   return black.length >= min ? { black, white: strings(json.whitelist) } : null;
@@ -51,7 +53,7 @@ async function load({ fetch: f = fetch, storage, now = Date.now, min }) {
       // Offline, rate limited or junk: keep whatever copy we have.
     }
   }
-  if (!stored) return null;
+  if (!stored || now() - stored.at > TRUST_MS) return null;
   if (memo?.at !== stored.at) memo = { at: stored.at, sets: { black: new Set(stored.black), white: new Set(stored.white) } };
   return memo.sets;
 }

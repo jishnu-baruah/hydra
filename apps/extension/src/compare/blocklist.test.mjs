@@ -59,6 +59,22 @@ test("a copy older than a day is refreshed, and a failed refresh keeps the old c
   assert.equal(calls.n, 2);
 });
 
+test("a copy that could not be refreshed for over 14 days is no longer trusted", async () => {
+  const storage = store();
+  let now = 1000;
+  await listedHost("x.example", { fetch: feed(BODY, { n: 0 }), storage, now: () => now, min: 1 });
+  const down = async () => new Response("no", { status: 503 });
+  now += 13 * DAY;
+  assert.equal(await listedHost("evil.example", { fetch: down, storage, now: () => now, min: 1 }), "evil.example"); // 13 days: still used
+  now += 2 * DAY;
+  assert.equal(await listedHost("evil.example", { fetch: down, storage, now: () => now, min: 1 }), null); // 15 days: dropped
+});
+
+test("entries that are not hostnames are dropped, and a list of junk fails the floor", () => {
+  assert.deepEqual(parseList({ blacklist: ["ok.example", "has space.example", "path/x.example", "https://x.example", "UP.example"] }, { min: 1 }).black, ["ok.example", "up.example"]);
+  assert.equal(parseList({ blacklist: ["a b", "c/d", "e?f"] }, { min: 1 }), null);
+});
+
 test("no copy and no network gives null, never an error", async () => {
   const boom = async () => {
     throw new Error("offline");
