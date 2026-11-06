@@ -1,5 +1,6 @@
-# Runs one indexer pass on the API every 30 minutes. The call also wakes the free Render service,
-# so neither the API nor the observations go stale. The log lists each site and the Arkiv txs.
+# Starts one indexer pass on the API and waits for it to finish. The call also wakes the free Render
+# service. GitHub's schedule is best effort (it can skip runs), so the API can also run its own timer
+# (INDEXER_INTERVAL_MIN). The log lists each site and the Arkiv txs.
 # Needs repo secret INDEXER_TRIGGER_SECRET (same value as on Render).
 name: indexer
 
@@ -15,16 +16,36 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 35
     steps:
       - name: Wake the API
         run: curl -fsS --retry 6 --retry-all-errors --retry-delay 10 --max-time 90 https://hydra-api-5xmn.onrender.com/health
-      - name: Run one indexer pass
+      - name: Start a pass and wait for it
         env:
           SECRET: ${{ secrets.INDEXER_TRIGGER_SECRET }}
         run: |
-          code=$(curl -sS -o out.json -w '%{http_code}' --max-time 300 -X POST \
-            -H "Authorization: Bearer $SECRET" https://hydra-api-5xmn.onrender.com/v1/indexer/run)
-          node -e "const s=JSON.parse(require('fs').readFileSync('out.json','utf8'));for(const l of s.lines??[])console.log(l);for(const t of s.txs??[])console.log('tx https://rabdi.explorer.arkiv.network/tx/'+t);for(const e of s.errors??[])console.log('ERROR',e);console.log(s.error??(s.sites+' sites, '+s.written+' observations, '+s.ms+' ms'))"
-          # 429: a run happened in the last 5 minutes, which is fine
-          [ "$code" = 200 ] || [ "$code" = 429 ]
+          api=https://hydra-api-5xmn.onrender.com
+          code=$(curl -sS -o out.json -w '%{http_code}' --max-time 60 -X POST \
+            -H "Authorization: Bearer $SECRET" $api/v1/indexer/run)
+          case "$code" in
+            202) since=$(node -e "console.log(JSON.parse(require('fs').readFileSync('out.json','utf8')).startedAt)") ;;
+            409) echo "a run is already in progress, waiting for it"; since=0 ;;
+            429) echo "a run started in the last 5 minutes, showing its summary"; since=-1 ;;
+            *) echo "ERROR the trigger answered $code: $(cat out.json). Check INDEXER_TRIGGER_SECRET matches the API and rerun"; exit 1 ;;
+          esac
+          report() {
+            node -e "const j=JSON.parse(require('fs').readFileSync('st.json','utf8'));const s=j.last;if(!s){console.log('no run summary yet');process.exit(0)}for(const l of s.lines??[])console.log(l);for(const t of s.txs??[])console.log('tx https://rabdi.explorer.arkiv.network/tx/'+t);for(const e of s.errors??[])console.log('ERROR',e);console.log(s.sites+' sites, '+s.written+' observations, '+(s.txs??[]).length+' txs, '+(s.errors??[]).length+' errors, '+s.ms+' ms')"
+          }
+          if [ "$since" = -1 ]; then
+            curl -fsS --max-time 60 $api/v1/indexer/status -o st.json && report
+            exit 0
+          fi
+          # Poll every 30 s for up to 28 minutes.
+          for i in $(seq 1 56); do
+            sleep 30
+            curl -fsS --max-time 60 $api/v1/indexer/status -o st.json || { echo "status not reachable yet, retrying"; continue; }
+            done=$(node -e "const j=JSON.parse(require('fs').readFileSync('st.json','utf8'));console.log(!j.running&&j.finishedAt!=null&&j.finishedAt>=$since?'yes':'no')")
+            if [ "$done" = yes ]; then report; exit 0; fi
+          done
+          echo "ERROR the indexer run did not finish in 28 minutes. Check the API logs on Render and rerun"
+          exit 1

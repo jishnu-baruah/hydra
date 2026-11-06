@@ -2,13 +2,13 @@
 
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
-import { arkivClients, checkProof, guardedBatch, guardedCreate } from '@hydra/core'
+import { arkivClients, checkProof, guardedBatch, guardedCreate, recentObservations } from '@hydra/core'
 import type { Hex } from 'viem'
 import { runOnce } from '@hydra/indexer/run'
 import { privateKeyToAccount } from 'viem/accounts'
 import { sitesView, type TargetInfo } from './observations.ts'
-import { activity, claimOf, filesByHash, observations, releasesFor } from './reads.ts'
-import { createApi, type ApiDeps } from './server.ts'
+import { activity, claimOf, filesByHash, releasesFor } from './reads.ts'
+import { createApi, indexerRunner, type ApiDeps } from './server.ts'
 import { swarmUploader } from './swarm.ts'
 
 const env = process.env
@@ -40,9 +40,22 @@ const indexer =
     ? (() => {
         const clients = arkivClients({ accessKey: env.ARKIV_ACCESS_KEY, privateKey: indexerKey })
         const port = Number(env.PORT ?? env.HYDRA_API_PORT ?? 8787)
-        return { secret: env.INDEXER_TRIGGER_SECRET!, run: () => runOnce({ api: `http://127.0.0.1:${port}`, clients }) }
+        const run = () => runOnce({ api: `http://127.0.0.1:${port}`, clients })
+        return { secret: env.INDEXER_TRIGGER_SECRET!, run, runner: indexerRunner(run) }
       })()
     : undefined
+
+// Optional own clock: GitHub's scheduled workflows are unreliable, so the API can start a pass itself
+// every INDEXER_INTERVAL_MIN minutes (at least 10) while it is awake. Same guard as the route.
+const every = Number(env.INDEXER_INTERVAL_MIN)
+if (env.INDEXER_INTERVAL_MIN && !(every >= 10)) {
+  console.error('INDEXER_INTERVAL_MIN must be a number of minutes, at least 10; the internal indexer timer is off.')
+} else if (indexer?.runner && every >= 10) {
+  setInterval(() => {
+    const out = indexer.runner.start()
+    console.log(out.ok ? 'indexer timer: run started' : `indexer timer: skipped (${out.error})`)
+  }, every * 60_000).unref()
+}
 
 // The indexed-sites page: the indexer wallet's newest observations joined with the target list.
 const indexerAddress = (indexerKey ? privateKeyToAccount(indexerKey).address : env.HYDRA_INDEXER_ADDRESS) as Hex | undefined
@@ -53,7 +66,8 @@ const sites = async () => {
   // Cached 30 s: the page polls, and Arkiv reads are the slow part.
   if (sitesCache && Date.now() - sitesCache.at < 30_000) return sitesCache.body
   const { targets } = JSON.parse(await readFile(targetsFile, 'utf8')) as { targets: TargetInfo[] }
-  const body = sitesView(targets, (await observations(publicClient, indexerAddress)) as never)
+  // Observations live 3 days, so that is the window: every domain seen in it is listed.
+  const body = sitesView(targets, (await recentObservations(publicClient, indexerAddress, Date.now() - 3 * 86_400_000)) as never)
   sitesCache = { at: Date.now(), body }
   return body
 }

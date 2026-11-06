@@ -43,6 +43,11 @@ export function scriptUrls(html: string, pageUrl: string): string[] {
 
 export const sha256Tag = (data: Uint8Array | string) => `sha256-${createHash('sha256').update(data).digest('hex')}`
 
+// Some sites answer a script URL with an HTML page (a bot check or SPA fallback) that differs on
+// every request. That is not a script, so it counts as unreadable instead of a change each run.
+export const scriptHash = (data: Uint8Array): string | null =>
+  /^\s*</.test(new TextDecoder().decode(data.subarray(0, 64))) ? null : sha256Tag(data)
+
 // One hash over the whole script set, so "did anything change since last run" is one comparison.
 export function scriptsHash(seen: Seen[]): string {
   return sha256Tag(seen.map((s) => `${s.url} ${s.sha256}`).sort().join('\n'))
