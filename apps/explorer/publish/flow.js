@@ -40,21 +40,24 @@ jobs:
           node hydra-publish.mjs ${dir}
 `;
 
-// Everything an agent needs in one paste: who, what, the key, and how to check it worked.
-export const handoff = ({ app, key, api, docs }) => `Set up Hydra in this repo so every push to main records the build on Arkiv.
+// The command the user runs themselves. The key stays out of the agent block.
+export const secretCommand = (key) => `gh secret set HYDRA_API_KEY --body "${key}"`;
+
+// Everything an agent needs in one paste: who, what and how to check it worked. No key: the user
+// stores it as a GitHub secret themselves, and the agent never handles it.
+export const handoff = ({ app, api, docs }) => `Set up Hydra in this repo so every push to main records the build on Arkiv.
 Docs: ${docs}
 
 App name: ${app} (reserved for your wallet; the key works only for this name)
-HYDRA_API_KEY: ${key}
 HYDRA_API_URL: ${api}
 
-1. Store the key as a GitHub Actions secret (never commit it or write it to a file):
-   gh secret set HYDRA_API_KEY --body "${key}"
-   (from inside the repo clone, or add -R <owner>/<repo>)
-2. Add .github/workflows/hydra.yml from the docs template, with this repo's real install and build
-   commands and its build output folder (the folder that contains index.html).
-3. Commit and push to main, then watch the run: gh run watch
-4. Confirm the release: curl ${api}/v1/apps/${app}/releases
+The key: I store it as a GitHub Actions secret named HYDRA_API_KEY myself. Do not ask for the key, do not print it, and never write it to a file.
+1. Add .github/workflows/hydra.yml from the docs template, with this repo's real install and build
+   commands and its build output folder (the folder that contains index.html). It reads the key
+   from secrets.HYDRA_API_KEY.
+2. Commit and push to main. If the secret is not set yet, tell me to run: gh secret set HYDRA_API_KEY
+   (from inside the repo clone, or add -R <owner>/<repo>). Then watch the run: gh run watch
+3. Confirm the release: curl ${api}/v1/apps/${app}/releases
 If a step fails, read the error section of the docs before retrying. A 401 or 403 means the key
-cannot be used: ask the human for a new block from the Hydra site; never retry with the same key.
+cannot be used: tell me to get a new block from the Hydra site; never retry with the same key.
 Optional: to bind your domain, serve /.well-known/hydra.txt with the line hydra-app=${app} on it and set HYDRA_DOMAINS=<your domain> in the publish step's env.`;
