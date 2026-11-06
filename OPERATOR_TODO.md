@@ -71,7 +71,8 @@ Status values: `open` | `claimed <date> | Owner: <name>` | `done <date>: <result
 - Needed by: 2026-11-07 morning, before submitting
 - Unblocks: T-J03
 - What exactly: the repo is private. Before submitting, either make jishnu-baruah/hydra public or publish a public mirror of `main`, after a final secret scan. Decide which and log it in DECISIONS.md.
-- Done when: the submission's repo link opens in a private browser window.
+- Also: add an MIT `LICENSE` file at the root. The Arkiv track requires a public repo with an open-source license, and the repo has none today (checked 6 Nov: PRIVATE, no license). Needed by 2026-11-06 14:00 IST so judges and teammates can check it early.
+- Done when: the submission's repo link opens in a private browser window and shows the license.
 
 ### OP-7, Publish 1 demo release through the live API
 - Status: done 2026-11-06: Jishnu published hydra-test-a (3 releases) and test-dapp (2 releases) through the live API; the publisher wallet sent 12 transactions
