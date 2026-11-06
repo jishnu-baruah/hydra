@@ -471,15 +471,16 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Kill criterion: delivery not working by 6 Nov 22:00 IST, so Discord only
 
 ### T-A19, Domain proof: bind a domain to an app
-- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a19-domain-proof
+- Status: in-review | Branch: feature/t-a19-domain-proof
 - Suggested: Jishnu
 - Depends-on: T-A13
-- Touches: packages/core/src/domain.ts, packages/core/src/index.ts, packages/core/test/, apps/api/, packages/indexer/, docs/ARCHITECTURE.md, apps/site/llms.txt, apps/site/skill/
+- Touches: packages/core/src/domain.ts, packages/core/src/index.ts, packages/core/test/, apps/api/, packages/indexer/, packages/action/, docs/ARCHITECTURE.md, apps/site/llms.txt, apps/site/skill/
 - Serves: Practicality (judged) ; Technicality (judged)
 - Known: without a binding every indexed site is "unknown", and an app name alone lets anyone who claims "uniswap" on Hydra raise a false mismatch against app.uniswap.org
 - Scope: a publish may list up to 5 domains. The API keeps a domain only when `https://<domain>/.well-known/hydra.txt` has the line `hydra-app=<app>`; others are returned with the reason and the fix. The indexer compares a site with a release only when that release lists the domain, and rechecks the file every run: a bound domain that loses it is `DOMAIN_PROOF_LOST` (mismatch), because a hijacker controls the domain and could remove it to dodge the check
 - Acceptance: unit tests (failing first) for domain normalisation, private-address refusal and the proof line; a publish with 1 proven and 1 unproven domain keeps 1; an indexer run marks a bound domain whose file is gone as mismatch
-- Evidence: <PR, release with a bound domain, observation tx>
+- Evidence: PR #79; tests core 41, api 17, indexer 17; live dry run of 20 sites. No release with a bound domain yet
+- Finding: /security-review caught that bound domains let any publisher make the indexer fetch hosts it chose (blind SSRF, results public on Arkiv); every page and script fetch now goes through safeGet (https, public addresses only, pinned, redirects rechecked). GLM review caught DNS rebinding and transient proofs reading as hijacks
 - Kill criterion: not merged by 6 Nov 16:00 IST, so bind domains in targets.json by hand for the demo and say so
 
 ### T-A20, Coverage: DefiLlama discovery, write on change, background run
