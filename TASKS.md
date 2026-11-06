@@ -832,7 +832,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: PR (this one); API tests 47 pass (new: payload and deploy helper 4, routes 1); live press of Hack and Fix after deploy is in the PR conversation
 
 ### T-A28, The demo site is never cached, so Hack and Fix show at once
-- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a28-demo-nocache
+- Status: in-review | Branch: feature/t-a28-demo-nocache
 - Suggested: Jishnu
 - Depends-on: T-A27
 - Touches: demo/vercel.json
@@ -840,5 +840,5 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Known: on 6 Nov the Fix button took 256 s to flip the watcher back to match because Vercel's edge kept serving the tampered app.js; the same stale cache held hydra.txt for minutes earlier
 - Scope: Cache-Control no-store on every demo site path, then redeploy the demo site and the API (which ships demo/vercel.json in its Hack and Fix payload)
 - Acceptance: after deploy, Fix flips the watcher back to match in under 60 s and Hack to mismatch in under 60 s, 1 run each
-- Evidence: <PR link>
+- Evidence: PR (this one); the demo site now answers Cache-Control no-store with X-Vercel-Cache MISS; Hack and Fix timings after the API deploy are in the PR conversation
 
