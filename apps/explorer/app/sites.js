@@ -17,10 +17,13 @@ export function boundDomains(releases) {
   return out.slice(0, 5);
 }
 
-// `rows` are observation entities, newest first.
-export function latestVerdict(rows) {
+// `rows` are observation entities, newest first. With `app`, an observation recorded for a different
+// app is ignored: the domain was re-bound, and its verdict belongs to the other app's page.
+export function latestVerdict(rows, app) {
   const e = rows?.[0];
   if (!e) return null;
+  const forApp = e.$attributes?.app?.value;
+  if (app && forApp && forApp !== app) return null;
   const status = e.$attributes?.status?.value;
   return { status: ["match", "mismatch"].includes(status) ? status : "unknown", observedAt: Number(e.$attributes?.observed_at?.value ?? 0) };
 }

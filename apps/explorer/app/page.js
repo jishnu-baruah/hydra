@@ -87,7 +87,7 @@ async function showSites(arkivModule) {
     const link = el("a", d, { href: `../observed/?domain=${encodeURIComponent(d)}` });
     let verdict = null;
     try {
-      verdict = latestVerdict(await arkivModule.observationsFor(d, 1));
+      verdict = latestVerdict(await arkivModule.observationsFor(d, 1), name);
     } catch {
       // no verdict: shown as not checked yet
     }

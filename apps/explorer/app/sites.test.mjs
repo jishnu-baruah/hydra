@@ -25,6 +25,13 @@ test("the latest verdict is the newest observation", () => {
   assert.deepEqual(latestVerdict([obs("weird", 5)]), { status: "unknown", observedAt: 5 });
 });
 
+test("an observation made for another app is not this app's verdict (a domain that was re-bound)", () => {
+  const forApp = (app, status) => ({ $attributes: { app: { value: app }, status: { value: status }, observed_at: { value: "9" } } });
+  assert.equal(latestVerdict([forApp("other", "match")], "demo"), null);
+  assert.deepEqual(latestVerdict([forApp("demo", "match")], "demo"), { status: "match", observedAt: 9 });
+  assert.deepEqual(latestVerdict([obs("mismatch", 9)], "demo"), { status: "mismatch", observedAt: 9 }); // no app on the row: accepted
+});
+
 test("verdicts are worded for a visitor, never as a safety promise", () => {
   assert.match(verdictText("match"), /matches the team's release/i);
   assert.match(verdictText("match"), /not that the build is safe/i); // the disclaimer is part of the verdict
