@@ -66,7 +66,7 @@ Status values: `open` | `claimed <date> | Owner: <name>` | `done <date>: <result
 - Done when: a direct push to `main` is refused, or the decision is in DECISIONS.md.
 
 ### OP-6, Code judges can open
-- Status: open
+- Status: done 2026-11-06: jishnu-baruah/hydra is public with an MIT LICENSE (GitHub detects "MIT License"); an anonymous request to the repo page, a raw file and the license API all return 200; a scan of all 223 commits found no key patterns before the switch
 - Owner: Jishnu
 - Needed by: 2026-11-07 morning, before submitting
 - Unblocks: T-J03
