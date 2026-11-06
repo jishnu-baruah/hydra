@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
     <link rel="stylesheet" href="../assets/hydra.css" />
+    <link rel="stylesheet" href="search.css" />
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
@@ -17,6 +18,7 @@
         <a href="../releases/">Builds</a>
         <a href="../observed/">Sites</a>
         <a href="../events/">Activity</a>
+        <a href="../live/">Live</a>
         <a href="./" aria-current="page">Search</a>
         <a href="../publish/">Publish</a>
       </nav>
@@ -41,6 +43,14 @@
       </section>
 
       <section class="section">
+        <div id="verdict" class="verdict" role="status" aria-live="polite" hidden>
+          <span id="v-mark" class="v-mark" aria-hidden="true"></span>
+          <div class="v-body">
+            <p id="v-title" class="v-title"></p>
+            <p id="v-text" class="v-text"></p>
+            <p class="v-foot"><span id="v-when"></span> <a id="v-more" href="../observed/">See every check of this site</a></p>
+          </div>
+        </div>
         <p id="status" role="status"></p>
         <ul id="results" class="results"></ul>
       </section>

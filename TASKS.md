@@ -323,7 +323,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: the publisher wallet holds 5 tGLM and has sent 0 transactions, so the blocker is a first publish, not funding; every Hydra record comes from that 1 wallet, so the explorer now trusts only entities created by it
 
 ### T-B03, Explorer search
-- Status: blocked, see OP-8 | Branch: feature/t-b03-explorer-search
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/110 | Branch: feature/t-b03-explorer-search
 - Suggested: Mouli
 - Depends-on: T-B01
 - Touches: apps/explorer/search/, apps/explorer/src/arkiv.js, apps/explorer/index.html
@@ -760,13 +760,95 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: https://github.com/jishnu-baruah/hydra/pull/103 (merged); explorer deployed at https://hydra-registry.vercel.app (Vercel project hydra-registry, from apps/explorer with the CLI); on the live site searching hydra-demo-dapp.vercel.app finds demo-dapp (matched by domain), https://app.uniswap.org/swap finds "watched by the indexer, not published by the team", and the demo-dapp app page shows hydra-demo-dapp.vercel.app with a match; explorer tests 29 pass, extension 17 pass; 0 lines say "15 min"
 - Finding: the explorer is a static site whose non-publish pages had a CSP allowing only the Arkiv RPC, so API calls added here would have worked locally and failed in production (connect-src now lists the API); the browser pane cached old ES modules on one port, a fresh port showed the real state; the Jina key ran out of credit again, most likely drained by the first 247-site indexer run, so the indexer second view needs a top-up or a stricter rule; GLM review found a stale verdict after a domain is re-bound, fixed with a test first
 
+### T-B10, A clean test site that Hydra verifies, so search can show Good to go
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/121 | Branch: feature/t-b10-clean-site
+- Suggested: Mouli
+- Depends-on: T-B03
+- Touches: demo-clean/
+- Serves: Usability (judged) ; WOW factor (judged)
+- Known: the indexer's newest checks are all "unknown" (no release) and the only published demo site, hydra-demo-dapp.vercel.app, carries the staged hijack on purpose, so no live site shows the green search verdict. demo-clean/ is a second, untouched static dApp, hosted on GitHub Pages at mouli51ch.github.io (hydra.txt must sit at the domain root, so a user site, not a project page), published with its own app name and bound by domain proof
+- Acceptance: searching mouli51ch.github.io on the explorer shows Good to go from a real indexer match on Arkiv, with no fixture
+- Evidence: live at https://mouli51ch.github.io (repo Mouli51ch/Mouli51ch.github.io, Pages from main), hydra.txt serves hydra-app=clean-vault and index.html, app.js and style.css are byte-identical to demo-clean/; release clean-1 of clean-vault recorded on Arkiv in tx 0x2a43a6e3c1d847f08c8961c9b5bd51d17052577d55416cc42e543b820c06de42, swarm ead8731a2fe8cf04fbee93ff6bb90d41732aecbd9d53090aaf02485660212d18, /v1/domains/mouli51ch.github.io answers clean-vault; indexer run 42202206314 (manual, 6 Nov 10:22 UTC): "match mouli51ch.github.io 1 scripts", 249 sites, 2 match; explorer search for the domain shows Good to go, "Checked by the Hydra indexer 6 min ago", at 1440 and 375 px
+- Finding: the domain proof must sit at the domain root, so a GitHub project page (user.github.io/repo/) can never bind; only a user site or a custom domain can. The indexer scans every published domain on its next run with no list to edit, but GitHub's 30-minute schedule is best effort (no scheduled run between 08:09 and 10:22 UTC), so a manual run is the reliable way to get a first verdict
 ### T-A24, A failing Jina second view is loud, and stops wasting calls
-- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a24-loud-jina
+- Status: in-review | Branch: feature/t-a24-loud-jina
 - Suggested: Jishnu
 - Depends-on: T-A14
 - Touches: packages/indexer/src/jina.ts, packages/indexer/src/run.ts, packages/indexer/test/jina.test.ts, packages/indexer/README.md
 - Serves: Practicality (judged)
 - Known: the Jina key ran out of credit twice on 6 Nov (HTTP 402 from r.jina.ai) and the indexer kept reporting 0 errors, because a failed render falls back to the previous run's runtime origins, so lists still looked plausible; sites that block us directly lose their only way in and runtime-only origins stop being detected, with nothing saying so
 - Scope: one small renderer that counts calls and failures and names the reason (no key, HTTP status such as 402 credit out, timeout), and after 3 failures in a row stops calling for the rest of the run; the run summary gains a `jina` field and, when the view failed, 1 error line that says what broke, how many sites it affected and what to do. The 30-minute workflow and /v1/indexer/status already print errors
-- Acceptance: unit tests written failing first (renderer: ok, no key, 402 then stop after 3, network error, a page with no scripts is not a failure; indexer 30 or more tests pass); a dry run with an invalid key prints 1 error line naming HTTP 401 or 402 and makes at most 3 calls
-- Evidence: <PR link>
+- Acceptance: unit tests written failing first (renderer: ok, no key, 402 then stop after 3, network error, a page with no scripts is not a failure; indexer 30 or more tests pass); a dry run with an invalid key prints 1 error line naming HTTP 401 or 402 and makes at most 3 calls plus those already in flight (the pool scans 8 sites at once)
+- Evidence: PR (this one); indexer tests 38 pass (7 new), API 25 pass; dry run with a bad key: "failed 4 of 4 renders (HTTP 401: JINA_KEY is wrong or revoked), 2 more were not tried"; dry run with the real key: "failed 3 of 3 renders (HTTP 402: Jina credit is out), 4 more were not tried", which confirms the account is out of credit
+- Finding: the 8-way pool means up to 8 renders are in flight when the breaker opens, so the call count after opening is a few over 3; a failed render reuses the previous runtime origins, which is why 0 errors hid a dead second view; a 402 on the key in the research kit proved it before the code did
+
+### T-C06, Extension flags a hostname on a public phishing list
+- Status: in-review | Branch: feature/t-c06-known-bad
+- Suggested: Jishnu
+- Depends-on: T-A22
+- Touches: apps/extension/src/compare/blocklist.js, apps/extension/src/compare/blocklist.test.mjs, apps/extension/src/background.js, apps/extension/src/verdict.js, apps/extension/src/ui/present.js, apps/extension/src/ui/present.test.mjs, apps/extension/src/ui/banner.js, apps/extension/README.md
+- Serves: Practicality (judged)
+- Known: for sites with no Hydra release the extension shows grey and says nothing; the 6 Nov re-score (hack-idea-score) decided not to build a full layer for unregistered sites, only an honest known-bad flag from public data. MetaMask's eth-phishing-detect list was checked on GitHub on 6 Nov: 115,807 blocked domains in one 3.4 MB config.json, "Don't Be A Dick" public licence, pushed the same day; ScamSniffer's is GPL-3.0 so it is not used. The extension is Mouli's code; this adds one verdict and one module
+- Scope: a daily-refreshed local copy of the list in storage.local, checked in memory against the visited hostname and its parent domains (the allowlist wins), with no browsing data sent anywhere; a hit shows a distinct "BAD" badge and banner saying the hostname is on MetaMask's public phishing list and that lists can be wrong; a miss says nothing, never "safe"; the README says the list is fetched from GitHub and credits MetaMask
+- Acceptance: unit tests written failing first for the matching and the cache (blocklist 8 or more pass, extension 26 or more pass); in real Chrome a hostname taken from the live list shows BAD and app.uniswap.org and hydra-demo-dapp.vercel.app do not
+- Evidence: PR (this one); in real Chrome 156 (extension loaded over the DevTools pipe) with the live MetaMask list downloaded by the extension itself, poly-mark.xyz (a real entry mapped to a local page) shows BAD with the list wording, hydra-demo-dapp.vercel.app shows OK, app.uniswap.org is not flagged; blocklist 10 tests pass, extension 28 pass
+- Finding: MetaMask eth-phishing-detect is the only crypto list that is both permissively licensed and one small file (115,807 domains, 3.4 MB, pushed daily); ScamSniffer scam-database is GPL-3.0 and CryptoScamDB stopped in 2023, so neither is used; GLM review found that a stale copy was trusted forever and that entries were not checked to be hostnames, both fixed with tests first; the list hit replaces the script comparison for that page, so a false positive hides script evidence, which the banner words as "lists can be wrong"
+
+
+### T-A25, Live checker: watch one bound site every 5 seconds, switched on from a page
+- Status: in-review | Branch: feature/t-a25-live-checker
+- Suggested: Jishnu
+- Depends-on: T-A23
+- Touches: apps/api/src/watch.ts, apps/api/src/server.ts, apps/api/src/main.ts, apps/api/test/, packages/indexer/src/check.ts, packages/indexer/src/run.ts, packages/indexer/package.json, packages/indexer/test/, apps/explorer/live/, apps/explorer/vercel.json, apps/explorer/README.md, apps/explorer nav links
+- Serves: WOW factor (judged)
+- Known: a normal indexer run reads and writes Arkiv and takes about 14 s for one site (T-A23) and 5 min for all, so the demo cannot show a tamper within seconds without a laptop that holds the wallet key; the demo needs a switch on a page that watches the demo site every 5 s on Render
+- Scope: `POST /v1/watch {domain, on}` (bearer DEMO_WATCH_TOKEN, timing-safe) starts or stops one in-memory watcher for a domain that a release has bound; every 5 s it fetches the page and its scripts through safeGet, rechecks hydra.txt and compares with the release, with no Arkiv reads or writes per tick; when the verdict flips (match to mismatch or back) it runs the normal one-site observation write and Telegram alert once; it switches itself off after 15 minutes; `GET /v1/watch` is public and returns the state, the last 30 ticks and the flips; the explorer gets a Live page with the switch, the status and the tick strip
+- Acceptance: unit tests written failing first (watcher: baseline, flip once, flip back, unreachable is not a flip, overlap skipped, auto-off, stop; routes: 401, 503, 400, 200, 404); on the live demo, switching on and then changing app.js shows mismatch on the page within 12 s and 1 Telegram alert, and API tests 30 or more pass
+- Evidence: PR (this one); tests: API 41 pass, indexer 38 pass, explorer 36 pass (new: watcher 14, routes 2, single-site check 7, Live page view 7); local API on the real demo site: a check takes 100 to 600 ms, switch on and off from the Live page works, 401 for a wrong token, 404 for an unbound site; /security-review found nothing at 80 percent; a flip rehearsal on the deployed site is still to run (needs this merged, a deploy and DEMO_WATCH_TOKEN on Render)
+- Finding: GLM review caught an unhandled rejection path in the timer (a throwing tick would have killed the process), a removed script read as unreachable instead of a mismatch, a failed alert never retried, a stale target after the binding vanished, and "alert sent" shown when the one-site run had found no target; all fixed with tests first. A tick skips Arkiv and Jina entirely, which is why it takes 100 to 600 ms against 14 s for a one-site run
+
+### T-D12, Demo kit: hack, restore and status scripts plus a runbook
+- Status: in-review | Branch: feature/t-d12-demo-kit
+- Suggested: Jishnu
+- Depends-on: T-D04, T-A23
+- Touches: demo/hack.mjs, demo/restore.mjs, demo/status.mjs, demo/lib.mjs, demo/RUNBOOK.md, demo/README.md, demo/.vercelignore
+- Serves: WOW factor (judged)
+- Known: on 6 Nov a tamper left in a shared checkout made the repo's demo/app.js differ from the release while the live site was clean, and the latest observation stayed mismatch until a one-site run recorded match again; the stage needs one command to break the site, one to heal it, and one to say what every screen will show
+- Scope: `node demo/hack.mjs` deploys a tampered copy of the demo from a temp folder (the repo stays clean), waits until the live site serves it, then lets the live watcher (T-A25) catch it or runs the one-site check (T-A23) itself and prints the time to alert; `node demo/restore.mjs` deploys the clean demo, waits until the live script hash equals the release, and records match the same way; `node demo/status.mjs` prints the live hash against the release, the latest observation and the watcher state; RUNBOOK.md has the stage order and the fallbacks
+- Acceptance: hack then restore run for real once each; hack reaches a mismatch observation and 1 Telegram alert in under 60 s without the watcher; restore returns to match; status reports both states correctly; the repo stays clean (git status shows 0 changes in demo/ after both)
+- Evidence: PR (this one); rehearsed for real on 6 Nov without the watcher: hack.mjs tamper live after 22.7 s, mismatch recorded and Telegram alert sent after 49.1 s (tx 0x74c4ad32...2860); restore.mjs live restored after 8.7 s, match recorded and recovery alert after 27.3 s (tx 0x2586c06e...70d8); status.mjs answers in about 1 s in both states; git shows demo/app.js unchanged after both
+- Finding: the first hack failed on a 20 s timeout while the free Render API woke up, so API calls now wait 70 s; the API's /v1/observations took 87 s uncached because the API has no Arkiv access key and reads every site through the rate-limited public RPC, so status.mjs reads Arkiv directly for the one domain (1 query, about 1 s) and the runbook says to warm that route before stage
+
+### T-A26, Watcher: a Jina outage is not a failed alert
+- Status: in-review | Branch: feature/t-a26-watch-jina
+- Suggested: Jishnu
+- Depends-on: T-A24, T-A25
+- Touches: apps/api/src/watch.ts, apps/api/test/watch.test.ts
+- Serves: WOW factor (judged)
+- Known: in the 6 Nov rehearsal with the live watcher, both flips were detected (mismatch 14.5 s after the tamper went live, match 17 s after the restore) and the observations were written, but each flip showed "alert failed": T-A24 puts a "Jina second view failed" line in the run's errors when the Jina credit is out, and the watcher's runOk treats any error as a failed write, so the Live page says the alert failed and the watcher retries
+- Scope: runOk ignores the Jina second-view line (it says nothing about the observation write or the alert) and still fails on every other error
+- Acceptance: a unit test written failing first (a Jina-only error is ok, a batch write error is not); API tests 41 or more pass; after deploy, a hack and restore with the watcher on show the alert as done on both flips
+- Evidence: PR (this one); the new test failed first, API tests 42 pass; the live rehearsal after deploy is in the PR conversation
+
+### T-A27, Hack and Fix buttons on the Live page
+- Status: in-review | Branch: feature/t-a27-hack-fix
+- Suggested: Jishnu
+- Depends-on: T-A25, T-D12
+- Touches: apps/api/src/demo.ts, apps/api/src/server.ts, apps/api/src/main.ts, apps/api/test/, apps/api/deploy/Dockerfile, apps/explorer/live/
+- Serves: WOW factor (judged)
+- Known: hack.mjs and restore.mjs need a laptop with the Vercel CLI; the stage wants buttons on a page
+- Scope: POST /v1/demo/hack and /v1/demo/fix (bearer DEMO_WATCH_TOKEN, 503 without VERCEL_TOKEN) deploy the demo site to its Vercel project through Vercel's deployment API: the published files, or the same with one harmless line added to app.js; only that project and those fixed files; Hack and Fix buttons on /live/ next to the switch
+- Acceptance: unit tests written failing first (payload: clean equals the repo files, hack adds 1 line; routes 401, 503, 202); on the live site, Hack turns the watcher to mismatch and Fix back to match, 1 alert each
+- Evidence: PR (this one); API tests 47 pass (new: payload and deploy helper 4, routes 1); live press of Hack and Fix after deploy is in the PR conversation
+
+### T-A28, The demo site is never cached, so Hack and Fix show at once
+- Status: in-review | Branch: feature/t-a28-demo-nocache
+- Suggested: Jishnu
+- Depends-on: T-A27
+- Touches: demo/vercel.json
+- Serves: WOW factor (judged)
+- Known: on 6 Nov the Fix button took 256 s to flip the watcher back to match because Vercel's edge kept serving the tampered app.js; the same stale cache held hydra.txt for minutes earlier
+- Scope: Cache-Control no-store on every demo site path, then redeploy the demo site and the API (which ships demo/vercel.json in its Hack and Fix payload)
+- Acceptance: after deploy, Fix flips the watcher back to match in under 60 s and Hack to mismatch in under 60 s, 1 run each
+- Evidence: PR (this one); the demo site now answers Cache-Control no-store with X-Vercel-Cache MISS; Hack and Fix timings after the API deploy are in the PR conversation
+

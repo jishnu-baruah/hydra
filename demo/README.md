@@ -23,3 +23,14 @@ domain as `match`.
 2. Trigger one indexer run. The domain turns `mismatch` (`CHANGED /app.js`) and the Telegram group
    gets the alert.
 3. Undo: `git checkout app.js` and redeploy.
+
+## Demo kit (T-D12)
+
+```bash
+node demo/status.mjs               # read only: live vs release hash, verdict, watcher, what screens show
+node demo/hack.mjs [--no-check]    # deploy a tampered copy, then watcher or one-site check expects mismatch
+node demo/restore.mjs [--no-check] # deploy the real demo, then expects match
+```
+
+`hack` and `restore` deploy to production and write observations. The check step needs the indexer
+env: it reads `<repo>/.env`, or the file named by `HYDRA_ENV_FILE`.

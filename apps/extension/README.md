@@ -18,6 +18,7 @@ the same source again gives the same sha256.
 |---|---|
 | green `OK` | every script the page loaded is in the site's latest release |
 | red `!` | a script changed or is in no release. A banner on the page and the popup name each one. Do not sign or approve anything there |
+| `BAD` (dark red) | the site's hostname is on MetaMask's public phishing list. It is a list hit, not a script comparison. Lists can be wrong, and a site that is not on a list is not thereby safe |
 | grey `?` | no release on record for this site, or the Hydra API could not be reached. The page is unverified |
 | `..` | still checking |
 
@@ -34,6 +35,17 @@ script was swapped still goes red on a first visit; if no app has proved that ho
 the hashes of the page's own scripts, and it remembers each site's app after a full match. Cloudflare's injected bot
 check is not judged, because the host adds it, not the build.
 
+## Known-bad hostnames (T-C06)
+
+A page's hostname, and its parent domains, are checked against MetaMask's public phishing list
+([eth-phishing-detect](https://github.com/MetaMask/eth-phishing-detect), "Don't Be A Dick" public licence,
+about 115,000 domains). The extension keeps a copy in `storage.local`, refreshes it at most once a
+day from `raw.githubusercontent.com`, and does every lookup in memory, so **no visited hostname leaves
+your browser**; GitHub only sees that the list was downloaded. A hit shows the `BAD` badge and a banner.
+A miss shows nothing: the list is one source, and a site that is not on it is not thereby safe. The
+list's allowlist wins, as it does in MetaMask. Credit: the list is maintained by MetaMask and its
+contributors.
+
 ## Permissions, and why
 
 - `<all_urls>` host access: to re-fetch and hash the scripts a page loaded, from any origin.
@@ -42,6 +54,8 @@ check is not judged, because the host adds it, not the build.
 - `storage`: to keep each tab's result while the worker sleeps, and each site's app once it has matched.
 
 ## What leaves your browser
+
+Once a day the extension downloads the phishing list from GitHub (no hostname is sent).
 
 For each page you open, the extension sends the page's hostname, and if no app has proved it the sha256
 of up to 5 of the page's own scripts, to the Hydra API (`hydra-api-5xmn.onrender.com`) to find the app,

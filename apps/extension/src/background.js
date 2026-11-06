@@ -1,5 +1,6 @@
 import { STATES, isWeb } from "./verdict.js";
 import { compare } from "./compare/compare.js";
+import { listedHost } from "./compare/blocklist.js";
 import { appForDomain, appForHashes, latestManifest } from "./compare/lookup.js";
 import { present } from "./ui/present.js";
 import { showBanner } from "./ui/banner.js";
@@ -102,6 +103,12 @@ async function check(tabId) {
   const tab = await chrome.tabs.get(tabId).catch(() => null);
   if (!tab || !isWeb(tab.url)) return;
   const origin = new URL(tab.url).origin;
+  const host = new URL(tab.url).hostname;
+
+  // A hostname on a public phishing list is flagged first, from a local copy: no hostname is sent anywhere.
+  const entry = await listedHost(host, { storage: chrome.storage.local });
+  if (entry) return finish(tabId, { verdict: "listed", host, entry, origin, at: Date.now() }, origin);
+
   const scripts = await hashAll([...(await urlsOf(tabId))]);
 
   let result;
@@ -128,7 +135,11 @@ async function check(tabId) {
     result = { verdict: "grey", reason: `Could not reach the Hydra API (${e.message}). The page is unverified; reload to retry.` };
   }
 
-  result = { ...result, origin, at: Date.now() };
+  await finish(tabId, { ...result, origin, at: Date.now() }, origin);
+}
+
+// Store the result, paint the badge and show or take down the banner.
+async function finish(tabId, result, origin) {
   await chrome.storage.session.set({ [`v:${tabId}`]: result });
   const view = present(result, { explorer: EXPLORER, origin });
   await paint(tabId, result.verdict, title(view));
@@ -151,7 +162,7 @@ async function banner(tabId, view) {
 
 // The badge tooltip: present()'s message, plus the first 3 flagged files when red.
 function title(view) {
-  if (view.state !== "red") return view.message;
+  if (view.state !== "red" || view.kind === "listed") return view.message;
   const rest = view.items.length - 3 + view.more;
   const names = view.items.slice(0, 3).map((i) => `${i.path} (${i.text.toLowerCase()})`).join(", ");
   return `${names}${rest > 0 ? ` and ${rest} more` : ""}. ${view.message}`;
