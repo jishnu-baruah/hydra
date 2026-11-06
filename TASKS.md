@@ -760,6 +760,15 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: https://github.com/jishnu-baruah/hydra/pull/103 (merged); explorer deployed at https://hydra-registry.vercel.app (Vercel project hydra-registry, from apps/explorer with the CLI); on the live site searching hydra-demo-dapp.vercel.app finds demo-dapp (matched by domain), https://app.uniswap.org/swap finds "watched by the indexer, not published by the team", and the demo-dapp app page shows hydra-demo-dapp.vercel.app with a match; explorer tests 29 pass, extension 17 pass; 0 lines say "15 min"
 - Finding: the explorer is a static site whose non-publish pages had a CSP allowing only the Arkiv RPC, so API calls added here would have worked locally and failed in production (connect-src now lists the API); the browser pane cached old ES modules on one port, a fresh port showed the real state; the Jina key ran out of credit again, most likely drained by the first 247-site indexer run, so the indexer second view needs a top-up or a stricter rule; GLM review found a stale verdict after a domain is re-bound, fixed with a test first
 
+### T-B10, A clean test site that Hydra verifies, so search can show Good to go
+- Status: claimed 2026-11-06 | Owner: Mouli | Branch: feature/t-b10-clean-site
+- Suggested: Mouli
+- Depends-on: T-B03
+- Touches: demo-clean/
+- Serves: Usability (judged) ; WOW factor (judged)
+- Known: the indexer's newest checks are all "unknown" (no release) and the only published demo site, hydra-demo-dapp.vercel.app, carries the staged hijack on purpose, so no live site shows the green search verdict. demo-clean/ is a second, untouched static dApp, hosted on GitHub Pages at mouli51ch.github.io (hydra.txt must sit at the domain root, so a user site, not a project page), published with its own app name and bound by domain proof
+- Acceptance: searching mouli51ch.github.io on the explorer shows Good to go from a real indexer match on Arkiv, with no fixture
+- Evidence:
 ### T-A24, A failing Jina second view is loud, and stops wasting calls
 - Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a24-loud-jina
 - Suggested: Jishnu
