@@ -794,3 +794,14 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Scope: `POST /v1/watch {domain, on}` (bearer DEMO_WATCH_TOKEN, timing-safe) starts or stops one in-memory watcher for a domain that a release has bound; every 5 s it fetches the page and its scripts through safeGet, rechecks hydra.txt and compares with the release, with no Arkiv reads or writes per tick; when the verdict flips (match to mismatch or back) it runs the normal one-site observation write and Telegram alert once; it switches itself off after 15 minutes; `GET /v1/watch` is public and returns the state, the last 30 ticks and the flips; the explorer gets a Live page with the switch, the status and the tick strip
 - Acceptance: unit tests written failing first (watcher: baseline, flip once, flip back, unreachable is not a flip, overlap skipped, auto-off, stop; routes: 401, 503, 400, 200, 404); on the live demo, switching on and then changing app.js shows mismatch on the page within 12 s and 1 Telegram alert, and API tests 30 or more pass
 - Evidence: <PR link>
+
+### T-D12, Demo kit: hack, restore and status scripts plus a runbook
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-d12-demo-kit
+- Suggested: Jishnu
+- Depends-on: T-D04, T-A23
+- Touches: demo/hack.mjs, demo/restore.mjs, demo/status.mjs, demo/lib.mjs, demo/RUNBOOK.md, demo/README.md, demo/.vercelignore
+- Serves: WOW factor (judged)
+- Known: on 6 Nov a tamper left in a shared checkout made the repo's demo/app.js differ from the release while the live site was clean, and the latest observation stayed mismatch until a one-site run recorded match again; the stage needs one command to break the site, one to heal it, and one to say what every screen will show
+- Scope: `node demo/hack.mjs` deploys a tampered copy of the demo from a temp folder (the repo stays clean), waits until the live site serves it, then lets the live watcher (T-A25) catch it or runs the one-site check (T-A23) itself and prints the time to alert; `node demo/restore.mjs` deploys the clean demo, waits until the live script hash equals the release, and records match the same way; `node demo/status.mjs` prints the live hash against the release, the latest observation and the watcher state; RUNBOOK.md has the stage order and the fallbacks
+- Acceptance: hack then restore run for real once each; hack reaches a mismatch observation and 1 Telegram alert in under 60 s without the watcher; restore returns to match; status reports both states correctly; the repo stays clean (git status shows 0 changes in demo/ after both)
+- Evidence: <PR link>
