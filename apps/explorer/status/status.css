@@ -1,0 +1,7 @@
+.verdict { display: flex; align-items: center; gap: 14px; font: 400 44px/1.1 "Bebas Neue", sans-serif; letter-spacing: 0.02em; margin-bottom: 12px; }
+.verdict .dot { width: 18px; height: 18px; border-radius: 50%; background: var(--muted); flex: none; }
+.verdict[data-v="match"] .dot { background: var(--match); box-shadow: 0 0 18px var(--match); }
+.verdict[data-v="match"] { color: var(--match); }
+.verdict[data-v="mismatch"] .dot { background: var(--mismatch); box-shadow: 0 0 18px var(--mismatch); }
+.verdict[data-v="mismatch"] { color: var(--mismatch); }
+#pick { margin-top: 20px; }

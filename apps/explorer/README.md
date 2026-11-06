@@ -26,6 +26,7 @@ cd apps/explorer && python -m http.server 5173
 - `/live/` (nav: Live): the demo's live checker. Shows the Hydra API's watch state for one bound site (a check every 5 s, the last 30 checks, what changed and whether the alert went out) and switches it on or off with the demo token. Reads `GET /v1/watch`; the switch is `POST /v1/watch`.
 - `/publish/`: sign in with a wallet, get an API key, add the workflow, bind the domain.
 - `/console/`: sign in with your wallet (one signed message, no funds move), see the apps it owns, rotate an app's key (shown once, with the `gh secret set` command), and list, test, add and delete alert channels (webhook, Slack, Discord, Telegram). Calls `/v1/console/*`. Only the sign-in shows until a wallet signs in.
+- `/status/?name=status.<app>.eth`: the app's `hydra.status` ENS text record (ENSv2, Sepolia), read in the browser through the Universal Resolver every 5 s. Hydra's server is not asked.
 
 Everything read from Arkiv is shown with `textContent`, never as HTML.
 
