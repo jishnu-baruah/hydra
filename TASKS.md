@@ -323,7 +323,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: the publisher wallet holds 5 tGLM and has sent 0 transactions, so the blocker is a first publish, not funding; every Hydra record comes from that 1 wallet, so the explorer now trusts only entities created by it
 
 ### T-B03, Explorer search
-- Status: in-review https://github.com/jishnu-baruah/hydra/pull/110 | Branch: feature/t-b03-explorer-search
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/147 | Branch: feature/t-b03-explorer-search
 - Suggested: Mouli
 - Depends-on: T-B01
 - Touches: apps/explorer/search/, apps/explorer/src/arkiv.js, apps/explorer/index.html
