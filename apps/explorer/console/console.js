@@ -1,27 +1,32 @@
-// The Console page: manage the alert channels of one app, using its API key.
-// The key is held in sessionStorage (this tab only). Everything from the API is set with textContent.
+// The Console page: sign in with a wallet, see your apps, rotate keys, manage alert channels.
+// A one-app API key still works as a fallback. Tokens live in sessionStorage (this tab only).
+// Everything from the API is set with textContent.
 import { api } from "../src/api.js";
-import { addRequest, authHeaders, channelLine, errorText, keyError, targetError } from "./form.js";
+import { channelLine, targetError } from "./form.js";
+import { apiErrorText, appCard, consoleRequest, normalizeApps, rotateCommand, sessionLive, shortAddress, toHex, walletErrorText } from "./view.js";
 
 const $ = (id) => document.getElementById(id);
-const KEY = "hydra.console.key";
-let key = "";
+const SKEY = "hydra.console.session";
+const KKEY = "hydra.console.key";
+let mode = ""; // "wallet", "key" or "" when signed out
+let token = "";
 let busy = false;
+let bot = null; // Telegram bot username, or null when the server has none
 
 const store = {
-  get() {
+  get(k) {
     try {
-      return sessionStorage.getItem(KEY) ?? "";
+      return sessionStorage.getItem(k) ?? "";
     } catch {
       return "";
     }
   },
-  set(v) {
+  set(k, v) {
     try {
-      if (v) sessionStorage.setItem(KEY, v);
-      else sessionStorage.removeItem(KEY);
+      if (v) sessionStorage.setItem(k, v);
+      else sessionStorage.removeItem(k);
     } catch {
-      // Storage blocked: the key lives in memory for this visit only.
+      // Storage blocked: the sign-in lives in memory for this visit only.
     }
   },
 };
@@ -32,39 +37,10 @@ const HOWTO = {
   discord: { label: "Discord webhook URL", hint: "Channel settings, Integrations, Webhooks, then copy the URL.", ph: "https://discord.com/api/webhooks/..." },
   telegram: { label: "Telegram chat id", hint: "", ph: "-1001234567890" },
 };
-let bot = null; // Telegram bot username, or null when the server has none
 
-let appName = ""; // the connected app, for the Telegram command
-
-function telegramHint() {
+function telegramHint(app) {
   const who = bot ? `@${bot}` : "the Hydra bot (its name is not set on the server yet)";
-  return `Add ${who} to your group, then send "/hydra ${appName || "<your app>"}" in the group. That proves the group is yours. Then press Find my chat (it looks back 15 minutes), or paste the chat id.`;
-}
-
-// Chats where "/hydra <app>" was sent recently; one fills the box, several become buttons.
-async function findChat() {
-  const box = $("chats");
-  box.replaceChildren();
-  const r = await run("Looking for your chat...", "/v1/alerts/telegram-chats", { headers: authHeaders(key) });
-  setBusy(false);
-  if (!r) return;
-  const chats = r.chats ?? [];
-  if (!chats.length) return say(`No chat found. Send "/hydra ${appName}" in your group first, then try again.`);
-  say(chats.length === 1 ? `Found ${chats[0].title}.` : "Pick your chat:");
-  if (chats.length === 1) return void ($("target").value = chats[0].id);
-  for (const c of chats) {
-    const b = Object.assign(document.createElement("button"), { type: "button", className: "ghost-btn", textContent: `${c.title} (${c.id})` });
-    b.onclick = () => { $("target").value = c.id; box.replaceChildren(); say(`Picked ${c.title}.`); };
-    box.append(b);
-  }
-}
-
-function renderKind() {
-  const k = $("kind").value;
-  $("howto").textContent = k === "telegram" ? telegramHint() : HOWTO[k].hint;
-  $("find-chat").hidden = k !== "telegram";
-  $("target-label").textContent = HOWTO[k].label;
-  $("target").placeholder = HOWTO[k].ph;
+  return `Add ${who} to your group, then send "/hydra ${app}" in the group. That proves the group is yours. Then press Find my chat (it looks back 15 minutes), or paste the chat id.`;
 }
 
 function say(text) {
@@ -77,16 +53,12 @@ function fail(text) {
 
 function setBusy(on) {
   busy = on;
-  const connected = $("p2").dataset.state !== "locked";
-  $("connect-btn").disabled = on;
-  $("kind").disabled = on || !connected;
-  $("target").disabled = on || !connected;
-  $("add-btn").disabled = on || !connected;
-  for (const b of $("channels").querySelectorAll("button")) b.disabled = on;
+  for (const b of document.querySelectorAll("#apps button, #apps select, #apps input")) b.disabled = on;
+  for (const id of ["wallet-btn", "signout", "key", "connect-btn"]) $(id).disabled = on;
 }
 
-// Run one request: buttons off, status on, errors shown in words. Returns the body or null.
-async function run(label, path, init, adding = false) {
+// One request: buttons off, status on, errors in words. Returns the body or null. 401 signs out.
+async function run(label, path, init) {
   if (busy) return null;
   setBusy(true);
   fail("");
@@ -94,143 +66,298 @@ async function run(label, path, init, adding = false) {
   try {
     return await api(path, init);
   } catch (e) {
-    if (e.status === 401) lock();
+    if (e.status === 401) signOut();
     say("");
-    fail(errorText(e, adding));
+    fail(apiErrorText(e));
     return null;
   } finally {
     setBusy(false);
   }
 }
 
-function lock() {
-  for (const n of [2, 3]) $("p" + n).dataset.state = "locked";
-  $("p1").dataset.state = "current";
-  $("channels").replaceChildren();
-  $("app-name").hidden = true;
-  $("forget").hidden = true;
-  $("empty").textContent = "Connect with your key to see your channels.";
+function signOut() {
+  mode = "";
+  token = "";
+  store.set(SKEY, "");
+  store.set(KKEY, "");
+  $("apps").replaceChildren();
+  $("empty").replaceChildren("Sign in to see your apps.");
   $("empty").hidden = false;
-  $("secretbox").hidden = true;
-  key = "";
-  store.set("");
+  $("p1").dataset.state = "current";
+  $("p2").dataset.state = "locked";
+  $("who").hidden = true;
+  $("signout").hidden = true;
 }
 
-function renderChannels(list) {
-  const ul = $("channels");
-  ul.replaceChildren();
-  $("empty").textContent = "No channels yet. Add one below.";
-  $("empty").hidden = list.length > 0;
-  for (const c of list) {
-    const li = document.createElement("li");
-    const line = document.createElement("span");
-    line.className = "line";
-    line.textContent = channelLine(c);
-    const test = document.createElement("button");
-    test.className = "ghost-btn";
-    test.type = "button";
-    test.textContent = "Test";
-    test.addEventListener("click", () => testChannel(c.id));
-    const del = document.createElement("button");
-    del.className = "ghost-btn";
-    del.type = "button";
-    del.textContent = "Delete";
-    del.addEventListener("click", () => deleteChannel(c.id));
-    li.append(line, test, del);
-    ul.append(li);
+function signedIn(label) {
+  $("who").textContent = label;
+  $("who").hidden = false;
+  $("signout").hidden = false;
+  $("p1").dataset.state = "done";
+  $("p2").dataset.state = "current";
+}
+
+// ---- rendering ----
+
+const el = (tag, props = {}, ...kids) => {
+  const n = Object.assign(document.createElement(tag), props);
+  n.append(...kids);
+  return n;
+};
+const btn = (text, onclick, cls = "ghost-btn") => el("button", { type: "button", className: cls, textContent: text, onclick });
+
+function renderApps(apps) {
+  const box = $("apps");
+  box.replaceChildren();
+  $("empty").hidden = apps.length > 0;
+  if (!apps.length) {
+    $("empty").replaceChildren("This wallet owns no apps yet. ", el("a", { href: "../publish/", textContent: "Publish one first" }), ".");
+  }
+  for (const a of apps) box.append(renderApp(a));
+}
+
+function renderApp(a) {
+  const c = appCard(a);
+  const card = el("article", { className: "app" });
+  card.dataset.app = a.app;
+  card.append(el("h3", {}, el("a", { href: c.href, textContent: c.name })));
+  card.append(el("p", { className: "meta", textContent: [c.claimed, c.version, c.count].filter(Boolean).join(". ") + "." }));
+
+  if (mode === "wallet") card.append(rotateBlock(a.app));
+
+  card.append(el("h4", { textContent: "Alert channels" }));
+  const ul = el("ul", { className: "channels" });
+  if (!a.channels.length) ul.append(el("li", {}, el("span", { className: "line", textContent: "No channels yet. Add one below." })));
+  for (const ch of a.channels) {
+    ul.append(el("li", {}, el("span", { className: "line", textContent: channelLine(ch) }), btn("Test", () => testChannel(a.app, ch.id)), btn("Delete", () => deleteChannel(a.app, ch.id))));
+  }
+  card.append(ul, addForm(a.app));
+  return card;
+}
+
+function rotateBlock(app) {
+  const wrap = el("div", { className: "rotate" });
+  const confirm = el("div", { className: "confirm", hidden: true });
+  const out = el("div", { className: "keybox", hidden: true });
+  confirm.append(
+    el("p", { className: "warn", textContent: "Every older key for this app stops working now. Update the HYDRA_API_KEY secret in CI after." }),
+    el("div", { className: "row" }, btn("Rotate now", () => rotate(app, out, confirm), "btn"), btn("Cancel", () => { confirm.hidden = true; })),
+  );
+  wrap.append(btn("Rotate key", () => { confirm.hidden = false; out.hidden = true; }), confirm, out);
+  return wrap;
+}
+
+async function rotate(app, out, confirm) {
+  const { path, init } = consoleRequest(mode, token, app, "rotate");
+  const r = await run("Rotating the key...", path, init);
+  if (!r) return;
+  confirm.hidden = true;
+  let cmd = "";
+  try {
+    cmd = rotateCommand(r.key);
+  } catch (e) {
+    fail(e.message);
+  }
+  out.replaceChildren(
+    el("p", { className: "label", textContent: `New key for ${app}, version ${r.version}` }),
+    el("div", { className: "keyrow" }, el("code", { textContent: r.key }), btn("Copy key", () => copy(r.key, "Key copied."))),
+    ...(cmd ? [el("div", { className: "keyrow" }, el("code", { textContent: cmd }), btn("Copy command", () => copy(cmd, "Command copied.")))] : []),
+    el("p", { className: "warn", textContent: "Copy this now. It will not be shown again. Older keys no longer work." }),
+  );
+  out.hidden = false;
+  say(`Key rotated for ${app}.`);
+}
+
+async function copy(text, ok) {
+  try {
+    await navigator.clipboard.writeText(text);
+    say(ok);
+  } catch {
+    say("Could not copy. Select the text and copy it by hand.");
   }
 }
 
-async function load(label = "Loading your channels...") {
-  const r = await run(label, "/v1/alerts", { headers: authHeaders(key) });
+function addForm(app) {
+  const form = el("form", { autocomplete: "off" });
+  const kind = el("select", { id: `k-${app}` }, ...Object.entries({ webhook: "Webhook", slack: "Slack", discord: "Discord", telegram: "Telegram" }).map(([v, t]) => el("option", { value: v, textContent: t })));
+  const target = el("input", { id: `t-${app}`, spellcheck: false, autocomplete: "off" });
+  const label = el("label", { htmlFor: target.id });
+  const help = el("p", { className: "help" });
+  const chats = el("div", {});
+  const find = btn("Find my chat", () => findChat(app, target, chats));
+  const secret = el("div", { className: "keybox", hidden: true });
+
+  const sync = () => {
+    const h = HOWTO[kind.value];
+    help.textContent = kind.value === "telegram" ? telegramHint(app) : h.hint;
+    label.textContent = h.label;
+    target.placeholder = h.ph;
+    find.hidden = kind.value !== "telegram";
+    chats.replaceChildren();
+  };
+  kind.addEventListener("change", () => { sync(); fail(""); });
+  sync();
+
+  form.append(
+    el("div", { className: "field" }, el("label", { htmlFor: kind.id, textContent: "Kind" }), kind, help),
+    el("div", { className: "field" }, label, target, find, chats),
+    el("button", { className: "btn", type: "submit", textContent: "Add channel" }),
+    secret,
+  );
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const bad = targetError(kind.value, target.value);
+    if (bad) return fail(bad);
+    const { path, init } = consoleRequest(mode, token, app, "add", { kind: kind.value, target: target.value });
+    const r = await run("Adding and sending a test message...", path, init);
+    if (!r) return;
+    await reload(app, r.secret);
+    say(`Added ${r.kind}, ${r.label}. A test message was sent.${r.secret ? " Copy the webhook secret now." : ""}`);
+  });
+  return form;
+}
+
+async function findChat(app, target, box) {
+  box.replaceChildren();
+  const { path, init } = consoleRequest(mode, token, app, "chats");
+  const r = await run("Looking for your chat...", path, init);
+  if (!r) return;
+  const chats = r.chats ?? [];
+  if (!chats.length) return say(`No chat found. Send "/hydra ${app}" in your group first, then try again.`);
+  if (chats.length === 1) {
+    target.value = chats[0].id;
+    return say(`Found ${chats[0].title}.`);
+  }
+  say("Pick your chat:");
+  for (const c of chats) {
+    box.append(btn(`${c.title} (${c.id})`, () => { target.value = c.id; box.replaceChildren(); say(`Picked ${c.title}.`); }));
+  }
+}
+
+async function testChannel(app, id) {
+  const { path, init } = consoleRequest(mode, token, app, "test", id);
+  const r = await run("Sending a test message...", path, init);
+  if (r) say("Test message sent. Check the channel.");
+}
+
+async function deleteChannel(app, id) {
+  const { path, init } = consoleRequest(mode, token, app, "delete", id);
+  const r = await run("Deleting...", path, init);
+  if (!r) return;
+  await reload(app);
+  say("Channel deleted.");
+}
+
+// Re-fetch the apps and redraw. A webhook secret, if any, is shown once under the app it belongs to.
+async function reload(app, secret) {
+  if (!(await loadApps("Reloading your apps...")) || !secret) return;
+  const card = [...document.querySelectorAll(".app")].find((n) => n.dataset.app === app);
+  const box = card?.querySelector("form .keybox");
+  if (!box) return;
+  box.replaceChildren(
+    el("p", { className: "label", textContent: "Webhook secret" }),
+    el("div", { className: "keyrow" }, el("code", { textContent: secret }), btn("Copy", () => copy(secret, "Secret copied."))),
+    el("p", { className: "warn", textContent: "Copy this now. It is shown once and cannot be read again. Your server uses it to verify the webhook-signature header." }),
+  );
+  box.hidden = false;
+}
+
+// Returns true when the apps loaded.
+async function loadApps(label) {
+  const { path, init } = consoleRequest(mode, token, "", "list");
+  const r = await run(label, path, init);
   if (!r) return false;
-  appName = r.app;
-  renderKind();
-  $("app-name").textContent = `Connected to ${r.app}`;
-  $("app-name").hidden = false;
-  $("forget").hidden = false;
-  $("p1").dataset.state = "done";
-  $("p2").dataset.state = "current";
-  $("p3").dataset.state = "current";
-  renderChannels(r.channels ?? []);
-  setBusy(false);
+  // Key mode answers { app, channels }; wallet mode answers { address, apps }.
+  const apps = mode === "key" ? normalizeApps({ apps: [{ app: r.app, channels: r.channels }] }) : normalizeApps(r);
+  renderApps(apps);
   say("");
   return true;
 }
 
-async function testChannel(id) {
-  const r = await run("Sending a test message...", `/v1/alerts/${encodeURIComponent(id)}/test`, { method: "POST", headers: authHeaders(key) });
-  if (r) say("Test message sent. Check the channel.");
+// ---- sign in ----
+
+async function walletSignIn() {
+  const eth = window.ethereum;
+  if (!eth) return fail(walletErrorText(null));
+  if (busy) return;
+  fail("");
+  setBusy(true);
+  let session;
+  try {
+    say("Asking your wallet for an account...");
+    const [address] = await eth.request({ method: "eth_requestAccounts" });
+    if (!address) throw new Error("Your wallet gave no account");
+    say("Getting the sign-in message...");
+    const m = await api(`/v1/console/message?address=${encodeURIComponent(address)}`);
+    say("Sign the message in your wallet...");
+    const signature = await eth.request({ method: "personal_sign", params: [toHex(m.message), address] });
+    say("Signing in...");
+    session = await api("/v1/console/session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ address, issuedAt: m.issuedAt, signature }),
+    });
+  } catch (e) {
+    say("");
+    fail(e.status ? apiErrorText(e, "signin") : walletErrorText(e));
+    return setBusy(false);
+  }
+  setBusy(false);
+  mode = "wallet";
+  token = session.session;
+  store.set(SKEY, JSON.stringify(session));
+  signedIn(`Signed in as ${shortAddress(session.address)}`);
+  await loadApps("Loading your apps...");
 }
 
-async function deleteChannel(id) {
-  const r = await run("Deleting...", `/v1/alerts/${encodeURIComponent(id)}`, { method: "DELETE", headers: authHeaders(key) });
-  if (!r) return;
-  await load("Reloading your channels...");
-  say("Channel deleted.");
-}
+$("wallet-btn").addEventListener("click", walletSignIn);
+$("signout").addEventListener("click", () => {
+  signOut();
+  fail("");
+  say("Signed out.");
+});
 
+// The API key fallback: one app, the old routes.
 $("connect").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const bad = keyError($("key").value);
-  if (bad) return fail(bad);
-  key = $("key").value.trim();
-  if (await load()) {
-    store.set(key);
+  const k = $("key").value.trim();
+  if (!k.startsWith("hyd_")) return fail("That does not look like a Hydra key. Keys start with hyd_. Get one on the Publish page.");
+  mode = "key";
+  token = k;
+  if (await loadApps("Loading your channels...")) {
+    signedIn("Connected with an API key");
+    store.set(KKEY, k);
     $("key").value = "";
+  } else {
+    mode = "";
+    token = "";
   }
 });
 
-$("forget").addEventListener("click", () => {
-  lock();
-  $("key").value = "";
-  fail("");
-  say("Key forgotten. Paste it again to reconnect.");
-});
-
-$("kind").addEventListener("change", () => {
-  renderKind();
-  fail("");
-});
-
-$("add").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const kind = $("kind").value;
-  const bad = targetError(kind, $("target").value);
-  if (bad) return fail(bad);
-  $("secretbox").hidden = true;
-  const { path, init } = addRequest(key, kind, $("target").value);
-  const r = await run("Adding and sending a test message...", path, init, true);
-  if (!r) return;
-  $("target").value = "";
-  if (r.secret) {
-    $("secret").textContent = r.secret;
-    $("secretbox").hidden = false;
-  }
-  await load("Reloading your channels...");
-  say(`Added ${r.kind}, ${r.label}. A test message was sent.${r.secret ? " Copy the secret below now." : ""}`);
-});
-
-$("copy-secret").addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText($("secret").textContent);
-    say("Secret copied.");
-  } catch {
-    say("Could not copy. Select the secret and copy it by hand.");
-  }
-});
-
-renderKind();
 api("/v1/alerts/telegram-bot")
   .then((r) => {
     bot = r.username ?? null;
-    renderKind();
+    for (const n of document.querySelectorAll("#apps select")) n.dispatchEvent(new Event("change"));
   })
   .catch(() => {});
-const saved = store.get();
-if (saved) {
-  key = saved;
-  load("Reconnecting...");
-}
 
-$("find-chat").addEventListener("click", findChat);
+// Restore this tab's sign-in.
+try {
+  const s = JSON.parse(store.get(SKEY) || "null");
+  const k = store.get(KKEY);
+  if (sessionLive(s)) {
+    mode = "wallet";
+    token = s.session;
+    signedIn(`Signed in as ${shortAddress(s.address)}`);
+    loadApps("Reconnecting...");
+  } else if (k) {
+    mode = "key";
+    token = k;
+    signedIn("Connected with an API key");
+    loadApps("Reconnecting...");
+  } else {
+    store.set(SKEY, "");
+  }
+} catch {
+  store.set(SKEY, "");
+}
