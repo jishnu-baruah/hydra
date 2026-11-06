@@ -27,8 +27,11 @@ the Hydra explorer.
 ## How it decides
 
 After a page loads, the background worker re-fetches every script the top frame loaded, hashes it
-(sha256), finds the app from those hashes through the Hydra API's public read routes, and compares
-every script with that app's latest manifest (`src/compare/compare.js`). Cloudflare's injected bot
+(sha256), finds the app through the Hydra API's public read routes, and compares every script with
+that app's latest manifest (`src/compare/compare.js`). It finds the app first by the site's hostname (an
+app "proves" a domain by serving `/.well-known/hydra.txt` when it publishes), so a site whose every
+script was swapped still goes red on a first visit; if no app has proved that hostname it falls back to
+the hashes of the page's own scripts, and it remembers each site's app after a full match. Cloudflare's injected bot
 check is not judged, because the host adds it, not the build.
 
 ## Permissions, and why
@@ -40,10 +43,11 @@ check is not judged, because the host adds it, not the build.
 
 ## What leaves your browser
 
-For each page you open, the extension sends the sha256 of up to 5 of the page's own scripts to the
-Hydra API (`hydra-api-5xmn.onrender.com`) to find the app, then asks for that app's releases. It sends
-no page content, no cookies and no wallet data, and it never signs anything. A script hash can still
-identify which site you are on, so the API operator can learn which Hydra-checked sites you visit.
+For each page you open, the extension sends the page's hostname, and if no app has proved it the sha256
+of up to 5 of the page's own scripts, to the Hydra API (`hydra-api-5xmn.onrender.com`) to find the app,
+then asks for that app's releases. A site it has already matched is not asked about again. It sends
+no page content, no cookies and no wallet data, and it never signs anything. The hostname and a script hash
+both identify which site you are on, so the API operator can learn which sites you visit, bound or not.
 
 ## Develop
 

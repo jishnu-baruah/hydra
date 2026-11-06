@@ -313,3 +313,23 @@ test('observations route is served when a reader is configured and absent otherw
     bare.close()
   }
 })
+
+test('domain route: names the app for a hostname, rejects junk, and is absent without a reader', async () => {
+  const seen: string[] = []
+  const api = createApi({ secret: SECRET, appForDomain: async (d) => (seen.push(d), d === 'app.example.com' ? 'alpha' : null) })
+  const server = api.listen(0)
+  after(() => server.close())
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
+  const ok = await fetch(`${base}/v1/domains/App.Example.com`)
+  assert.equal(ok.status, 200)
+  assert.deepEqual(await ok.json(), { domain: 'app.example.com', app: 'alpha' })
+  assert.deepEqual(await (await fetch(`${base}/v1/domains/unknown.example.com`)).json(), { domain: 'unknown.example.com', app: null })
+  for (const bad of ['localhost', '127.0.0.1', 'a_b.com', 'x'.repeat(300) + '.com']) {
+    assert.equal((await fetch(`${base}/v1/domains/${bad}`)).status, 400, bad)
+  }
+  assert.deepEqual(seen, ['app.example.com', 'unknown.example.com']) // junk never reaches the reader
+  const bare = createApi({ secret: SECRET }).listen(0)
+  after(() => bare.close())
+  assert.equal((await fetch(`http://127.0.0.1:${(bare.address() as AddressInfo).port}/v1/domains/app.example.com`)).status, 404)
+})
+

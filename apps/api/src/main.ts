@@ -7,7 +7,7 @@ import type { Hex } from 'viem'
 import { runOnce } from '@hydra/indexer/run'
 import { privateKeyToAccount } from 'viem/accounts'
 import { sitesView, type TargetInfo } from './observations.ts'
-import { activity, claimOf, filesByHash, releasesFor } from './reads.ts'
+import { activity, appForDomainFrom, claimOf, filesByHash, releasesFor } from './reads.ts'
 import { createApi, indexerRunner, type ApiDeps } from './server.ts'
 import { swarmUploader } from './swarm.ts'
 
@@ -72,6 +72,21 @@ const sites = async () => {
   return body
 }
 
+// Per-key cache for read routes the extension calls on every page load. Arkiv reads are the slow
+// part; the map is capped so hostnames a client invents cannot grow it without limit.
+function cached<T>(ttlMs: number, load: (key: string) => Promise<T>, max = 500) {
+  const hits = new Map<string, { at: number; value: Promise<T> }>()
+  return (key: string): Promise<T> => {
+    const hit = hits.get(key)
+    if (hit && Date.now() - hit.at < ttlMs) return hit.value
+    if (hits.size >= max) hits.delete(hits.keys().next().value as string)
+    const value = load(key)
+    hits.set(key, { at: Date.now(), value })
+    value.catch(() => hits.delete(key)) // never keep a failure
+    return value
+  }
+}
+
 const deps: ApiDeps = {
   secret,
   corsOrigin: env.HYDRA_CORS_ORIGIN,
@@ -89,6 +104,7 @@ const deps: ApiDeps = {
   publishesPerHour: env.HYDRA_PUBLISHES_PER_HOUR ? Number(env.HYDRA_PUBLISHES_PER_HOUR) : undefined,
   releasesFor: async (app) => (writer ? releasesFor(publicClient, writer, app) : []),
   filesByHash: async (sha) => (writer ? filesByHash(publicClient, writer, sha) : []),
+  appForDomain: writer ? cached(30_000, (d: string) => appForDomainFrom(publicClient, writer, d)) : undefined,
   indexer,
   observations: sites,
   activity: async () => (writer ? activity(publicClient, writer) : { head: null, events: [] }),

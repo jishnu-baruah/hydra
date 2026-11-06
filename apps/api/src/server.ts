@@ -7,6 +7,7 @@
 //   POST /v1/releases                  Authorization: Bearer <apiKey>
 //   GET  /v1/apps/:app/releases
 //   GET  /v1/files/:sha256
+//   GET  /v1/domains/:hostname
 //   POST /v1/indexer/run              Authorization: Bearer <INDEXER_TRIGGER_SECRET>; starts one pass, 202
 //   GET  /v1/indexer/status           { running, startedAt, finishedAt, last }; public
 //   GET  /v1/observations             every indexed site with its latest observation and recent history
@@ -14,7 +15,7 @@
 
 import { timingSafeEqual } from 'node:crypto'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
-import { rootCause, WriteNotVerifiedError } from '@hydra/core'
+import { normalizeDomain, rootCause, WriteNotVerifiedError } from '@hydra/core'
 import { APP_NAME, checkInput, keyFromSignature, signInMessage } from './auth.ts'
 import { verifyKey } from './keys.ts'
 import { claimApp, ownedError, publish, type PublishDeps } from './publish.ts'
@@ -30,6 +31,8 @@ export interface ApiDeps {
   claimsPerHour?: number // new app names reserved per address; default 5
   releasesFor?: (app: string) => Promise<unknown>
   filesByHash?: (sha256: string) => Promise<unknown>
+  // The app that proved this hostname (hydra.txt at publish), or null.
+  appForDomain?: (domain: string) => Promise<string | null>
   activity?: () => Promise<unknown>
   observations?: () => Promise<unknown>
   indexer?: { secret: string; run: () => Promise<RunSummary>; runner?: IndexerRunner } // trigger; spends indexer gas
@@ -224,6 +227,13 @@ export function createApi(deps: ApiDeps) {
       const fileRoute = /^\/v1\/files\/(sha256-[0-9a-f]{64})$/.exec(path)
       if (req.method === 'GET' && fileRoute && deps.filesByHash) {
         return send(res, 200, { sha256: fileRoute[1], files: await deps.filesByHash(fileRoute[1]) })
+      }
+
+      const domainRoute = /^\/v1\/domains\/([^/]+)$/.exec(path)
+      if (req.method === 'GET' && domainRoute && deps.appForDomain) {
+        const domain = normalizeDomain(decodeURIComponent(domainRoute[1]))
+        if (!domain) return send(res, 400, { error: 'not a public hostname; use a name such as app.example.com' })
+        return send(res, 200, { domain, app: await deps.appForDomain(domain) })
       }
 
       return send(res, 404, { error: 'not found' })

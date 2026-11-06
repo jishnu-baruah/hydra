@@ -25,6 +25,19 @@ async function getJson(url) {
   return res.json();
 }
 
+// The app that proved this hostname (the site served hydra.txt for it when the app published). Asked
+// before the script hashes, so a site whose every script was swapped still names its app and goes
+// red on a first visit. Any failure, or an API without the route, is just "unknown": null.
+export async function appForDomain(hostname) {
+  if (!/^(?!-)[a-z0-9-]{1,63}(?:\.[a-z0-9-]{1,63})+$/i.test(hostname ?? "")) return null;
+  try {
+    const { app } = await getJson(`${await api()}/v1/domains/${hostname.toLowerCase()}`);
+    return typeof app === "string" && app ? app : null;
+  } catch {
+    return null;
+  }
+}
+
 // The first of these hashes that the API has on record names the app. Up to `tries` lookups.
 export async function appForHashes(hexes, tries = 5) {
   for (const hex of hexes.slice(0, tries)) {
