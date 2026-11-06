@@ -921,7 +921,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Status: in-review | Branch: feature/t-b12-console-wallet
 - Suggested: Mouli
 - Depends-on: T-A32, T-B11
-- Touches: apps/explorer/console/, apps/explorer/README.md
+- Touches: apps/explorer/, apps/api/src/server.ts, apps/api/test/console.test.ts
 - Serves: Practicality (judged) ; WOW factor (judged)
 - Known: requested by Mouli on 7 Nov; the T-B11 page takes one pasted key per app
 - Scope: the console signs in with the browser wallet (one message, no gas), lists every app the wallet owns, and per app shows the key version with a Rotate button (new key shown once with the CI command), and the channels with add, test and delete; pasting a single app key stays as a fallback

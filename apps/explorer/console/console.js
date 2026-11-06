@@ -86,6 +86,7 @@ function signOut() {
   $("p1").dataset.state = "current";
   $("p2").dataset.state = "locked";
   $("p2").hidden = true;
+  for (const a of document.querySelectorAll(".nav-console")) a.hidden = true;
   $("who").hidden = true;
   $("signout").hidden = true;
 }
@@ -97,6 +98,7 @@ function signedIn(label) {
   $("p1").dataset.state = "done";
   $("p2").dataset.state = "current";
   $("p2").hidden = false;
+  for (const a of document.querySelectorAll(".nav-console")) a.hidden = false;
 }
 
 // ---- rendering ----
@@ -181,7 +183,14 @@ async function copy(text, ok) {
 
 function addForm(app) {
   const form = el("form", { autocomplete: "off" });
-  const kind = el("select", { id: `k-${app}` }, ...Object.entries({ webhook: "Webhook", slack: "Slack", discord: "Discord", telegram: "Telegram" }).map(([v, t]) => el("option", { value: v, textContent: t })));
+  // Telegram first and picked by default; each kind is a radio with its logo.
+  const kind = el("fieldset", { className: "kinds" }, el("legend", { textContent: "Kind" }),
+    ...Object.entries({ telegram: "Telegram", slack: "Slack", discord: "Discord", webhook: "Webhook" }).map(([v, t]) =>
+      el("label", { className: "kind" },
+        el("input", { type: "radio", name: `k-${app}`, value: v, checked: v === "telegram" }),
+        el("img", { src: `../assets/logo-${v}.svg`, alt: "", width: 20, height: 20 }),
+        t)));
+  Object.defineProperty(kind, "value", { get: () => kind.querySelector("input:checked").value });
   const target = el("input", { id: `t-${app}`, spellcheck: false, autocomplete: "off" });
   const label = el("label", { htmlFor: target.id });
   const help = el("p", { className: "help" });
@@ -201,7 +210,7 @@ function addForm(app) {
   sync();
 
   form.append(
-    el("div", { className: "field" }, el("label", { htmlFor: kind.id, textContent: "Kind" }), kind, help),
+    el("div", { className: "field" }, kind, help),
     el("div", { className: "field" }, label, target, find, chats),
     el("button", { className: "btn", type: "submit", textContent: "Add channel" }),
     secret,
@@ -322,7 +331,7 @@ $("signout").addEventListener("click", () => {
 api("/v1/alerts/telegram-bot")
   .then((r) => {
     bot = r.username ?? null;
-    for (const n of document.querySelectorAll("#apps select")) n.dispatchEvent(new Event("change"));
+    for (const n of document.querySelectorAll("#apps fieldset.kinds")) n.dispatchEvent(new Event("change"));
   })
   .catch(() => {});
 

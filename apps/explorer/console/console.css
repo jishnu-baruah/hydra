@@ -31,3 +31,11 @@
 .app .confirm { border: 1px solid var(--border); padding: 12px; display: grid; gap: 10px; }
 .app .keybox { margin: 0; }
 .app .field input { width: 100%; }
+
+/* Channel kind: logo chips, Telegram first. */
+.app .kinds { border: 0; margin: 0 0 8px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.app .kinds legend { color: var(--muted); padding: 0; margin-bottom: 6px; }
+.app .field .kinds label.kind { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--border); cursor: pointer; color: inherit; }
+.app .field .kinds label.kind input { width: auto; margin: 0; accent-color: var(--accent); }
+.app .field .kinds label.kind:has(input:checked) { border-color: var(--accent); }
+.app .field .kinds label.kind:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }

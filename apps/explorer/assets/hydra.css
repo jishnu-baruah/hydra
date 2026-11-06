@@ -1,6 +1,8 @@
 /* Hydra explorer. Dark editorial system: monochrome, square corners, hairline borders, one cold
    accent. Contrast on --bg: fg 16.9, muted 5.7, accent 8.0, match 8.4, mismatch 6.4, unknown 7.0.
    --faint is 3.7, so it is for borders and decoration only, never for text. */
+[hidden] { display: none !important; }
+
 :root {
   color-scheme: dark;
   --bg: #0a0a0a;

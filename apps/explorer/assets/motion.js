@@ -2,6 +2,17 @@
 // sections that rise into view, rows that cascade in as Arkiv data arrives, and a top bar that
 // lifts once the page scrolls. Page-to-page cross-fades are CSS (hydra.css, @view-transition).
 // Under prefers-reduced-motion none of this runs, and nothing is ever hidden without JS.
+import { sessionLive } from "../console/view.js";
+
+// The Console nav link shows only while this tab has a wallet session (from Publish or the Console).
+try {
+  if (sessionLive(JSON.parse(sessionStorage.getItem("hydra.console.session") || "null"))) {
+    for (const a of document.querySelectorAll(".nav-console")) a.hidden = false;
+  }
+} catch {
+  // no storage: the link stays hidden
+}
+
 const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 if (!still) {

@@ -82,11 +82,20 @@ $("sign").onclick = async () => {
     const q = new URLSearchParams({ address: state.address, app });
     const { message, issuedAt } = await api(`/v1/auth/message?${q}`);
     const signature = await wallet.sign(message);
-    const { apiKey } = await api("/v1/auth/key", {
+    const { apiKey, session, expires } = await api("/v1/auth/key", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ address: state.address, app, issuedAt, signature }),
     });
+    // The same signature opens the Console in this tab: no second sign-in.
+    if (session) {
+      try {
+        sessionStorage.setItem("hydra.console.session", JSON.stringify({ session, address: state.address, expires }));
+        for (const a of document.querySelectorAll(".nav-console")) a.hidden = false;
+      } catch {
+        // no storage: the Console asks for its own sign-in
+      }
+    }
     state.app = app;
     state.key = apiKey;
     $("keybox").hidden = false;

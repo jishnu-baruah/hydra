@@ -233,6 +233,18 @@ test('auth/key: a key issued after a rotation carries the current version', asyn
   assert.ok(out.ok && verifyKey(SECRET, out.value.apiKey)?.v === undefined)
 })
 
+test('auth/key: the publish sign-in also returns a console session for the same wallet, so one signature is enough', async () => {
+  const issuedAt = new Date().toISOString()
+  const signature = await me.signMessage({ message: signInMessage(me.address, 'mine', issuedAt) })
+  const r = await call('POST', '/v1/auth/key', { body: { address: me.address, app: 'mine', issuedAt, signature } })
+  assert.equal(r.status, 200, JSON.stringify(r.json))
+  assert.match(r.json.session, /^hys_/)
+  assert.ok(r.json.expires > Date.now())
+  const apps = await call('GET', '/v1/console/apps', { token: r.json.session })
+  assert.equal(apps.status, 200)
+  assert.equal(apps.json.address.toLowerCase(), me.address.toLowerCase())
+})
+
 test('console channel routes: same behaviour through the session; 403 for an app it does not own', async () => {
   const { session } = (await login()).json
   const t = { token: session }
