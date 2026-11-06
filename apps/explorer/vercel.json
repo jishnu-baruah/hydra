@@ -47,5 +47,18 @@
         }
       ]
     }
+  ],
+  "redirects": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "hydra-status.vercel.app"
+        }
+      ],
+      "destination": "/observed/",
+      "permanent": false
+    }
   ]
 }

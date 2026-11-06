@@ -62,3 +62,14 @@ test('onlyTargets keeps just the named domains, case-insensitively, and an empty
   assert.deepEqual(onlyTargets(t, undefined), t)
   assert.deepEqual(onlyTargets(t, 'nope.example.com'), [])
 })
+
+test('topTargets skips exchanges and chains: not dApp frontends a user signs on', async () => {
+  const { topTargets } = await import('../src/coverage.ts')
+  const rows = [
+    { url: 'https://www.binance.com', tvl: 900, category: 'CEX' },
+    { url: 'https://cedefi.example', tvl: 800, category: 'CeDeFi' },
+    { url: 'https://chain.example', tvl: 700, category: 'Chain' },
+    { url: 'https://app.dex.example', tvl: 100, category: 'Dexs' },
+  ]
+  assert.deepEqual(topTargets(rows, 5, []).map((t) => t.domain), ['app.dex.example'])
+})

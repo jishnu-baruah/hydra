@@ -874,7 +874,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <PR link>
 
 ### T-A31, Monitored sites are dApps only, and a status address
-- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a31-dapps-only
+- Status: in-review | Branch: feature/t-a31-dapps-only
 - Suggested: Jishnu
 - Depends-on: T-A20
 - Touches: packages/indexer/src/coverage.ts, packages/indexer/test/coverage.test.ts, packages/indexer/README.md, apps/explorer/vercel.json
@@ -882,7 +882,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Known: of 250 monitored sites, 34 are centralized exchanges, 2 CeDeFi and 3 chain sites from DefiLlama's list: not dApp frontends a user signs on
 - Scope: DefiLlama entries in the categories CEX, CeDeFi and Chain are skipped (the list is refilled from the next protocols by TVL); the explorer answers on a second name, hydra-status.vercel.app, whose root shows the Monitor page
 - Acceptance: a unit test written failing first for the category filter; a dry run lists 0 sites in those categories; https://hydra-status.vercel.app/ serves the Monitor page
-- Evidence: <PR link>
+- Evidence: PR (this one); the category test failed first, indexer tests 46 pass; the status address is checked after deploy in the PR conversation
 
 ### T-B11, Console page: a team sets up its alert channels
 - Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-b11-console
