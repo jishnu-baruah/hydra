@@ -761,7 +761,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: the explorer is a static site whose non-publish pages had a CSP allowing only the Arkiv RPC, so API calls added here would have worked locally and failed in production (connect-src now lists the API); the browser pane cached old ES modules on one port, a fresh port showed the real state; the Jina key ran out of credit again, most likely drained by the first 247-site indexer run, so the indexer second view needs a top-up or a stricter rule; GLM review found a stale verdict after a domain is re-bound, fixed with a test first
 
 ### T-B10, A clean test site that Hydra verifies, so search can show Good to go
-- Status: claimed 2026-11-06 | Owner: Mouli | Branch: feature/t-b10-clean-site
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/121 | Branch: feature/t-b10-clean-site
 - Suggested: Mouli
 - Depends-on: T-B03
 - Touches: demo-clean/
