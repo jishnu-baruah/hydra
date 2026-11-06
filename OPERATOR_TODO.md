@@ -113,3 +113,11 @@ Status values: `open` | `claimed <date> | Owner: <name>` | `done <date>: <result
 - Unblocks: T-A21
 - What exactly: since OP-8 the API uploads through `api.gateway.ethswarm.org`, which is Swarm mainnet (a reference uploaded to `https://api.gateway.testnet.ethswarm.org` returns 404 there), and CLAUDE.md allows the Swarm testnet only. On Render set `BEE_API_URL` and `SWARM_GATEWAY_URL` to `https://api.gateway.testnet.ethswarm.org`, delete `SWARM_POSTAGE_BATCH_ID` (the testnet gateway also stamps for us), redeploy, then publish 1 release each for hydra-test-a, test-dapp and hygra-demo2 with their API keys.
 - Done when: `/health` shows `"swarm": true` and each of the 3 apps has a new release whose `hydra-manifest.json` opens on `https://api.gateway.testnet.ethswarm.org`; the 3 swarm_refs are written here.
+
+### OP-12, Publish the extension on the Chrome Web Store
+- Status: open
+- Owner: Mouli
+- Needed by: 2026-11-07 (review can take days, so submit early, as Unlisted if needed)
+- Unblocks: the landing page's Add to Chrome button (set `CHROME_STORE` in apps/explorer/assets/landing.js)
+- What exactly: a developer account at chrome.google.com/webstore/devconsole (Google account with 2-step verification, one-time 5 USD fee), then upload the T-C04 zip and fill the listing and privacy tabs. No agent creates accounts or pays. Before submitting, OP-10 must give the explorer a public URL and the zip must be rebuilt with it, since the popup's explorer link points at localhost until then and reviewers reject broken features. `<all_urls>` host access means an in-depth review.
+- Done when: the listing URL is written here and set as `CHROME_STORE`.
