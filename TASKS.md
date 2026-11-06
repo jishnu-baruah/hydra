@@ -917,8 +917,8 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: unit tests written failing first for the reply logic (4 or more cases: replies once per message, ignores old messages and other text, names the app); API tests 78 or more pass; live: "/hydra demo-dapp" in a group gets the id back within 10 s
 - Evidence: <PR link>
 
-### T-B13, Publish: key without the agent, then set up alerts
-- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-b13-publish-alerts
+### T-B16, Publish: key without the agent, then set up alerts
+- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-b16-publish-alerts
 - Suggested: Mouli
 - Depends-on: T-B12
 - Touches: apps/explorer/publish/
