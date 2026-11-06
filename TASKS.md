@@ -333,7 +333,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: anyone can write an entity tagged hydra.app, so search and the home list must filter by the API wallet address (ownedBy) before showing real data; a bare 64-hex input is ambiguous (file sha256 or Swarm ref), so both are queried.
 
 ### T-D04, Demo dApp on a domain we control
-- Status: done
+- Status: in-review | Branch: feature/t-d04-app-name
 - Suggested: Manish
 - Depends-on: T-A19, T-A20
 - Touches: demo/, .gitignore
