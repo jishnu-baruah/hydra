@@ -770,3 +770,15 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Scope: one small renderer that counts calls and failures and names the reason (no key, HTTP status such as 402 credit out, timeout), and after 3 failures in a row stops calling for the rest of the run; the run summary gains a `jina` field and, when the view failed, 1 error line that says what broke, how many sites it affected and what to do. The 30-minute workflow and /v1/indexer/status already print errors
 - Acceptance: unit tests written failing first (renderer: ok, no key, 402 then stop after 3, network error, a page with no scripts is not a failure; indexer 30 or more tests pass); a dry run with an invalid key prints 1 error line naming HTTP 401 or 402 and makes at most 3 calls
 - Evidence: <PR link>
+
+
+### T-A25, Live checker: watch one bound site every 5 seconds, switched on from a page
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a25-live-checker
+- Suggested: Jishnu
+- Depends-on: T-A23
+- Touches: apps/api/src/watch.ts, apps/api/src/server.ts, apps/api/src/main.ts, apps/api/test/, packages/indexer/src/check.ts, packages/indexer/src/run.ts, packages/indexer/package.json, packages/indexer/test/, apps/explorer/live/, apps/explorer/vercel.json, apps/explorer/README.md, apps/explorer nav links
+- Serves: WOW factor (judged)
+- Known: a normal indexer run reads and writes Arkiv and takes about 14 s for one site (T-A23) and 5 min for all, so the demo cannot show a tamper within seconds without a laptop that holds the wallet key; the demo needs a switch on a page that watches the demo site every 5 s on Render
+- Scope: `POST /v1/watch {domain, on}` (bearer DEMO_WATCH_TOKEN, timing-safe) starts or stops one in-memory watcher for a domain that a release has bound; every 5 s it fetches the page and its scripts through safeGet, rechecks hydra.txt and compares with the release, with no Arkiv reads or writes per tick; when the verdict flips (match to mismatch or back) it runs the normal one-site observation write and Telegram alert once; it switches itself off after 15 minutes; `GET /v1/watch` is public and returns the state, the last 30 ticks and the flips; the explorer gets a Live page with the switch, the status and the tick strip
+- Acceptance: unit tests written failing first (watcher: baseline, flip once, flip back, unreachable is not a flip, overlap skipped, auto-off, stop; routes: 401, 503, 400, 200, 404); on the live demo, switching on and then changing app.js shows mismatch on the page within 12 s and 1 Telegram alert, and API tests 30 or more pass
+- Evidence: <PR link>
