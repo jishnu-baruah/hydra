@@ -770,6 +770,17 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: https://github.com/jishnu-baruah/hydra/pull/103 (merged); explorer deployed at https://hydra-registry.vercel.app (Vercel project hydra-registry, from apps/explorer with the CLI); on the live site searching hydra-demo-dapp.vercel.app finds demo-dapp (matched by domain), https://app.uniswap.org/swap finds "watched by the indexer, not published by the team", and the demo-dapp app page shows hydra-demo-dapp.vercel.app with a match; explorer tests 29 pass, extension 17 pass; 0 lines say "15 min"
 - Finding: the explorer is a static site whose non-publish pages had a CSP allowing only the Arkiv RPC, so API calls added here would have worked locally and failed in production (connect-src now lists the API); the browser pane cached old ES modules on one port, a fresh port showed the real state; the Jina key ran out of credit again, most likely drained by the first 247-site indexer run, so the indexer second view needs a top-up or a stricter rule; GLM review found a stale verdict after a domain is re-bound, fixed with a test first
 
+### T-A35, ENS status record: status.<app>.eth carries the live verdict
+- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-a35-ens-status
+- Suggested: Jishnu
+- Depends-on: T-A25
+- Touches: apps/api/, apps/explorer/status/, apps/explorer/vercel.json, apps/explorer/README.md, spikes/F4/, CLAUDE.md, docs/ARCHITECTURE.md
+- Serves: ENS track (prize) ; WOW factor (judged)
+- Known: spike F4 on 7 Nov: ENSv2 on Sepolia lets a team own status.<app>.eth with its own PermissionedResolver and grant Hydra's monitor wallet setText for the "hydra.status" key only (any other key reverts); a write then reads back through UniversalResolverV2
+- Scope: the live watcher writes hydra.status (match or mismatch) on the app's ENS status name at every flip, from the indexer wallet, without failing or repeating the Arkiv flip; a /status/ explorer page reads the record straight from ENS on Sepolia (no Hydra server) and shows it with the transaction links; CLAUDE.md scope names ENS
+- Acceptance: unit tests written failing first for the config parse and the record value (4 or more cases); live: a hack flips hydra.status on status.demodapp.eth to mismatch within 60 s and the fix flips it back, both read from ENS
+- Evidence: <PR link>
+
 ### T-B10, A clean test site that Hydra verifies, so search can show Good to go
 - Status: in-review https://github.com/jishnu-baruah/hydra/pull/121 | Branch: feature/t-b10-clean-site
 - Suggested: Mouli
