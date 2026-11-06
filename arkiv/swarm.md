@@ -30,10 +30,11 @@ Release `hygra-demo2` version `2026-11-05.4`, published through the live API on 
 
 **We do not hold a postage batch.** Uploads go to the Swarm testnet gateway at `https://api.gateway.testnet.ethswarm.org`, which envelope-stamps on our behalf. Confirmed 2026-11-05 that the gateway accepts and ignores the `Swarm-Postage-Batch-Id` header entirely (see `spikes/F2/result.json` and the "batch-id header is ignored" test in `docs/swarm.md` § Path B). So:
 
-- **Batch ID:** none (gateway-managed).
-- **Purchasing wallet:** none (the EF gateway owns its batch).
+- **Batch ID we uploaded with:** not ours to read. The gateway stamps each upload with its own batch and hides `/stamps` (HTTP 404), so the ID is not visible to us.
+- **Who gave us the batch:** the public Swarm testnet gateway `https://api.gateway.testnet.ethswarm.org`, which runs Ethersphere's [swarm-gateway](https://github.com/ethersphere/swarm-gateway) and "manages postage stamps for uploads".
+- **Bee node or service we uploaded through:** that same gateway (section 5).
 
-This is the Arkiv + Swarm bonus's expected answer for teams using the public gateway. If we later switch to a self-hosted Bee, the batch ID and wallet address go here.
+The bonus asks for the batch ID and buying wallet "(or who gave you the batch)"; the gateway is that giver. With a self-hosted Bee, the batch ID and wallet would go here instead.
 
 ## 5. Bee node or hosted service used for uploads
 
@@ -82,5 +83,7 @@ Full 5-file spike with sha256 byte-compare: `spikes/F2/result.json`.
 
 - **EF gateway blocks HTML reads** (302 → `bzz.link/forbidden`). JSON/JS/CSS/plain text work. We serve the manifest from Swarm and the site from the dApp's origin, so this does not block our critical path — but a "render the site from Swarm" link in the explorer would need a different gateway.
 - **No postage batch needed.** The API turns Swarm on from `BEE_API_URL` alone and sends `Swarm-Postage-Batch-Id` only when `SWARM_POSTAGE_BATCH_ID` is set, so the EF gateway path runs with the batch id empty.
+- **Mainnet by accident.** The gateway we first used, `api.gateway.ethswarm.org`, turned out to be Swarm mainnet: a reference uploaded to the testnet gateway returns 404 there, and no doc says which network it serves. We moved to `api.gateway.testnet.ethswarm.org` (DECISIONS.md, 6 Nov). Releases published before the switch keep mainnet references.
+- **HTML is blocked everywhere, including raw bytes.** The gateway sniffs content for `<!doctype html`, so uploading a page as `/bytes` or `application/octet-stream` is blocked too. Gzipping the HTML first gets it through, and it reads back byte-identical after unzipping (`docs/research/swarm-fit.md`, section 5).
 - **No encrypted Swarm references on-chain.** The bonus rules forbid encrypted refs in public Arkiv entities; our refs are plain 64-hex, so this is a note not a blocker.
 - **Pre-event spike T7** (Tiramisu): `0.8.1` SDK, since replaced by `1.0.1` on Rabdi; `docs/prior-learnings.md` records the lowercase-attribute and i32-number issues we hit then, which are now encoded in `packages/core/src/records.ts` so publishers can't re-step on them. More Arkiv builder feedback goes in `docs/FEEDBACK.md` before submission.
