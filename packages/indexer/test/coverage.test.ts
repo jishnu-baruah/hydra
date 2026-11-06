@@ -53,3 +53,12 @@ test('scriptHash: an HTML page served at a script URL is unreadable, not a chang
   assert.equal(scriptHash(enc('  \n<!DOCTYPE html><html>nonce-123')), null)
   assert.match(String(scriptHash(enc('console.log(1)'))), /^sha256-[0-9a-f]{64}$/)
 })
+
+test('onlyTargets keeps just the named domains, case-insensitively, and an empty spec keeps all', async () => {
+  const { onlyTargets } = await import('../src/coverage.ts')
+  const t = [{ domain: 'a.example.com' }, { domain: 'B.example.com' }, { domain: 'c.example.com' }]
+  assert.deepEqual(onlyTargets(t, 'b.example.com, A.example.com'), [t[0], t[1]])
+  assert.deepEqual(onlyTargets(t, ''), t)
+  assert.deepEqual(onlyTargets(t, undefined), t)
+  assert.deepEqual(onlyTargets(t, 'nope.example.com'), [])
+})

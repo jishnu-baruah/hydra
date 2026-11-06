@@ -18,7 +18,7 @@ import {
 } from '@hydra/core'
 import { hexToString, type Hex } from 'viem'
 import { alertText, sendTelegram } from './alerts.ts'
-import { shouldWrite, topTargets } from './coverage.ts'
+import { onlyTargets, shouldWrite, topTargets } from './coverage.ts'
 import { bindTargets, compare, proofProblem, runtimeProblems, scriptUrls, scriptHash, scriptsHash, type BoundTarget, type Manifest, type Seen } from './scan.ts'
 
 const MAX_SCRIPTS = 60
@@ -213,15 +213,16 @@ export async function runOnce(o: { api: string; clients: ReturnType<typeof arkiv
   // Discovery: targets.json first, then the top N protocols by TVL from DefiLlama.
   let merged: { app?: string; domain: string; category: string }[] = listed
   try {
+    if (process.env.INDEXER_ONLY) throw new Error('one-site run')
     const res = await fetch(LLAMA, { signal: AbortSignal.timeout(60_000) })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const apps = new Map(listed.map((e) => [e.domain.toLowerCase(), e.app]))
     merged = topTargets(await res.json(), Number(process.env.INDEXER_TOP ?? 227), listed).map((e) => ({ ...e, app: apps.get(e.domain.toLowerCase()) }))
   } catch (err) {
-    errors.push(`DefiLlama discovery failed, scanning targets.json only: ${rootCause(err)}. Check ${LLAMA} and rerun`)
+    if (!process.env.INDEXER_ONLY) errors.push(`DefiLlama discovery failed, scanning targets.json only: ${rootCause(err)}. Check ${LLAMA} and rerun`)
   }
   const category = new Map(merged.map((e) => [e.domain.toLowerCase(), e.category]))
-  const targets = bindTargets(merged, releases)
+  const targets = onlyTargets(bindTargets(merged, releases), process.env.INDEXER_ONLY)
 
   // Earlier observations come from Arkiv, not memory.
   const wallet = o.clients?.walletClient
