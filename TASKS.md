@@ -892,5 +892,5 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Serves: Practicality (judged) ; WOW factor (judged)
 - Known: requested by Mouli on 6 Nov; the explorer is his code and he asked for this page
 - Scope: /console/ in the explorer: paste the app's Hydra API key (kept in the tab's session storage only), see the app's channels, add a webhook, Slack, Discord or Telegram channel (each sends a test first), test or delete one; the webhook secret is shown once; plain wording, textContent only
-- Acceptance: unit tests for the pure form logic (validation of each channel kind); in a browser on the deployed explorer, adding a Telegram channel for demo-dapp delivers its test message
+- Acceptance: unit tests written first for the pure form logic (all 4 channel kinds, 8 or more cases); in a browser on the deployed explorer, adding 1 Telegram channel for demo-dapp delivers its test message
 - Evidence: <PR link>
