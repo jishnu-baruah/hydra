@@ -498,6 +498,19 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: write on change silently wrote every site (scan result field `hash` vs `scripts_hash`), caught only by a dry run that skipped 0; 1inch answers its script URL with a per-request HTML page, so HTML at a script URL now counts as unreadable; GitHub fired the 30-minute schedule once in 6 hours, so an in-process timer was added
 - Kill criterion: over 30 minutes per run on the free instance, so cut to the top 100
 
+### T-A23, One-site indexer run for the demo
+- Status: in-review | Branch: feature/t-a23-one-site-run
+- Suggested: Jishnu
+- Depends-on: T-A20
+- Touches: packages/indexer/
+- Serves: WOW factor (judged) ; Practicality (judged)
+- Known: a full pass over 248 sites takes about 5 minutes, far over the 90 second demo slot (T-D10); the demo needs a check of one site that is still a real run
+- Scope: `INDEXER_ONLY=<domain,...>` restricts a run to the named domains (bound domains included) and skips the DefiLlama fetch; everything else is the normal run: real fetch, hash, compare, Arkiv write and Telegram alert
+- Acceptance: a unit test for the domain filter written first; a real one-site run on the demo domain writes 1 observation and sends the alert in under 20 s (measured: 13.3 to 15.4 s, tamper to alert 28 s with a 10 s redeploy)
+- Evidence: tests: indexer 31 pass; live one-site runs on hydra-demo-dapp.vercel.app took 13.3 to 15.4 s each; tamper, 10 s redeploy and indexer run gave the alert 28 s after the change (tx https://rabdi.explorer.arkiv.network/tx/0x812487b96ed5f692288938b99b77b52f7a7de6f4290324435c3f336358ff9f68 is the recovery observation)
+- Finding: a one-site run still needs the indexer wallet key, so it runs from a machine with .env, not through the Render API; Jina is off locally, so runtime origins are not read in that run
+- Kill criterion: none, it is a small filter
+
 ### T-C05, Extension shows indexer alerts
 - Status: open
 - Suggested: Mouli
@@ -724,3 +737,13 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: PR #92 (this one); `node scripts/query-releases.mjs demo-dapp` printed release demo-1 with swarm_ref 311afb3f...09a4 and its entity key against live Arkiv
 - Finding: `@hydra/core` does not resolve from the root scripts/ folder (only linked inside workspace packages), so the query script imports the package source by relative path; a u64 column filter needs the value wrapped as u64(...) (SDK error, hit live); arkiv/swarm.md already on main has 4 dash characters the lint rule bans, left for its owner
 
+### T-A22, Domain lookup: the extension finds an app by its hostname
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a22-domain-lookup
+- Suggested: Jishnu
+- Depends-on: T-A19
+- Touches: apps/api/src/reads.ts, apps/api/src/server.ts, apps/api/src/main.ts, apps/api/test/, apps/extension/src/compare/lookup.js, apps/extension/src/compare/lookup.test.mjs, apps/extension/src/background.js, apps/extension/README.md
+- Serves: WOW factor (judged) ; Practicality (judged)
+- Known: tested 6 Nov in real Chrome 156: on the tampered demo site the extension showed grey `?` for a first-time visitor and red `!` only for a returning one, because it finds the app from the hashes of the page's own scripts and a site whose every script changed matches nothing. Since T-A19 a release lists only proven domains, so the hostname can name the app. The extension is Mouli's code; this adds one lookup before the hash lookup and changes nothing else
+- Scope: `GET /v1/domains/<hostname>` returns the app whose releases list that domain (the earliest app to prove it keeps it, so a later claim cannot silence the check), kept only for releases created by the publisher wallet and by the app's owner; the extension asks it first, falls back to the script hashes, and keeps remembering a matched site
+- Acceptance: unit tests written failing first for the route and the extension lookup (API 25 or more pass, extension 17 or more pass); in real Chrome, with no remembered state, 1 first visit to the tampered demo site is red `!`, the published site is green, and app.uniswap.org stays grey
+- Evidence: <PR link>

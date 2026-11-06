@@ -57,3 +57,8 @@ export function topTargets(
   }
   return out
 }
+// INDEXER_ONLY="a.com,b.com": scan just these domains, for a one-site run (the demo, a recheck).
+export function onlyTargets<T extends { domain: string }>(targets: T[], spec: string | undefined): T[] {
+  const want = new Set((spec ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean))
+  return want.size ? targets.filter((t) => want.has(t.domain.toLowerCase())) : targets
+}
