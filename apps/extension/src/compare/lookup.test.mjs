@@ -29,6 +29,6 @@ test("an older API without the route, or a network failure, falls back to null i
 test("a hostname that is not a plain hostname is never sent", async () => {
   globalThis.lastUrl = "";
   globalThis.fetch = reply(200, { app: "evil" });
-  for (const h of ["", "localhost", "a/b", "a b.com", "app.example.com:8080", "x.com?y=1"]) assert.equal(await appForDomain(h), null, h);
+  for (const h of ["", "localhost", "a/b", "a b.com", "app.example.com:8080", "x.com?y=1", "ab-.com", "-ab.com", "a".repeat(64) + ".com"]) assert.equal(await appForDomain(h), null, h);
   assert.equal(globalThis.lastUrl, "");
 });

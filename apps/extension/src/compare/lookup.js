@@ -29,7 +29,7 @@ async function getJson(url) {
 // before the script hashes, so a site whose every script was swapped still names its app and goes
 // red on a first visit. Any failure, or an API without the route, is just "unknown": null.
 export async function appForDomain(hostname) {
-  if (!/^(?!-)[a-z0-9-]{1,63}(?:\.[a-z0-9-]{1,63})+$/i.test(hostname ?? "")) return null;
+  if ((hostname ?? "").length > 253 || !/^(?:(?!-)[a-z0-9-]{1,63}(?<!-)\.)+(?!-)[a-z0-9-]{1,63}(?<!-)$/i.test(hostname ?? "")) return null;
   try {
     const { app } = await getJson(`${await api()}/v1/domains/${hostname.toLowerCase()}`);
     return typeof app === "string" && app ? app : null;

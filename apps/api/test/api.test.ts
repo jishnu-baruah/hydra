@@ -324,7 +324,7 @@ test('domain route: names the app for a hostname, rejects junk, and is absent wi
   assert.equal(ok.status, 200)
   assert.deepEqual(await ok.json(), { domain: 'app.example.com', app: 'alpha' })
   assert.deepEqual(await (await fetch(`${base}/v1/domains/unknown.example.com`)).json(), { domain: 'unknown.example.com', app: null })
-  for (const bad of ['localhost', '127.0.0.1', 'a_b.com', 'x'.repeat(300) + '.com']) {
+  for (const bad of ['localhost', '127.0.0.1', 'a_b.com', 'x'.repeat(300) + '.com', '%E0%A4%A', 'app.example.com%2F..', 'a%00b.com']) {
     assert.equal((await fetch(`${base}/v1/domains/${bad}`)).status, 400, bad)
   }
   assert.deepEqual(seen, ['app.example.com', 'unknown.example.com']) // junk never reaches the reader

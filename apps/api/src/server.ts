@@ -231,7 +231,13 @@ export function createApi(deps: ApiDeps) {
 
       const domainRoute = /^\/v1\/domains\/([^/]+)$/.exec(path)
       if (req.method === 'GET' && domainRoute && deps.appForDomain) {
-        const domain = normalizeDomain(decodeURIComponent(domainRoute[1]))
+        let raw = ''
+        try {
+          raw = decodeURIComponent(domainRoute[1])
+        } catch {
+          // a malformed escape is just not a hostname
+        }
+        const domain = normalizeDomain(raw)
         if (!domain) return send(res, 400, { error: 'not a public hostname; use a name such as app.example.com' })
         return send(res, 200, { domain, app: await deps.appForDomain(domain) })
       }
