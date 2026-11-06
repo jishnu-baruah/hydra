@@ -159,6 +159,31 @@ test('a failed alert is retried on the next checks while the verdict stays flipp
   assert.equal(w.status().flips[0].alert, 'done')
 })
 
+test('a flip write that hangs times out after the limit and the retry then finishes the alert', async () => {
+  let calls = 0
+  const { w, advance } = rig(['match', 'mismatch'], {
+    flipTimeoutMs: 30,
+    onFlip: () => (++calls === 1 ? new Promise<void>(() => {}) : Promise.resolve()), // the first write never finishes
+  })
+  await w.start('app.example.com')
+  advance(5000)
+  await w.tickNow() // flip seen, the write hangs: it must not hold the watcher past the limit
+  assert.equal(w.status().flips[0].alert, 'failed')
+  assert.match(w.status().flips[0].note ?? '', /did not finish in/i)
+  advance(5000)
+  await w.tickNow() // still flipped and failed: the retry runs and succeeds
+  assert.equal(calls, 2)
+  assert.equal(w.status().flips[0].alert, 'done')
+})
+
+test('a fast flip write is unchanged by the limit', async () => {
+  const { w, advance } = rig(['match', 'mismatch'], { flipTimeoutMs: 1000 })
+  await w.start('app.example.com')
+  advance(5000)
+  await w.tickNow()
+  assert.equal(w.status().flips[0].alert, 'done')
+})
+
 test('three failed attempts end as failed and stop trying', async () => {
   let attempts = 0
   const { w, advance } = rig(['match', 'mismatch'], { onFlip: async () => { attempts++; throw new Error('arkiv down') } })

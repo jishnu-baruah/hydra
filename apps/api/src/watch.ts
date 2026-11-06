@@ -51,6 +51,7 @@ export interface WatchDeps {
   intervalMs?: number
   maxMs?: number
   refreshMs?: number // how long a resolved target (and its manifest) is trusted before resolving again
+  flipTimeoutMs?: number // how long the observation write and alert may take before the attempt counts as failed
 }
 
 const KEEP = 30
@@ -73,6 +74,7 @@ export function createWatcher(d: WatchDeps) {
   const intervalMs = d.intervalMs ?? 5000
   const maxMs = d.maxMs ?? 15 * 60_000
   const refreshMs = d.refreshMs ?? 60_000
+  const flipTimeoutMs = d.flipTimeoutMs ?? 45_000
 
   let target: WatchTarget | null = null
   let resolvedAt = 0
@@ -97,7 +99,16 @@ export function createWatcher(d: WatchDeps) {
   // One attempt at the observation write and alert for a flip. A failure is kept for the next checks.
   async function fire(flip: Flip, attempts: number, domain: string, app: string) {
     try {
-      await d.onFlip({ domain, app, from: flip.from, to: flip.to, at: flip.at })
+      // A write that hangs (a slow Arkiv read) must fail the attempt, not freeze the watcher.
+      let timer: ReturnType<typeof setTimeout> | undefined
+      const limit = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`the write did not finish in ${Math.round(flipTimeoutMs / 1000)} s`)), flipTimeoutMs)
+      })
+      try {
+        await Promise.race([d.onFlip({ domain, app, from: flip.from, to: flip.to, at: flip.at }), limit])
+      } finally {
+        clearTimeout(timer)
+      }
       flip.alert = 'done'
       flip.note = undefined
       retrying = null
