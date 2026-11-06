@@ -102,16 +102,28 @@ self-clearing incident flags kept alive by renewal.
 ```
 
 `scripts` lists the external scripts the built HTML loads (vendor scripts), hashed at publish time.
+In a release manifest, `domains` lists only proven domains (see Domain proof below).
+
+### Domain proof
+
+A publish may list up to 5 domains (the GitHub Action sends them from `HYDRA_DOMAINS`, a comma list).
+The API keeps a domain in `domains` only if `https://<domain>/.well-known/hydra.txt` contains the line
+`hydra-app=<app>`, checked once at publish (public addresses only, no redirects, 4 KiB max). An
+unproven domain does not fail the publish: the response lists it in `domainsUnverified` with the
+reason and the fix, and the Action prints it. The indexer rechecks the file on every run. A bound
+domain that loses the file is flagged `DOMAIN_PROOF_LOST` and marked `mismatch`, because a hijacker
+could delete the file to dodge the check. A copied file does not help, since the scripts must still
+match the release. No token is needed: the app owner lists the domain with the API key, and the
+domain serves the file.
 
 ## How the extension decides
 
 1. On each page, read the origin and collect the URLs of the scripts the page loaded.
 2. Look up the origin's `app`, then that app's latest `release`, then fetch its manifest from Swarm. Cache it.
 3. Re-fetch the page's scripts, hash them, and compare with `files` and `scripts` in the manifest.
-4. Badge: green = every script is in the release; red = something isn't (show which); grey = no release for this site. Also show the latest indexer `observation` if there is one.
+4. Badge: green = every script is in the release; red = something isn't (show which); grey = no release for this site. Also show the latest indexer `observation` if there is one (a `DOMAIN_PROOF_LOST` observation shows as mismatch, with that flag).
 
 ## Open decisions
 
-- **Domain ownership.** How the API checks that a team owns the domains it registers. Proposal: a `/.well-known/hydra.txt` file containing a token from the API, checked once at registration.
 - **Swarm setup.** Our own Bee node with a testnet postage batch, or a hosted gateway. This is a day-1 spike.
 - **Pages that change on every request** (Next.js). Compare scripts only, not the HTML.

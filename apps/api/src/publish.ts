@@ -11,11 +11,13 @@ import {
   ReleaseSchema,
   appValues,
   fileValues,
+  normalizeDomain,
   releaseValues,
   sha256Tag,
   type CreateSpec,
   type ExtendSpec,
   type Manifest,
+  type ProofResult,
 } from '@hydra/core'
 import type { Hex } from 'viem'
 import type { Result } from './auth.ts'
@@ -28,6 +30,8 @@ export interface PublishDeps {
   swarm?: (files: TarFile[]) => Promise<string>
   // The live claim on an app name, or null if unclaimed. Without it, ownership is not checked.
   claimOf?: (app: string) => Promise<{ owner: string; key: Hex } | null>
+  // Checks that a domain serves hydra.txt naming the app. Without it no domain can be verified.
+  proveDomain?: (domain: string, app: string) => Promise<ProofResult>
   now?: () => number
 }
 
@@ -45,6 +49,7 @@ export function claimApp(deps: Pick<PublishDeps, 'createOne'>, app: string, publ
 }
 
 export const MAX_FILES = 2000
+const MAX_DOMAINS = 5
 export const MAX_INDEXED_FILES = 200 // file records are written for code files, up to this many
 const CODE = /\.(html?|m?js|css|wasm)$/i
 const SHA = /^sha256-[0-9a-f]{64}$/
@@ -107,9 +112,14 @@ export async function publish(
 
   const commit = str(body.commit, 100) ?? 'unknown'
   const version = str(body.version, 100) ?? `${new Date(now).toISOString().slice(0, 10)}.${commit.slice(0, 7)}`
-  // Domains are not taken from the client until domain ownership can be proven (hydra.txt).
-  const domains: string[] = []
-  const domainsIgnored = Array.isArray(body.domains) ? body.domains.length : 0
+  const domainsBad = 'domains must be a list of up to 5 hostnames such as app.example.com'
+  if (body.domains !== undefined && (!Array.isArray(body.domains) || body.domains.length > MAX_DOMAINS)) return bad(domainsBad)
+  const wanted = new Set<string>()
+  for (const d of (body.domains ?? []) as unknown[]) {
+    const n = normalizeDomain(d)
+    if (!n) return bad(`${domainsBad}; "${String(d).slice(0, 80)}" is not one`)
+    wanted.add(n)
+  }
   const ciRunUrl = str(body.ciRunUrl, 500)
 
   // First come, first served: the first address to publish an app name owns it.
@@ -119,6 +129,18 @@ export async function publish(
   if (owner && owner !== me) {
     return { ok: false, status: 403, error: ownedError(claims.app, owner) }
   }
+
+  // A domain only counts once it serves hydra.txt naming this app; the rest are reported, not fatal.
+  const proofs = await Promise.all(
+    [...wanted].map(async (domain) => ({
+      domain,
+      proof: deps.proveDomain
+        ? await deps.proveDomain(domain, claims.app)
+        : ({ ok: false, reason: 'domain proof is not configured on this server' } as const),
+    })),
+  )
+  const domains = proofs.filter((p) => p.proof.ok).map((p) => p.domain)
+  const domainsUnverified = proofs.flatMap((p) => (p.proof.ok ? [] : [{ domain: p.domain, reason: p.proof.reason }]))
 
   const manifest: Manifest = { app: claims.app, version, commit, domains, files: hashes, scripts }
   const manifestJson = JSON.stringify(manifest, null, 2)
@@ -178,7 +200,8 @@ export async function publish(
       fileTxs,
       appClaimTx: appClaim?.txHash ?? null,
       leaseRenewed: renew.length > 0,
-      domainsIgnored,
+      domains,
+      domainsUnverified,
     },
   }
 }

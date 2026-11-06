@@ -2,7 +2,7 @@
 
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
-import { arkivClients, guardedBatch, guardedCreate } from '@hydra/core'
+import { arkivClients, checkProof, guardedBatch, guardedCreate } from '@hydra/core'
 import type { Hex } from 'viem'
 import { runOnce } from '@hydra/indexer/run'
 import { privateKeyToAccount } from 'viem/accounts'
@@ -67,6 +67,7 @@ const deps: ApiDeps = {
         createOne: (spec) => guardedCreate({ walletClient, publicClient, ...spec }),
         createMany: (specs, extensions) => guardedBatch({ walletClient, publicClient, creates: specs, extensions }),
         swarm,
+        proveDomain: (d, app) => checkProof(d, app),
       }
     : undefined,
   claimOf: writer ? (app) => claimOf(publicClient, writer, app) : undefined,

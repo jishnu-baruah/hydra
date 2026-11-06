@@ -24,3 +24,5 @@ node src/main.ts --dry                          # one run, print only, no key, n
 - **Limits:** 60 scripts per site (Uniswap loads 713); regex-grade HTML parsing; inline scripts
   are not checked (Next.js Flight data, spike T12). A host can serve the indexer clean files and
   victims bad ones (spike T8); the extension is the better vantage point.
+
+Binding: a site is compared with a release only when that app's latest manifest lists the domain (the API adds it after the `/.well-known/hydra.txt` proof passed). A `targets.json` app label alone binds nothing, so the site stays `unknown`. A bound site is re-proved every run; if the proof fails the status is `mismatch` with `DOMAIN_PROOF_LOST <reason>`.
