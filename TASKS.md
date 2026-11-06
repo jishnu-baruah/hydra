@@ -530,7 +530,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 # P2, 6 Nov afternoon and night
 
 ### T-D11, Swarm requirements and integration fit (research plus validation)
-- Status: claimed 2026-11-06 | Owner: Manish | Branch: feature/t-d11-swarm-fit
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/86 | Branch: feature/t-d11-swarm-fit
 - Suggested: Manish
 - Depends-on: T-F02
 - Touches: docs/research/swarm-fit.md
@@ -538,9 +538,9 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Known: publish already uploads each build plus hydra-manifest.json through the EF gateway (https://api.gateway.ethswarm.org) and stores swarm_ref on Arkiv. Open: is that gateway mainnet or testnet (CLAUDE.md says testnet only), how long uploads live without our own postage batch, and whether a release can be served back as a working site (a "revert" to the last good release, like git revert: history stays, a new record points at a good state)
 - Scope: answer each with a primary source (Swarm docs, Bee API reference, the Swarm prize page) or a measured test, in docs/research/swarm-fit.md. 1 Network: which network the EF gateway writes to; the testnet gateway or Bee setup if it is mainnet; cost. 2 Retention: how long a gateway upload stays retrievable, the postage TTL, and the cost to keep a release 30 days and 6 months. 3 Prize fit: the Swarm track requirements quoted, and which we meet (upload, feeds, ACT, own Bee node). 4 Revert and mirror: open an existing release swarm_ref at /bzz/<ref>/ and record whether index.html loads its assets, for 1 static SPA and 1 Next.js build, with time to first byte. 5 Evidence snapshots: upload a 200 KB HTML file plus 3 scripts as one collection, read it back byte-identical, record ref and time. 6 Feeds: whether a Swarm feed fits "last good release", and what signing it needs (only apps/api may hold keys)
 - Acceptance: all 6 answered, every number with a link or a measured run; a fit table (use, works yes or no, cost, effort in hours, recommendation)
-- Evidence: <refs uploaded, gateway URLs, timings>
+- Evidence: docs/research/swarm-fit.md; testnet refs 36a8ec50 (200 KB HTML plus 3 scripts, 2.6 s), 8f5aea6a (gzipped HTML, byte-identical after gunzip), fd2fe5d2 (Next.js export, 15 of 15 non-HTML files identical), feed manifest 09c41c86 (write 1.3 s, resolves in about 60 s)
 - Kill criterion: by 6 Nov 20:00 IST, ship what is answered and mark the rest unverified; never guess a number
-- Finding: <write it here>
+- Finding: both public gateways refuse every HTML read (content-sniffed, website rule deny), so 0 of 2 builds load as a site and raw HTML snapshots fail; gzipped HTML reads back byte-identical. A depth-17 mainnet batch costs about 1.37 xBZZ per 30 days at 201,212 PLUR per chunk per block; the bonus accepts "who gave you the batch", so no own batch is needed
 
 ### T-A04, Deploy the API with HTTPS
 - Status: claimed 2026-11-05 | Owner: Jishnu | Branch: feature/t-a04-deploy-api
