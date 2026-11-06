@@ -4,7 +4,7 @@
 // only records created by our publisher wallet (`writer`). An app name belongs to the address in
 // its earliest `hydra.app` record; releases and files from any other address are dropped.
 
-import { AlertSubSchema, AppSchema, FileSchema, ReleaseSchema, eq, readAll, readWithRetry } from '@hydra/core'
+import { AlertSubSchema, AppSchema, FileSchema, KeyEpochSchema, ReleaseSchema, eq, readAll, readWithRetry } from '@hydra/core'
 import { hexToBytes, hexToString, type Hex } from 'viem'
 import type { StoredSub } from './alerts.ts'
 import { appForDomain as pickApp, type DomainRelease } from './domains.ts'
@@ -155,4 +155,43 @@ export async function alertSubs(reader: unknown, writer: Hex, app: string): Prom
   return rows
     .filter((r) => r.app === app && typeof r.body === 'string' && typeof r.$key === 'string')
     .map((r) => ({ id: r.$key as string, kind: String(r.kind), created_at: Number(r.created_at ?? 0), sealed: hexToBytes(r.body as Hex) }))
+}
+
+// The app's current key version (T-A32): the highest hydra.key_epoch our wallet wrote for it, 0 when
+// it was never rotated. Pages through all rows (100 per Arkiv query); rotations are rate limited.
+export async function keyVersion(reader: unknown, writer: Hex, app: string): Promise<number> {
+  const cols = { $key: true, app: true, version: true } as never
+  const rows = await readAll(
+    (offset) =>
+      (reader as { select: (c: never) => { from: (s: unknown) => { where: (w: unknown) => { createdBy: (a: Hex) => { limit: (n: number) => { offset: (n: number) => { fetch: () => Promise<{ entities: Record<string, unknown>[]; skipped: number }> } } } } } } })
+        .select(cols)
+        .from(KeyEpochSchema)
+        .where(eq('app', app))
+        .createdBy(writer)
+        .limit(100)
+        .offset(offset)
+        .fetch(),
+    1000,
+  )
+  return rows.map(row).filter((r) => r.app === app).reduce((hi, r) => Math.max(hi, Number(r.version) || 0), 0)
+}
+
+// Candidates for the console: apps whose name claim was written for this wallet (publisher is indexed).
+// The caller still confirms ownership with claimOf, because the earliest claim wins.
+export async function appsPublishedBy(reader: unknown, writer: Hex, address: string) {
+  const rows = await fetchRows(reader, writer, AppSchema, { $key: true, $expiresAt: true, app: true, publisher: true, created_at: true }, eq('publisher', address.toLowerCase()), 100)
+  const byApp = new Map<string, { app: string; created_at: number; expires_block: number }>()
+  for (const r of rows) {
+    if (String(r.publisher).toLowerCase() !== address.toLowerCase()) continue
+    const c = { app: String(r.app), created_at: Number(r.created_at ?? 0), expires_block: Number(r.$expiresAt ?? 0) }
+    const have = byApp.get(c.app)
+    if (!have || c.created_at < have.created_at) byApp.set(c.app, c)
+  }
+  return [...byApp.values()].sort((a, b) => a.created_at - b.created_at)
+}
+
+// A block number as unix milliseconds, from the chain head and block time (see activity()).
+export async function blockToMs(reader: unknown, block: number): Promise<number> {
+  const t = await readWithRetry(() => (reader as { getBlockTiming: () => Promise<{ currentBlock: bigint; currentBlockTime: number; blockDuration: number }> }).getBlockTiming())
+  return Math.round((t.currentBlockTime + (block - Number(t.currentBlock)) * t.blockDuration) * 1000)
 }

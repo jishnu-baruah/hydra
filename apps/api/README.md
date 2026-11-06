@@ -77,3 +77,24 @@ Every call to a team's URL goes through `safePost`: https on the default port, a
 pinned for the connection, no redirects followed, 10 s timeout, 64 KiB of answer read. Network errors
 and 5xx get 3 attempts; a 3xx or 4xx stops. Targets are stored on Arkiv (`hydra.alert_sub`) sealed
 with AES-256-GCM under `ALERT_KEY`, and are never logged or returned.
+
+## Console sessions and key rotation (T-A32)
+
+A wallet signs in to the console with no gas, sees every app it owns and can rotate an app's key.
+
+- `GET /v1/console/message?address=0x...`: `{ message, issuedAt }`; sign `message` (personal_sign).
+- `POST /v1/console/session` with `{ address, issuedAt, signature }`: `200 { session, address, expires }`
+  (`hys_...`, 2 hours, `expires` in ms). 401 wrong signature, 400 `issuedAt` older than 10 minutes or
+  more than 1 minute ahead, 403 address not allowlisted.
+- Every route below takes `Authorization: Bearer hys_...` (401 for a missing, bad or expired session or
+  a `hyd_` key) and answers 403 for an app the session address does not own (the earliest claim wins).
+- `GET /v1/console/apps`: `{ address, apps: [{ app, created_at, expires_at, key_version, channels }] }`;
+  `created_at` and `expires_at` (the name claim's expiry) are unix ms.
+- `POST /v1/console/apps/<app>/rotate`: `200 { app, key, version, expires_at }`. The key (`hyd_...`,
+  30 days) is in this response only. At most 10 rotations per app per hour (429).
+- `POST /v1/console/apps/<app>/alerts`, `POST .../alerts/<id>/test`, `DELETE .../alerts/<id>`,
+  `GET .../telegram-chats`: the `/v1/alerts` routes with the same bodies, limits and status codes.
+
+A rotation writes a `hydra.key_epoch` record. Keys carry a version `v` (none means 0); `POST
+/v1/releases` and every `/v1/alerts` route answer 401 for a key older than the app's current version.
+`POST /v1/auth/key` issues keys at the current version.

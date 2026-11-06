@@ -2,7 +2,7 @@
 
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
-import { AlertSubSchema, LONG, alertSubValues, arkivClients, checkProof, guardedBatch, guardedCreate, guardedDelete, recentObservations } from '@hydra/core'
+import { AlertSubSchema, KeyEpochSchema, LONG, alertSubValues, keyEpochValues, arkivClients, checkProof, guardedBatch, guardedCreate, guardedDelete, recentObservations } from '@hydra/core'
 import type { Hex } from 'viem'
 import { checkSite } from '@hydra/indexer/check'
 import { runOnce, sendTelegram } from '@hydra/indexer/run'
@@ -10,8 +10,8 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { sitesView, type TargetInfo } from './observations.ts'
 import { channelNotifier, deliver, type Channel, type Verdict } from './alerts.ts'
 import { linkedChats } from './alerts.ts'
-import { activity, alertSubs, appForDomainFrom, claimOf, filesByHash, releasesFor } from './reads.ts'
-import { createApi, indexerRunner, type AlertRoutes, type ApiDeps } from './server.ts'
+import { activity, alertSubs, appForDomainFrom, appsPublishedBy, blockToMs, claimOf, filesByHash, keyVersion, releasesFor } from './reads.ts'
+import { createApi, indexerRunner, type AlertRoutes, type ApiDeps, type ConsoleRoutes } from './server.ts'
 import { swarmUploader } from './swarm.ts'
 import { createWatcher, runOk } from './watch.ts'
 import { deployDemo, readDemoFiles } from './demo.ts'
@@ -162,6 +162,35 @@ const watcher = writer
     })
   : undefined
 
+// Key versions (T-A32): every key route asks for the app's current version, so it is cached 30 s;
+// a rotation clears that app's entry. Reads fail closed: if Arkiv cannot answer, the route fails.
+// `rotatedTo` remembers versions written here, so a rotation takes effect before Arkiv's index shows it.
+const versions = new Map<string, { at: number; value: Promise<number> }>()
+const rotatedTo = new Map<string, number>()
+const currentVersion = (app: string): Promise<number> => {
+  const hit = versions.get(app)
+  if (hit && Date.now() - hit.at < 30_000) return hit.value
+  if (versions.size >= 500) versions.delete(versions.keys().next().value as string)
+  const value = keyVersion(publicClient, writer!, app).then((v) => Math.max(v, rotatedTo.get(app) ?? 0))
+  versions.set(app, { at: Date.now(), value })
+  value.catch(() => versions.delete(app))
+  return value
+}
+const consoleRoutes: ConsoleRoutes | undefined = walletClient && writer
+  ? {
+      apps: async (address) =>
+        Promise.all((await appsPublishedBy(publicClient, writer, address)).map(async (a) => ({ app: a.app, created_at: a.created_at, expires_at: await blockToMs(publicClient, a.expires_block) }))),
+      rotate: async (app, by) => {
+        const version = Math.max(await keyVersion(publicClient, writer, app), rotatedTo.get(app) ?? 0) + 1 // fresh read, not the cache
+        await guardedCreate({ walletClient, publicClient, schema: KeyEpochSchema, values: keyEpochValues({ app, version, createdAt: Date.now(), payload: { by: by.toLowerCase() } }), expiration: LONG() })
+        rotatedTo.set(app, version)
+        versions.delete(app)
+        return { version }
+      },
+      rotationsPerHour: 10,
+    }
+  : undefined
+
 const deps: ApiDeps = {
   secret,
   corsOrigin: env.HYDRA_CORS_ORIGIN,
@@ -194,6 +223,8 @@ const deps: ApiDeps = {
   },
   observations: sites,
   alerts,
+  keyVersion: writer ? currentVersion : undefined,
+  console: consoleRoutes,
   activity: async () => (writer ? activity(publicClient, writer) : { head: null, events: [] }),
   health: { watch: Boolean(watcher && watchToken), publisherWallet: walletClient?.account.address ?? null, accessKey: Boolean(env.ARKIV_ACCESS_KEY), indexer: Boolean(indexer), alerts: Boolean(alerts.key && alerts.store) },
 }

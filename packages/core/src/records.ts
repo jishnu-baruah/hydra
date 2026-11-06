@@ -53,7 +53,16 @@ export const AlertSubSchema = defineSchema('hydra.alert_sub', {
   body: bytes(),
 })
 
-export const SCHEMAS = [AppSchema, ReleaseSchema, FileSchema, ObservationSchema, AlertSubSchema] as const
+// One key rotation of an app (T-A32). The highest `version` is current; API keys carry the version
+// they were issued under and older ones are refused.
+export const KeyEpochSchema = defineSchema('hydra.key_epoch', {
+  app: str().indexed(),
+  version: u64().indexed(),
+  created_at: u64().indexed(),
+  body: bytes(),
+})
+
+export const SCHEMAS = [AppSchema, ReleaseSchema, FileSchema, ObservationSchema, AlertSubSchema, KeyEpochSchema] as const
 
 // "long" in ARCHITECTURE.md is the network maximum, about 182.5 days.
 export const LONG = (): ExpirationTime => ExpirationTime.max()
@@ -135,6 +144,17 @@ export const alertSubValues = (a: { app: string; kind: string; createdAt: number
     kind: fitStr(a.kind),
     created_at: ms(a.createdAt),
     body: bytes(a.sealed),
+  }
+}
+
+// Expiration: LONG.
+export const keyEpochValues = (k: { app: string; version: number; createdAt: number; payload: { by?: string } }) => {
+  if (!Number.isSafeInteger(k.version) || k.version < 0) throw new Error(`key version must be a whole number of 0 or more, got ${k.version}; this is a bug in the caller`)
+  return {
+    app: fitStr(k.app),
+    version: u64(BigInt(k.version)),
+    created_at: ms(k.createdAt),
+    body: body(k.payload),
   }
 }
 

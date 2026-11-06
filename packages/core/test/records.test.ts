@@ -6,6 +6,7 @@ import {
   AlertSubSchema,
   AppSchema,
   FileSchema,
+  KeyEpochSchema,
   LONG,
   ObservationSchema,
   ReleaseSchema,
@@ -13,6 +14,7 @@ import {
   alertSubValues,
   appValues,
   fileValues,
+  keyEpochValues,
   observationValues,
   releaseValues,
 } from '../src/records.ts'
@@ -78,4 +80,13 @@ test('alert subscription values pass the SDK schema check and the body is the se
   assert.equal(await create(AlertSubSchema, v), 'network')
   assert.ok(SCHEMAS.includes(AlertSubSchema as never))
   assert.equal(AlertSubSchema.name, 'hydra.alert_sub')
+})
+
+test('key epoch values pass the SDK schema check and the schema is registered', async () => {
+  const v = keyEpochValues({ app: 'demo', version: 3, createdAt: NOW, payload: { by: '0x00000000000000000000000000000000000000aa' } })
+  assert.equal(await create(KeyEpochSchema, v), 'network')
+  assert.ok(SCHEMAS.includes(KeyEpochSchema as never))
+  assert.equal(KeyEpochSchema.name, 'hydra.key_epoch')
+  assert.equal(v.version.value, 3n)
+  assert.throws(() => keyEpochValues({ app: 'demo', version: -1, createdAt: NOW, payload: {} }), /version/)
 })
