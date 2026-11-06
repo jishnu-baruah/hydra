@@ -16,6 +16,7 @@ import {
   webhookRequest,
   type Verdict,
 } from '../src/alerts.ts'
+import { linkedChats } from '../src/alerts.ts'
 
 const KEY = 'ab'.repeat(32)
 
@@ -204,3 +205,19 @@ test('channelNotifier delivers to each channel of the app and logs failures with
   assert.match(logs[0], /channel 0xb of demo failed: .*chat not found/)
   assert.doesNotMatch(logs.join(), /SECRETPATH|-100123/)
 })
+
+test('linkedChats: chats where "/hydra <app>" was sent within 15 minutes, newest first, unique', () => {
+  const now = 1_800_000_000_000
+  const msg = (chat: number, text: string, agoS: number, title = 'Team') => ({ message: { chat: { id: chat, title, type: 'group' }, text, date: Math.floor(now / 1000) - agoS } })
+  const updates = [
+    msg(-100, '/hydra demo-dapp', 60),
+    msg(-200, '/hydra@hydra_alerts_bot demo-dapp', 30, 'Ops'),
+    msg(-300, '/hydra other-app', 10),
+    msg(-400, 'hello /hydra demo-dapp', 10),
+    msg(-500, '/hydra demo-dapp', 20 * 60),
+    msg(-100, '/hydra demo-dapp', 5),
+  ]
+  assert.deepEqual(linkedChats(updates, 'demo-dapp', now), [{ id: '-100', title: 'Team' }, { id: '-200', title: 'Ops' }])
+  assert.deepEqual(linkedChats('junk', 'demo-dapp', now), [])
+})
+

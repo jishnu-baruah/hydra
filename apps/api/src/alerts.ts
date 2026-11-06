@@ -165,6 +165,25 @@ export interface DeliverDeps {
   delayMs?: number
 }
 
+// A Telegram chat counts as a team's only after someone in it sent "/hydra <app>" to the bot within the
+// window: anyone can type a chat id, but only a member can post in the chat. `updates` is the bot's
+// getUpdates result (read without an offset, so nothing is consumed). Newest first, one entry per chat.
+export function linkedChats(updates: unknown, app: string, now: number, windowMs = 15 * 60_000): { id: string; title: string }[] {
+  if (!Array.isArray(updates)) return []
+  const cmd = new RegExp(`^/hydra(@[A-Za-z0-9_]+)?\\s+${app.replace(/[^a-z0-9-]/g, '')}\\s*$`)
+  const hits: { id: string; title: string; at: number }[] = []
+  for (const u of updates) {
+    const m = (u as { message?: { chat?: { id?: unknown; title?: unknown; first_name?: unknown }; text?: unknown; date?: unknown } })?.message
+    const id = m?.chat?.id
+    const at = Number(m?.date) * 1000
+    if (typeof id !== 'number' || typeof m?.text !== 'string' || !cmd.test(m.text.trim()) || !(now - at <= windowMs)) continue
+    hits.push({ id: String(id), title: String(m.chat?.title ?? m.chat?.first_name ?? 'chat'), at })
+  }
+  hits.sort((a, b) => b.at - a.at)
+  const seen = new Set<string>()
+  return hits.filter((h) => !seen.has(h.id) && seen.add(h.id)).map(({ id, title }) => ({ id, title }))
+}
+
 const NAME: Record<Kind, string> = { webhook: 'the webhook', slack: 'Slack', discord: 'Discord', telegram: 'Telegram' }
 
 // One alert to one channel. HTTP kinds: at most 3 attempts with a short backoff for network errors
@@ -174,7 +193,8 @@ export async function deliver(ch: Channel, v: Verdict, deps: DeliverDeps = {}): 
     if (!deps.telegram) return { ok: false, error: 'Telegram is not configured on this server (no TELEGRAM_BOT_TOKEN); use another channel kind' }
     const r = await deps.telegram(ch.target, withLink(v.text, v.app, 4000))
     // sendTelegram's advice is for the team chat's env vars; this chat is the team's own.
-    return r.ok ? r : { ok: false, error: `${r.error.split('. Check TELEGRAM_')[0]}. Add the Hydra bot to the chat and check the chat id` }
+    // Telegram's own description is not passed on: it would tell a caller which chats the bot is in.
+    return r.ok ? r : { ok: false, error: 'Telegram did not take the message: check the Hydra bot is still in the chat' }
   }
   const req = ch.kind === 'webhook'
     ? webhookRequest(v, ch.secret ?? '')

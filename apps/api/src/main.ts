@@ -9,6 +9,7 @@ import { runOnce, sendTelegram } from '@hydra/indexer/run'
 import { privateKeyToAccount } from 'viem/accounts'
 import { sitesView, type TargetInfo } from './observations.ts'
 import { channelNotifier, deliver, type Channel, type Verdict } from './alerts.ts'
+import { linkedChats } from './alerts.ts'
 import { activity, alertSubs, appForDomainFrom, claimOf, filesByHash, releasesFor } from './reads.ts'
 import { createApi, indexerRunner, type AlertRoutes, type ApiDeps } from './server.ts'
 import { swarmUploader } from './swarm.ts'
@@ -70,6 +71,15 @@ const alerts: AlertRoutes = {
     : undefined,
   deliver: deliverAlert,
   bot: () => botName,
+  // getUpdates without an offset reads the bot's recent messages and consumes none of them.
+  telegramChats: tgToken
+    ? async (app: string) => {
+        const res = await fetch(`https://api.telegram.org/bot${tgToken}/getUpdates?allowed_updates=%5B%22message%22%5D`, { signal: AbortSignal.timeout(10_000) }).catch(() => null)
+        const j = (await res?.json().catch(() => null)) as { result?: unknown } | null
+        return linkedChats(j?.result, app, Date.now())
+      }
+    : undefined,
+  teamChatId: env.TELEGRAM_CHAT_ID,
 }
 // Every alert a live indexer run sends also goes to the app's channels, read at most every 30 s.
 const notify = alertKeyOk && writer

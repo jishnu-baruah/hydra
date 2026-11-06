@@ -37,6 +37,9 @@ const alerts: AlertRoutes = {
     return { ok: true }
   },
   bot: () => 'hydra_alerts_bot',
+  // Chats where someone sent "/hydra <app>" to the bot recently; '-777' never did, '-1999' is the team chat.
+  telegramChats: async () => ['-1000', '-1001', '-1002', '-1003', '-1004', '-1009', '-1', '-1999'].map((id) => ({ id, title: `chat ${id}` })),
+  teamChatId: '-1999',
   writesPerHour: 13,
 }
 const server = createApi({ secret: SECRET, alerts }).listen(0)
@@ -141,3 +144,19 @@ test('alert routes: a 6th channel is refused with 409, and writes are rate limit
   assert.equal((await call('GET', '/v1/alerts', { key: keyFor() })).status, 200)
   assert.equal((await call('POST', '/v1/alerts', { key: keyFor('other'), body: { kind: 'telegram', target: '-1' } })).status, 201)
 })
+
+test('alert routes: a Telegram chat is accepted only after "/hydra <app>" was sent there, never the team chat', async () => {
+  const unlinked = await call('POST', '/v1/alerts', { key: keyFor('tgproof'), body: { kind: 'telegram', target: '-777' } })
+  assert.equal(unlinked.status, 400)
+  assert.match(unlinked.json.error, /\/hydra tgproof/)
+  const team = await call('POST', '/v1/alerts', { key: keyFor('tgproof'), body: { kind: 'telegram', target: '-1999' } })
+  assert.equal(team.status, 400)
+  assert.match(team.json.error, /team chat/i)
+  assert.equal((await call('POST', '/v1/alerts', { key: keyFor('tgproof'), body: { kind: 'telegram', target: '-1000' } })).status, 201)
+  const found = await call('GET', '/v1/alerts/telegram-chats', { key: keyFor('tgproof') })
+  assert.equal(found.status, 200)
+  assert.ok(found.json.chats.some((c: { id: string }) => c.id === '-1000'))
+  assert.ok(!found.json.chats.some((c: { id: string }) => c.id === '-1999')) // the team chat is never offered
+  assert.equal((await call('GET', '/v1/alerts/telegram-chats')).status, 401)
+})
+

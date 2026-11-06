@@ -38,6 +38,8 @@ export interface AlertRoutes {
   }
   deliver: (ch: Channel, v: Verdict) => Promise<Sent>
   bot?: () => string | null // the Telegram bot's username, from getMe at startup
+  telegramChats?: (app: string) => Promise<{ id: string; title: string }[]> // chats that sent "/hydra <app>" recently
+  teamChatId?: string // the Hydra team chat (TELEGRAM_CHAT_ID): never a team's channel
   writesPerHour?: number // per app; default 20
   maxChannels?: number // per app; default 5
 }
@@ -239,6 +241,16 @@ export function createApi(deps: ApiDeps) {
         return send(res, 200, { username: deps.alerts?.bot?.() ?? null })
       }
 
+      // The chats a team can add: where someone sent "/hydra <app>" to the bot in the last 15 minutes.
+      if (req.method === 'GET' && path === '/v1/alerts/telegram-chats') {
+        const auth = req.headers.authorization ?? ''
+        const claims = verifyKey(deps.secret, auth.startsWith('Bearer ') ? auth.slice(7) : undefined)
+        if (!claims) return send(res, 401, { error: 'missing or invalid API key; get one for your app from the Hydra site' })
+        const a = deps.alerts
+        const chats = a?.telegramChats ? (await a.telegramChats(claims.app)).filter((c) => c.id !== a.teamChatId) : []
+        return send(res, 200, { app: claims.app, chats })
+      }
+
       const alertRoute = /^\/v1\/alerts(?:\/(0x[0-9a-fA-F]{64})(\/test)?)?$/.exec(path)
       if (alertRoute) {
         const [, id, isTest] = alertRoute
@@ -273,6 +285,12 @@ export function createApi(deps: ApiDeps) {
           const body = await readJson(req, SMALL)
           const t = checkTarget(body.kind, body.target)
           if (!t.ok) return send(res, 400, { error: t.error })
+          if (t.value.kind === 'telegram') {
+            if (a.teamChatId && t.value.target === a.teamChatId) return send(res, 400, { error: 'that is the Hydra team chat; add a group of your own' })
+            const linked = a.telegramChats ? await a.telegramChats(app) : []
+            const bot = a.bot?.() ? `@${a.bot()}` : 'the Hydra bot'
+            if (!linked.some((c) => c.id === t.value.target)) return send(res, 400, { error: `prove the chat is yours: in that chat send "/hydra ${app}" to ${bot}, then add it again within 15 minutes` })
+          }
           const max = a.maxChannels ?? 5
           if (subs.length >= max) return send(res, 409, { error: `this app already has ${max} alert channels; delete one first` })
           const ch: Channel = { ...t.value, ...(t.value.kind === 'webhook' ? { secret: newSecret() } : {}) }
