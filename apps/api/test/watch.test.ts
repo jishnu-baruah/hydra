@@ -122,3 +122,58 @@ test('stop switches it off, and a second start replaces the first without leakin
   assert.equal(w.status().on, false)
   assert.equal(timers[1].cleared, true)
 })
+
+test('a tick that throws is recorded as unreachable and never escapes, so a bad moment cannot crash the API', async () => {
+  let n = 0
+  const { w, advance } = rig(['match'], { tick: async () => { if (n++ === 1) throw new Error('socket hang up'); return res('match') } })
+  assert.deepEqual(await w.start('app.example.com'), { ok: true })
+  advance(5000)
+  await w.tickNow() // must not reject
+  const s = w.status()
+  assert.equal(s.on, true)
+  assert.equal(s.last?.verdict, 'unreachable')
+  assert.match(s.last?.problems.join(' ') ?? '', /socket hang up/)
+})
+
+test('a binding that disappears stops the watch instead of checking against a stale release', async () => {
+  let bound = true
+  const { w, advance } = rig(['match'], { refreshMs: 10_000, resolve: async () => (bound ? target : null) })
+  await w.start('app.example.com')
+  bound = false
+  advance(11_000)
+  await w.tickNow()
+  assert.equal(w.status().on, false)
+  assert.match(w.status().stoppedBecause ?? '', /no release binds/i)
+})
+
+test('a failed alert is retried on the next checks while the verdict stays flipped, up to 3 attempts', async () => {
+  let attempts = 0
+  const { w, advance } = rig(['match', 'mismatch'], { onFlip: async () => { if (++attempts < 3) throw new Error('arkiv down') } })
+  await w.start('app.example.com')
+  for (let n = 0; n < 4; n++) {
+    advance(5000)
+    await w.tickNow()
+  }
+  assert.equal(attempts, 3)
+  assert.equal(w.status().flips.length, 1) // one flip, retried, not three flips
+  assert.equal(w.status().flips[0].alert, 'done')
+})
+
+test('three failed attempts end as failed and stop trying', async () => {
+  let attempts = 0
+  const { w, advance } = rig(['match', 'mismatch'], { onFlip: async () => { attempts++; throw new Error('arkiv down') } })
+  await w.start('app.example.com')
+  for (let n = 0; n < 8; n++) {
+    advance(5000)
+    await w.tickNow()
+  }
+  assert.equal(attempts, 3)
+  assert.equal(w.status().flips[0].alert, 'failed')
+})
+
+test('runOk accepts a one-site run that saw the site and wrote cleanly, and names what went wrong otherwise', async () => {
+  const { runOk } = await import('../src/watch.ts')
+  assert.equal(runOk({ sites: 1, errors: [] }), null)
+  assert.match(runOk({ sites: 0, errors: [] }) ?? '', /no target/i)
+  assert.match(runOk({ sites: 1, errors: ['batch 1 not written: arkiv down'] }) ?? '', /batch 1 not written/)
+})

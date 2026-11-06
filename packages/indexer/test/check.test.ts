@@ -65,6 +65,14 @@ test('a page or a script that cannot be fetched is unreachable, never a mismatch
   assert.match(noScript.problems.join(' '), /UNREADABLE/)
 })
 
+test('a script the site now answers with 404 is a mismatch (it was removed), a timeout is only unreachable', async () => {
+  const gone = await checkSite(target, site({ 'https://app.example.com/': HTML, 'https://cdn.example.com/lib.js': LIB }).deps) // /app.js missing: HTTP 404
+  assert.equal(gone.verdict, 'mismatch')
+  assert.match(gone.problems.join(' '), /UNREADABLE \/app\.js/)
+  const slow = await checkSite(target, site({ ...pages, 'https://app.example.com/app.js': new Error('timed out after 4 s') }).deps)
+  assert.equal(slow.verdict, 'unreachable')
+})
+
 test('it reads at most 60 scripts', async () => {
   const many = Array.from({ length: 80 }, (_, i) => `<script src="/s${i}.js"></script>`).join('')
   const files: Record<string, string> = { 'https://app.example.com/': `<html>${many}</html>` }

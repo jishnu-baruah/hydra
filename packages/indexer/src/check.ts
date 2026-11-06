@@ -40,16 +40,27 @@ export async function checkSite(t: { domain: string; app: string; manifest: Mani
   }
 
   const urls = scriptUrls(html, pageUrl).slice(0, MAX_SCRIPTS)
-  const seen: Seen[] = await Promise.all(urls.map(async (url) => ({ url, sha256: await get(url).then(scriptHash, () => null) })))
+  const gone = new Set<string>() // scripts the site now answers with a client error: they were removed
+  const seen: Seen[] = await Promise.all(
+    urls.map(async (url) => ({
+      url,
+      sha256: await get(url).then(scriptHash, (err) => {
+        if (/HTTP 4\d\d/.test(err instanceof Error ? err.message : String(err))) gone.add(new URL(url).origin === new URL(pageUrl).origin ? new URL(url).pathname : url)
+        return null
+      }),
+    })),
+  )
   const lost = proofProblem(true, await proofP)
   const problems: string[] = []
   if (lost?.startsWith('DOMAIN_PROOF_LOST')) problems.push(lost)
   const cmp = compare(pageUrl, seen, t.manifest)
   problems.push(...cmp.problems)
 
-  // A script that could not be read is a network blip as far as a 5-second tick can tell: show it,
-  // but do not call it a mismatch. A changed or foreign script, or a lost proof, still is.
-  const onlyUnreadable = problems.length > 0 && problems.every((p) => p.startsWith('UNREADABLE'))
+  // A script that could not be read because of a network error, a timeout or a 5xx is a blip as far as
+  // a 5-second tick can tell: show it, but do not call it a mismatch. One the site answers with 404 or
+  // another 4xx was removed (defacing by deleting a pinned script), and a changed or foreign script or a
+  // lost proof still is a mismatch.
+  const onlyUnreadable = problems.length > 0 && problems.every((p) => p.startsWith('UNREADABLE') && ![...gone].some((g) => p === `UNREADABLE ${g}`))
   if (onlyUnreadable) return done('unreachable', problems, seen.length)
   return done(problems.length ? 'mismatch' : 'match', problems, seen.length)
 }

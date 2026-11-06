@@ -54,6 +54,15 @@ export interface WatchDeps {
 }
 
 const KEEP = 30
+const ATTEMPTS = 3
+
+// A one-site run that resolved is not necessarily a run that worked: it can have found no target for
+// the domain or failed to write. Returns what went wrong, or null.
+export function runOk(s: { sites: number; errors: string[] }): string | null {
+  if (!s.sites) return 'the one-site run found no target for this domain, so nothing was written'
+  if (s.errors.length) return s.errors[0]
+  return null
+}
 
 export function createWatcher(d: WatchDeps) {
   const now = d.now ?? Date.now
@@ -74,12 +83,27 @@ export function createWatcher(d: WatchDeps) {
   let ticks: WatchStatus['ticks'] = []
   let flips: Flip[] = []
   let stoppedBecause: string | null = null
+  let retrying: { flip: Flip; attempts: number; domain: string; app: string } | null = null
 
   function stop(why: string | null = null) {
     if (handle !== undefined) clearTimer(handle)
     handle = undefined
     on = false
     if (why) stoppedBecause = why
+  }
+
+  // One attempt at the observation write and alert for a flip. A failure is kept for the next checks.
+  async function fire(flip: Flip, attempts: number, domain: string, app: string) {
+    try {
+      await d.onFlip({ domain, app, from: flip.from, to: flip.to, at: flip.at })
+      flip.alert = 'done'
+      flip.note = undefined
+      retrying = null
+    } catch (err) {
+      flip.alert = 'failed'
+      flip.note = err instanceof Error ? err.message : String(err)
+      retrying = attempts < ATTEMPTS ? { flip, attempts, domain, app } : null
+    }
   }
 
   async function tickNow(): Promise<void> {
@@ -89,13 +113,22 @@ export function createWatcher(d: WatchDeps) {
     busy = true
     try {
       if (t - resolvedAt >= refreshMs) {
-        const fresh = await d.resolve(target.domain)
-        if (fresh) {
+        try {
+          const fresh = await d.resolve(target.domain)
+          if (!fresh) return stop('no release binds this site any more; switch it on again after it is published')
           target = fresh
           resolvedAt = t
+        } catch {
+          // a hiccup reading the release: keep the target we have and try again next time
         }
       }
-      const r = await d.tick(target)
+      let r: TickResult
+      try {
+        r = await d.tick(target)
+      } catch (err) {
+        // A tick must never throw out of here: this runs on a timer inside the API process.
+        r = { verdict: 'unreachable', problems: [`UNREACHABLE ${err instanceof Error ? err.message : String(err)}`], scripts: 0, ms: 0 }
+      }
       last = { ...r, at: t }
       ticks = [...ticks, { at: t, verdict: r.verdict }].slice(-KEEP)
       if (r.verdict === 'unreachable') return // shown, but it moves nothing
@@ -107,13 +140,12 @@ export function createWatcher(d: WatchDeps) {
         const flip: Flip = { at: t, from: baseline, to: r.verdict, alert: 'pending' }
         flips = [...flips, flip]
         baseline = r.verdict
-        try {
-          await d.onFlip({ domain: target.domain, app: target.app, from: flip.from, to: flip.to, at: t })
-          flip.alert = 'done'
-        } catch (err) {
-          flip.alert = 'failed'
-          flip.note = err instanceof Error ? err.message : String(err)
-        }
+        retrying = null
+        await fire(flip, 1, target.domain, target.app)
+      } else if (retrying && retrying.flip.to === r.verdict) {
+        // Still flipped and the alert did not go out: try again, up to 3 attempts in all.
+        retrying.flip.alert = 'pending'
+        await fire(retrying.flip, retrying.attempts + 1, retrying.domain, retrying.app)
       }
     } finally {
       busy = false
@@ -135,6 +167,7 @@ export function createWatcher(d: WatchDeps) {
       last = null
       ticks = []
       flips = []
+      retrying = null
       stoppedBecause = null
       on = true
       await tickNow()

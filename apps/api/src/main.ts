@@ -11,7 +11,7 @@ import { sitesView, type TargetInfo } from './observations.ts'
 import { activity, appForDomainFrom, claimOf, filesByHash, releasesFor } from './reads.ts'
 import { createApi, indexerRunner, type ApiDeps } from './server.ts'
 import { swarmUploader } from './swarm.ts'
-import { createWatcher } from './watch.ts'
+import { createWatcher, runOk } from './watch.ts'
 
 const env = process.env
 const secret = env.HYDRA_KEY_SECRET ?? ''
@@ -105,7 +105,8 @@ const watcher = writer
       tick: (t) => checkSite({ ...t, manifest: t.manifest as never }),
       onFlip: async (e) => {
         if (!indexer) throw new Error('no indexer wallet is configured, so no observation or alert can be written')
-        await indexer.runOnly(e.domain)
+        const problem = runOk(await indexer.runOnly(e.domain))
+        if (problem) throw new Error(problem)
       },
     })
   : undefined
@@ -132,7 +133,7 @@ const deps: ApiDeps = {
   watch: watcher ? { watcher, token: watchToken } : undefined,
   observations: sites,
   activity: async () => (writer ? activity(publicClient, writer) : { head: null, events: [] }),
-  health: { publisherWallet: walletClient?.account.address ?? null, accessKey: Boolean(env.ARKIV_ACCESS_KEY), indexer: Boolean(indexer) },
+  health: { watch: Boolean(watcher && watchToken), publisherWallet: walletClient?.account.address ?? null, accessKey: Boolean(env.ARKIV_ACCESS_KEY), indexer: Boolean(indexer) },
 }
 
 const port = Number(env.PORT ?? env.HYDRA_API_PORT ?? 8787)
