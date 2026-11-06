@@ -3,7 +3,7 @@
 // The wallet signs the sign-in message only; the page holds no key of its own. The API key lives
 // in this variable for the visit and is never stored. API and chain data are set with textContent.
 import { API, DOCS, SKILL, api } from "../src/api.js";
-import { appError, dirError, workflow, handoff } from "./flow.js";
+import { appError, dirError, workflow, handoff, secretCommand } from "./flow.js";
 
 const $ = (id) => document.getElementById(id);
 const state = { address: null, app: null, key: null, watching: null, checking: false };
@@ -105,6 +105,7 @@ $("sign").onclick = async () => {
     unlock(3);
     renderRepo();
     step(4, "current");
+    $("p5").dataset.state = "current";
     for (const el of $("p4").querySelectorAll("button")) el.disabled = false;
     $("s4").textContent = "Watching for your first release.";
     watch();
@@ -123,7 +124,8 @@ $("reveal").onclick = () => {
 };
 
 function renderRepo() {
-  $("handoff").textContent = handoff({ app: state.app, key: state.key, api: API, docs: DOCS });
+  $("handoff").textContent = handoff({ app: state.app, api: API, docs: DOCS });
+  $("gh-key-cmd").textContent = secretCommand(state.key);
   renderYaml();
 }
 function renderYaml() {
