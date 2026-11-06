@@ -74,6 +74,10 @@ function schedule(tabId) {
 // One retry before a script counts as unreadable, so a CDN hiccup is not a red badge.
 const sha256Hex = (url) => sha256Once(url).catch(() => sha256Once(url));
 
+// CROPS, lead property Secure: this is the check that proves the frontend a user is running is the
+// one the team published. Each script the page loaded is fetched again without cookies, hashed and
+// compared with the release on Arkiv. The extension holds no keys, never signs, and never runs
+// what it hashes; if the Hydra API is unreachable the page shows grey (unverified), never green.
 async function sha256Once(url) {
   // Script bytes are data: hashed, never evaluated. no-store, so we hash what the host serves now.
   const res = await fetch(url, { cache: "no-store", credentials: "omit" });

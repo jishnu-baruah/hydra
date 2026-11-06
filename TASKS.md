@@ -323,7 +323,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: the publisher wallet holds 5 tGLM and has sent 0 transactions, so the blocker is a first publish, not funding; every Hydra record comes from that 1 wallet, so the explorer now trusts only entities created by it
 
 ### T-B03, Explorer search
-- Status: in-review https://github.com/jishnu-baruah/hydra/pull/110 | Branch: feature/t-b03-explorer-search
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/147 | Branch: feature/t-b03-explorer-search
 - Suggested: Mouli
 - Depends-on: T-B01
 - Touches: apps/explorer/search/, apps/explorer/src/arkiv.js, apps/explorer/index.html
@@ -917,6 +917,39 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: unit tests written failing first for the reply logic (4 or more cases: replies once per message, ignores old messages and other text, names the app); API tests 78 or more pass; live: "/hydra demo-dapp" in a group gets the id back within 10 s
 - Evidence: <PR link>
 
+### T-B16, Publish: key without the agent, then set up alerts
+- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-b16-publish-alerts
+- Suggested: Mouli
+- Depends-on: T-B12
+- Touches: apps/explorer/publish/
+- Serves: Usability (judged)
+- Known: requested on 7 Nov: some coding agents refuse to handle the HYDRA_API_KEY in the pasted block; nothing after the first release points a team to alert setup in the Console
+- Scope: the agent block no longer carries the key; it tells the agent to ask the user to run the gh secret command, and the page shows that command for the user; after monitoring starts, a clear next step "Set up alerts" leads to the Console (signed in by the same wallet)
+- Acceptance: flow tests updated first (2 or more new cases: no key in the agent block, the user command carries it); in a browser: sign-in, the key command shown, a Set up alerts step links to the Console
+- Evidence: <PR link>
+
+### T-B14, Monitor: integrated sites only, activity as a table with severity colours
+- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-b14-monitor-table
+- Suggested: Mouli
+- Depends-on: T-A31
+- Touches: apps/explorer/observed/, apps/explorer/events/
+- Serves: Usability (judged) ; Practicality (judged)
+- Known: requested on 7 Nov: the Monitor lists about 248 watched sites, most with no Hydra release; activity rows are not aligned, and every change reads as red
+- Scope: Monitor lists only sites bound to a Hydra release; activity is an aligned table like a block explorer (fixed columns, monospace, right-aligned numbers); severity green (matches, releases), yellow (changes that are not proven compromise: unreachable, third-party origin change, unknown), red (only a served script that is in no release)
+- Acceptance: unit tests first for the filter and the severity mapping (6 or more cases); in a browser on live data: only bound sites listed, columns aligned, colours as mapped
+- Evidence: <PR link>
+
+### T-B15, App page: last checks bar at the top
+- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-b15-app-status
+- Suggested: Mouli
+- Depends-on: T-A27
+- Touches: apps/explorer/app/
+- Serves: Usability (judged) ; WOW factor (judged)
+- Known: requested on 7 Nov: an app's page shows releases but not whether its site matches now
+- Scope: above the releases table, the app page shows its bound site's current verdict and a bar of its last checks, green match, red mismatch, yellow unreachable, like the Live page, from the indexer observations
+- Acceptance: unit tests first for the bar model (4 or more cases); in a browser: demo-dapp shows the bar with at least 5 checks
+- Evidence: <PR link>
+
 ### T-B12, Console: sign in with a wallet, every app, keys and channels
 - Status: in-review | Branch: feature/t-b12-console-wallet
 - Suggested: Mouli
@@ -939,3 +972,14 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: explorer and extension tests pass with the new host; 2 published manifests (hygra-demo2, test-hydra0) open with HTTP 200 on the read host
 - Evidence: https://github.com/jishnu-baruah/hydra/pull/139, live explorer serves releases.js with download.gateway.ethswarm.org; test-hydra0 and hygra-demo2 manifests HTTP 200 there
 - Finding: api.gateway.ethswarm.org did not resolve on a Mumbai home router DNS (192.168.0.1) while download.gateway.ethswarm.org, the same server, did
+
+### T-B13, Explorer shows a release manifest in the page instead of downloading it
+- Status: claimed 2026-11-07 | Owner: Manish | Branch: feature/t-b13-manifest-view
+- Suggested: Manish
+- Depends-on: T-A34
+- Touches: apps/explorer/manifest/, apps/explorer/app/page.js, apps/explorer/vercel.json
+- Serves: Usability (judged) ; Swarm bonus
+- Known: download.gateway.ethswarm.org (T-A34) sends `Content-Disposition: attachment`, so the Manifest link downloads a JSON file; api.gateway sends `inline`
+- Scope: the Manifest link opens an explorer page that fetches hydra-manifest.json from Swarm and shows it as formatted JSON (textContent only), with the raw Swarm link next to it; CSP connect-src allows the read host
+- Acceptance: test-hydra0 and hygra-demo2 manifests render in the page in a browser with 0 CSP errors in the console; a bad ref shows an error that names the cause
+- Evidence: <PR link>
