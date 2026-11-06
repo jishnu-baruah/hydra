@@ -499,7 +499,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Kill criterion: over 30 minutes per run on the free instance, so cut to the top 100
 
 ### T-A23, One-site indexer run for the demo
-- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a23-one-site-run
+- Status: in-review | Branch: feature/t-a23-one-site-run
 - Suggested: Jishnu
 - Depends-on: T-A20
 - Touches: packages/indexer/
@@ -507,7 +507,8 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Known: a full pass over 248 sites takes about 5 minutes, far over the 90 second demo slot (T-D10); the demo needs a check of one site that is still a real run
 - Scope: `INDEXER_ONLY=<domain,...>` restricts a run to the named domains (bound domains included) and skips the DefiLlama fetch; everything else is the normal run: real fetch, hash, compare, Arkiv write and Telegram alert
 - Acceptance: a unit test for the domain filter written first; a real one-site run on the demo domain writes 1 observation and sends the alert in under 20 s (measured: 13.3 to 15.4 s, tamper to alert 28 s with a 10 s redeploy)
-- Evidence: <PR link, tx hashes>
+- Evidence: tests: indexer 31 pass; live one-site runs on hydra-demo-dapp.vercel.app took 13.3 to 15.4 s each; tamper, 10 s redeploy and indexer run gave the alert 28 s after the change (tx https://rabdi.explorer.arkiv.network/tx/0x812487b96ed5f692288938b99b77b52f7a7de6f4290324435c3f336358ff9f68 is the recovery observation)
+- Finding: a one-site run still needs the indexer wallet key, so it runs from a machine with .env, not through the Render API; Jina is off locally, so runtime origins are not read in that run
 - Kill criterion: none, it is a small filter
 
 ### T-C05, Extension shows indexer alerts
