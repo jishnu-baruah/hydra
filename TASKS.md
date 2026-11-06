@@ -772,7 +772,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <PR link>
 
 ### T-C06, Extension flags a hostname on a public phishing list
-- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-c06-known-bad
+- Status: in-review | Branch: feature/t-c06-known-bad
 - Suggested: Jishnu
 - Depends-on: T-A22
 - Touches: apps/extension/src/compare/blocklist.js, apps/extension/src/compare/blocklist.test.mjs, apps/extension/src/background.js, apps/extension/src/verdict.js, apps/extension/src/ui/present.js, apps/extension/src/ui/present.test.mjs, apps/extension/src/ui/banner.js, apps/extension/README.md
@@ -780,4 +780,5 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Known: for sites with no Hydra release the extension shows grey and says nothing; the 6 Nov re-score (hack-idea-score) decided not to build a full layer for unregistered sites, only an honest known-bad flag from public data. MetaMask's eth-phishing-detect list was checked on GitHub on 6 Nov: 115,807 blocked domains in one 3.4 MB config.json, "Don't Be A Dick" public licence, pushed the same day; ScamSniffer's is GPL-3.0 so it is not used. The extension is Mouli's code; this adds one verdict and one module
 - Scope: a daily-refreshed local copy of the list in storage.local, checked in memory against the visited hostname and its parent domains (the allowlist wins), with no browsing data sent anywhere; a hit shows a distinct "BAD" badge and banner saying the hostname is on MetaMask's public phishing list and that lists can be wrong; a miss says nothing, never "safe"; the README says the list is fetched from GitHub and credits MetaMask
 - Acceptance: unit tests written failing first for the matching and the cache (blocklist 8 or more pass, extension 26 or more pass); in real Chrome a hostname taken from the live list shows BAD and app.uniswap.org and hydra-demo-dapp.vercel.app do not
-- Evidence: <PR link>
+- Evidence: PR (this one); in real Chrome 156 (extension loaded over the DevTools pipe) with the live MetaMask list downloaded by the extension itself, poly-mark.xyz (a real entry mapped to a local page) shows BAD with the list wording, hydra-demo-dapp.vercel.app shows OK, app.uniswap.org is not flagged; blocklist 10 tests pass, extension 28 pass
+- Finding: MetaMask eth-phishing-detect is the only crypto list that is both permissively licensed and one small file (115,807 domains, 3.4 MB, pushed daily); ScamSniffer scam-database is GPL-3.0 and CryptoScamDB stopped in 2023, so neither is used; GLM review found that a stale copy was trusted forever and that entries were not checked to be hostnames, both fixed with tests first; the list hit replaces the script comparison for that page, so a false positive hides script evidence, which the banner words as "lists can be wrong"
