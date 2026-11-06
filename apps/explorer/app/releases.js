@@ -2,7 +2,9 @@
 // belongs to the publisher of its earliest hydra.app record, and releases by anyone else are
 // dropped. Pure, so it runs in the page and under `node --test`.
 
-export const GATEWAY = "https://api.gateway.ethswarm.org";
+// Reads use the download host: same Ethersphere gateway, but api.gateway.ethswarm.org did not
+// resolve on some ISP DNS (T-A34). Uploads stay on api.gateway in apps/api.
+export const GATEWAY = "https://download.gateway.ethswarm.org";
 
 const val = (e, k) => e.$attributes?.[k]?.value;
 

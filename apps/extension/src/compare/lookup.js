@@ -16,7 +16,7 @@ async function api() {
   }
   return API_DEFAULT;
 }
-const GATEWAY = "https://api.gateway.ethswarm.org";
+const GATEWAY = "https://download.gateway.ethswarm.org"; // read host, see apps/explorer/app/releases.js (T-A34)
 const TIMEOUT_MS = 20000; // the API's free host sleeps; a cold start takes a while
 
 async function getJson(url) {
