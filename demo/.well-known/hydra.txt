@@ -1,1 +1,1 @@
-hydra-app=hydra-demo
+hydra-app=demo-dapp
