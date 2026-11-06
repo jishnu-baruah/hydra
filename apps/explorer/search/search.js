@@ -1,6 +1,8 @@
 // Turns what a user typed into Arkiv lookups, and lookups into apps. No DOM, no network: `find`
 // is passed in, so this runs the same in the page and under `node --test`.
 
+import { latestVerdict } from "../app/sites.js";
+
 const HEX64 = /^[0-9a-f]{64}$/;
 
 // Swarm references are 64 hex, or 128 when encrypted. A file hash is "sha256-" plus 64 hex.
@@ -60,4 +62,52 @@ export async function search(input, find, extra = {}) {
   const hits = [...byApp.values()];
   if (!hits.length && host && (await quiet(extra.observed, host))) return [{ site: host, via: "domain", observed: true }];
   return hits;
+}
+
+// How long ago, in the units a person reads at a glance.
+export function ago(ms, now) {
+  const m = Math.max(0, Math.round((now - ms) / 60_000));
+  if (m < 1) return "just now";
+  if (m < 60) return `${m} min ago`;
+  const h = Math.round(m / 60);
+  return h < 48 ? `${h} h ago` : `${Math.round(h / 24)} days ago`;
+}
+
+// The answer a domain search opens with. `app` is the API's domain lookup (null when no app proved
+// the domain, or the API did not answer); `rows` are the indexer's observations of the host, newest
+// first. Only a match is green, only a mismatch is red; everything else says what is missing.
+export function siteVerdict({ host, app, rows, now }) {
+  const owner = app ?? rows?.[0]?.$attributes?.app?.value ?? null;
+  const v = owner ? latestVerdict(rows, owner) : null;
+  const when = v?.observedAt ? `Checked by the Hydra indexer ${ago(v.observedAt, now)}` : "";
+  if (v?.status === "match") {
+    return {
+      kind: "safe",
+      title: "Good to go",
+      text: `${host} runs exactly the build ${owner} published on Arkiv: every script matched the release.`,
+      when,
+    };
+  }
+  if (v?.status === "mismatch") {
+    return {
+      kind: "danger",
+      title: "Warning: do not trust this site right now",
+      text: `${host} served scripts that are not in ${owner}'s published release. That is how frontend hijacks look. Do not connect a wallet or sign anything here until the team confirms.`,
+      when,
+    };
+  }
+  if (app) {
+    return {
+      kind: "pending",
+      title: "Published, not checked yet",
+      text: `${app} publishes this site with Hydra, but the indexer has not compared it with the release yet. The Hydra extension checks it the moment you open it.`,
+      when: "",
+    };
+  }
+  return {
+    kind: "unverified",
+    title: "Unverified",
+    text: `${host} has no release on Hydra, so nothing vouches for its code. Treat it with care.`,
+    when: "",
+  };
 }
