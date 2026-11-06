@@ -20,13 +20,11 @@ Arkiv is the queryable index; Swarm is the immutable blob. Enforced by `packages
 
 ## 3. One entity with a Swarm reference, linked for verification
 
-**TBD at submission time.** No `hydra.release` has been written to Rabdi yet (see the T-B01 finding note in `TASKS.md`: *"0 hydra.release records exist yet"*). Once T-A02 publishes its first release in Phase 1/2, replace this section with:
+Release `hygra-demo2` version `2026-11-05.4`, published through the live API on 2026-11-06:
 
-- Entity key on Rabdi: `0x…` — open in the Arkiv explorer at `https://rabdi.explorer.arkiv.network/entity/<key>`
-- `swarm_ref` returned: `<64-hex>`
-- Gateway read: `https://api.gateway.ethswarm.org/bzz/<64-hex>/hydra-manifest.json`
-
-Owner for the fill-in: **Jishnu** (API) → **Manish** (submission text).
+- Entity key on Rabdi: [`0xda3a4c82685b8f7c1ff3ea77eb53e928decbc98fcb6e33ce253bfa5af40ab289`](https://rabdi.explorer.arkiv.network/entity/0xda3a4c82685b8f7c1ff3ea77eb53e928decbc98fcb6e33ce253bfa5af40ab289)
+- `swarm_ref`: `c98c1935aa29b10a088779266dfddcb521985741175182ef1b9e11d5a42c04ad`
+- Gateway read: [`https://api.gateway.ethswarm.org/bzz/c98c1935aa29b10a088779266dfddcb521985741175182ef1b9e11d5a42c04ad/hydra-manifest.json`](https://api.gateway.ethswarm.org/bzz/c98c1935aa29b10a088779266dfddcb521985741175182ef1b9e11d5a42c04ad/hydra-manifest.json) returns the manifest JSON (HTTP 200). The JS file it lists reads back with a matching sha256; `index.html` gets the gateway's HTML block (see section 9 and T-F02).
 
 ## 4. Postage batch ID and purchasing wallet
 
