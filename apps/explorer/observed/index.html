@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Sites we watch, Hydra explorer</title>
+    <title>Integrated sites, Hydra explorer</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
@@ -28,14 +28,14 @@
 
     <main id="main">
       <nav class="subnav" aria-label="Monitor">
-        <a href="./" aria-current="page"><b>Sites</b><span>Every dApp the indexer checks, with its latest verdict</span></a>
+        <a href="./" aria-current="page"><b>Sites</b><span>dApps bound to a Hydra release, with their latest verdict</span></a>
         <a href="../events/"><b>Activity</b><span>Releases and checks as they happen, newest first</span></a>
         <a href="../live/"><b>Live</b><span>Watch one site in real time, second by second</span></a>
       </nav>
       <section class="hero">
         <p class="eyebrow">Registry <span id="crumb">/ Observed sites</span></p>
-        <h1 class="compact" id="title">Sites we watch</h1>
-        <p class="lede" id="lede">Live dApp frontends the indexer checks, published on Hydra or not. It runs about every 30 minutes. It writes a new observation when something changes, plus one a day.</p>
+        <h1 class="compact" id="title">Integrated sites</h1>
+        <p class="lede" id="lede">dApps that proved their domain and published a release on Hydra. The indexer checks them about every 30 minutes. It writes a new observation when something changes, plus one a day.</p>
         <div class="unpublished" id="unpublished" hidden>
           <p class="label">Observed, not published by the team</p>
           <p>This team has not published a release on Hydra, so these scripts cannot be checked against one. Hydra only records what the site served, and flags when that changes.</p>
