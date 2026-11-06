@@ -440,7 +440,8 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Touches: packages/indexer/
 - Serves: Technicality (judged) ; WOW factor (judged)
 - Known: the 2026 hijacks were registrar-level, not code: CoW Swap (14 Apr, about 6 h of phishing per its post-mortem) and 12 Name.com sites (30 to 31 Oct). Script hashes only catch them after the page changes; NS and A records change first
-- Scope: each run resolves NS, A and CNAME for every target through 2 DNS-over-HTTPS resolvers (Cloudflare, Google), stores the fingerprint in the observation, and flags DNS_CHANGED when it differs from the previous run and RESOLVER_SPLIT when the 2 resolvers disagree
+- Scope: after T-A19 and T-A20, and only if time allows. Each run resolves NS and CNAME (A records rotate behind CDNs, so they are noted, not alerted on) through 2 DNS-over-HTTPS resolvers, compares with the previous observation on Arkiv (not memory, which a sleeping free instance loses), and flags DNS_CHANGED and RESOLVER_SPLIT
+- Finding: DNS change monitoring already exists free (DNSRadar 50 monitors, nslookup.io, dns-watchdog, Cloudflare CT monitoring since 13 Aug 2026), so this is a trigger for our alerts, not a feature to pitch
 - Acceptance: a run records DNS for 20 of 20 targets; a unit test flags a changed NS set and a resolver split; compare logic has failing tests first
 - Evidence: <Actions run, tx hashes>
 - Kill criterion: DoH rate-limited or flaky after 2 hours, so keep 1 resolver and NS only
@@ -467,6 +468,30 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: changing 1 script on the demo site sends 1 signed webhook and 1 Discord message within 1 triggered run, and a receiver sample verifies the signature
 - Evidence: <Discord screenshot, Actions run>
 - Kill criterion: delivery not working by 6 Nov 22:00 IST, so Discord only
+
+### T-A19, Domain proof: bind a domain to an app
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a19-domain-proof
+- Suggested: Jishnu
+- Depends-on: T-A13
+- Touches: packages/core/src/domain.ts, packages/core/src/index.ts, packages/core/test/, apps/api/, packages/indexer/, docs/ARCHITECTURE.md, apps/site/llms.txt, apps/site/skill/
+- Serves: Practicality (judged) ; Technicality (judged)
+- Known: without a binding every indexed site is "unknown", and an app name alone lets anyone who claims "uniswap" on Hydra raise a false mismatch against app.uniswap.org
+- Scope: a publish may list up to 5 domains. The API keeps a domain only when `https://<domain>/.well-known/hydra.txt` has the line `hydra-app=<app>`; others are returned with the reason and the fix. The indexer compares a site with a release only when that release lists the domain, and rechecks the file every run: a bound domain that loses it is `DOMAIN_PROOF_LOST` (mismatch), because a hijacker controls the domain and could remove it to dodge the check
+- Acceptance: unit tests (failing first) for domain normalisation, private-address refusal and the proof line; a publish with 1 proven and 1 unproven domain keeps 1; an indexer run marks a bound domain whose file is gone as mismatch
+- Evidence: <PR, release with a bound domain, observation tx>
+- Kill criterion: not merged by 6 Nov 16:00 IST, so bind domains in targets.json by hand for the demo and say so
+
+### T-A20, Coverage: DefiLlama discovery, write on change, background run
+- Status: open
+- Suggested: Jishnu
+- Depends-on: T-A19
+- Touches: packages/indexer/, apps/api/src/server.ts, apps/api/src/main.ts, .github/workflows/indexer.yml
+- Serves: WOW factor (judged) ; Practicality (judged)
+- Known: DefiLlama lists 5,253 protocols with a URL, 227 above $100M TVL (measured 6 Nov). 2 of the last 100 site runs changed, and 20 sites take 80 s, so 227 sites every run would mean about 1,100 Arkiv tx and 10,900 Jina reads a day
+- Scope: daily list of the top 227 by TVL from api.llama.fi (cached; an outage keeps yesterday's list) plus targets.json; write an observation only when status, scripts or problems change, plus 1 heartbeat a day; Jina only for changed sites and once a day; POST /v1/indexer/run returns 202 and scans in the background
+- Acceptance: a run covers at least 200 sites inside 30 minutes and writes under 10 tx when nothing changed
+- Evidence: <Actions run, tx hashes>
+- Kill criterion: over 30 minutes per run on the free instance, so cut to the top 100
 
 ### T-C05, Extension shows indexer alerts
 - Status: open
