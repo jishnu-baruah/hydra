@@ -188,7 +188,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Serves: Technicality (judged) ; Arkiv track
 - Known: Arkiv guides/known-issues and guides/quickstart (SDK 1.0.1): no automatic write resend; explicit latest nonce and gasPrice; gas >= max(1,000,000, 2 x estimate) and <= half the block gas limit; receipt.status must be success; keyed RPC URLs are secrets; eth_getLogs only reaches about 1,000 blocks back
 - Acceptance: writes go through 1 guarded path that sends at most 1 transaction per call with the gas rule applied; reads retry up to 3 times; 0 errors contain an RPC URL; all tests pass offline
-- Evidence: <PR link>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/132
 
 ### T-F01, Arkiv on Rabdi: write, query, timings
 - Status: open
@@ -232,7 +232,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Serves: Technicality (judged)
 - Known: spike T7: lowercase attribute names and u64(BigInt(ms)) timestamps are mandatory; print the innermost viem cause on revert
 - Acceptance: sha256 helper matches `sha256sum` on 3 fixture files; Arkiv wrapper retries 3 times; 1 test per record type encodes lowercase attributes and u64 times
-- Evidence: <PR link>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/132
 
 ### T-B01, Explorer scaffold that reads Arkiv in the browser
 - Status: done
@@ -279,7 +279,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Touches: packages/indexer/targets.json
 - Serves: Practicality (judged) ; WOW factor (judged)
 - Acceptance: 15 to 20 live dApp frontends with name, domain and category, each opened in a browser to confirm it loads
-- Evidence: <PR link>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/132
 
 ### T-D07, Research kit wired into the repo
 - Status: done
@@ -371,7 +371,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Serves: Usability (judged) ; WOW factor (judged)
 - Scope: temporary, until the explorer events timeline (T-B04) and deploy (T-B06) land; Mouli may fold it in
 - Acceptance: GET /v1/activity lists every app claim, release and file record our wallet wrote, newest block first, and /activity/ on the site shows them per app with CI run links, for at least 2 real apps
-- Evidence: <PR link>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/132
 
 ### T-A11, Expiry as a feature: app-name leases renewed by publishing
 - Status: in-review | Branch: feature/t-a11-expiry-leases
@@ -381,7 +381,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Serves: Arkiv track (prize) ; Originality (judged)
 - Scope: step 1 and 2 of the expiry plan (show lifetimes, name leases); observation TTL and incident flags follow with the indexer
 - Acceptance: a new name claim expires 30 days out, the first publish extends it to the network maximum inside the file batch with 0 extra transactions, and /activity/ shows every record's expiry date
-- Evidence: <PR link>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/132
 
 ### T-A12, API uploads to Swarm with no postage batch
 - Status: done
@@ -530,7 +530,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Known: research leads in DECISIONS.md 2026-11-06 Alerts row; every number must be read at its primary source (CoW post-mortem, The Block, Sygnia, Aikido) before it goes in
 - Scope: 4 cases (CoW Swap Apr 2026, Name.com Oct 2026, Bybit Feb 2025, npm chalk Sep 2025): vector, time live, who detected first, team warning delay, and which Hydra signal would have fired
 - Acceptance: 4 cases, every number with a primary-source link
-- Evidence: <PR link>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/132
 
 ### T-D10, Live demo: hijack our own site, alert lands
 - Status: open
@@ -550,7 +550,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Serves: Swarm bonus
 - Scope: the bonus page lists 7 items for `/arkiv/swarm.md`; answer each for the gateway we actually use (`api.gateway.ethswarm.org`, OP-11), with links a judge can open, and keep README "How we used Swarm" and docs/swarm.md consistent with it. Replaces the earlier testnet-switch scope, cut with OP-11
 - Acceptance: 6 of 7 bonus items answered with links that return 200; the 7th (demo-video timestamp) filled when the video exists
-- Evidence: <PR link>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/132
 ### T-D13, CROPS section in the README for the EF "Best CROPS App" prize
 - Status: in-review https://github.com/jishnu-baruah/hydra/pull/125 | Branch: feature/t-d13-crops
 - Suggested: Manish
@@ -559,7 +559,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Serves: Practicality (judged) ; EF Best CROPS App prize
 - Known: EF's idea list names "a tool that proves the shipped frontend or extension matches the public repo"; lead property is Secure. Rules: README section titled CROPS, 1 or 2 lines per letter (C: what we control and what happens if it goes away; O: license and build from the repo; P: what each third party learns; S: how keys and data are protected, trust assumptions); no trackers in the client; keys or personal data stay on the device or the README says why not; video of 3 min max showing the lead property
 - Acceptance: 4 of 4 CROPS lines, each true of the code on main; 0 third-party trackers or analytics in explorer, extension and site
-- Evidence: <PR link>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/132
 
 # P2, 6 Nov afternoon and night
 
@@ -904,10 +904,10 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Known: requested by Mouli on 7 Nov: a user must manage every app, its key and its alert channels in one place; keys are stateless today, so none can be listed or revoked and a leaked key works until it expires
 - Scope: a wallet signs one console message and gets a 2-hour session token; the session lists every app the wallet owns with its channels and key version; channel add, test and delete work through the session; rotating an app's key stores a new key version on Arkiv (`hydra.key_epoch`) and returns a new key once; every route that takes an app key refuses a key older than the current version, and keys issued from the Publish page carry the current version
 - Acceptance: unit tests written failing first (session sign-in, stale or wrong signature refused, owner-only apps, rotation makes the older key 401 and the new key work, channel routes through the session); API tests 66 or more pass; live: a wallet session lists demo-dapp and a rotation makes the old key fail
-- Evidence: <PR link>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/132
 
 ### T-B12, Console: sign in with a wallet, every app, keys and channels
-- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-b12-console-wallet
+- Status: in-review | Branch: feature/t-b12-console-wallet
 - Suggested: Mouli
 - Depends-on: T-A32, T-B11
 - Touches: apps/explorer/console/, apps/explorer/README.md
@@ -915,4 +915,4 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Known: requested by Mouli on 7 Nov; the T-B11 page takes one pasted key per app
 - Scope: the console signs in with the browser wallet (one message, no gas), lists every app the wallet owns, and per app shows the key version with a Rotate button (new key shown once with the CI command), and the channels with add, test and delete; pasting a single app key stays as a fallback
 - Acceptance: unit tests written first for the pure view logic (8 or more cases); in a browser against a fake API: sign in, 2 apps listed, rotate shows a key once, add and delete a channel
-- Evidence: <PR link>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/132

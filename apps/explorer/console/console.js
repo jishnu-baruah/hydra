@@ -1,5 +1,5 @@
 // The Console page: sign in with a wallet, see your apps, rotate keys, manage alert channels.
-// A one-app API key still works as a fallback. Tokens live in sessionStorage (this tab only).
+// Nothing but the sign-in shows until a wallet signs in. The session lives in sessionStorage (this tab only).
 // Everything from the API is set with textContent.
 import { api } from "../src/api.js";
 import { channelLine, targetError } from "./form.js";
@@ -54,7 +54,7 @@ function fail(text) {
 function setBusy(on) {
   busy = on;
   for (const b of document.querySelectorAll("#apps button, #apps select, #apps input")) b.disabled = on;
-  for (const id of ["wallet-btn", "signout", "key", "connect-btn"]) $(id).disabled = on;
+  for (const id of ["wallet-btn", "signout"]) $(id).disabled = on;
 }
 
 // One request: buttons off, status on, errors in words. Returns the body or null. 401 signs out.
@@ -85,6 +85,7 @@ function signOut() {
   $("empty").hidden = false;
   $("p1").dataset.state = "current";
   $("p2").dataset.state = "locked";
+  $("p2").hidden = true;
   $("who").hidden = true;
   $("signout").hidden = true;
 }
@@ -95,6 +96,7 @@ function signedIn(label) {
   $("signout").hidden = false;
   $("p1").dataset.state = "done";
   $("p2").dataset.state = "current";
+  $("p2").hidden = false;
 }
 
 // ---- rendering ----
@@ -317,23 +319,6 @@ $("signout").addEventListener("click", () => {
   say("Signed out.");
 });
 
-// The API key fallback: one app, the old routes.
-$("connect").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const k = $("key").value.trim();
-  if (!k.startsWith("hyd_")) return fail("That does not look like a Hydra key. Keys start with hyd_. Get one on the Publish page.");
-  mode = "key";
-  token = k;
-  if (await loadApps("Loading your channels...")) {
-    signedIn("Connected with an API key");
-    store.set(KKEY, k);
-    $("key").value = "";
-  } else {
-    mode = "";
-    token = "";
-  }
-});
-
 api("/v1/alerts/telegram-bot")
   .then((r) => {
     bot = r.username ?? null;
@@ -344,16 +329,11 @@ api("/v1/alerts/telegram-bot")
 // Restore this tab's sign-in.
 try {
   const s = JSON.parse(store.get(SKEY) || "null");
-  const k = store.get(KKEY);
+  store.set(KKEY, ""); // an API key kept by the old page is dropped
   if (sessionLive(s)) {
     mode = "wallet";
     token = s.session;
     signedIn(`Signed in as ${shortAddress(s.address)}`);
-    loadApps("Reconnecting...");
-  } else if (k) {
-    mode = "key";
-    token = k;
-    signedIn("Connected with an API key");
     loadApps("Reconnecting...");
   } else {
     store.set(SKEY, "");
