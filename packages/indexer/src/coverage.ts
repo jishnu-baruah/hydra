@@ -18,6 +18,9 @@ export function shouldWrite(
   return now - prev.observed_at >= heartbeatMs
 }
 
+// DefiLlama categories whose sites are not dApp frontends (T-A31).
+const NOT_DAPPS = new Set(['cex', 'cedefi', 'chain'])
+
 export function topTargets(
   protocols: unknown,
   n: number,
@@ -46,6 +49,7 @@ export function topTargets(
     const tvl = typeof tvlRaw === 'number' && Number.isFinite(tvlRaw) ? tvlRaw : 0
     const catRaw = (row as { category?: unknown }).category
     const category = typeof catRaw === 'string' ? catRaw.toLowerCase() || 'other' : 'other'
+    if (NOT_DAPPS.has(category)) continue // an exchange or a chain's site is not a dApp a user signs on
     scored.push({ domain: host, category, tvl })
   }
   scored.sort((a, b) => b.tvl - a.tvl)
