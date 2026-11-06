@@ -768,7 +768,8 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Serves: Usability (judged) ; WOW factor (judged)
 - Known: the indexer's newest checks are all "unknown" (no release) and the only published demo site, hydra-demo-dapp.vercel.app, carries the staged hijack on purpose, so no live site shows the green search verdict. demo-clean/ is a second, untouched static dApp, hosted on GitHub Pages at mouli51ch.github.io (hydra.txt must sit at the domain root, so a user site, not a project page), published with its own app name and bound by domain proof
 - Acceptance: searching mouli51ch.github.io on the explorer shows Good to go from a real indexer match on Arkiv, with no fixture
-- Evidence:
+- Evidence: live at https://mouli51ch.github.io (repo Mouli51ch/Mouli51ch.github.io, Pages from main), hydra.txt serves hydra-app=clean-vault and index.html, app.js and style.css are byte-identical to demo-clean/; release clean-1 of clean-vault recorded on Arkiv in tx 0x2a43a6e3c1d847f08c8961c9b5bd51d17052577d55416cc42e543b820c06de42, swarm ead8731a2fe8cf04fbee93ff6bb90d41732aecbd9d53090aaf02485660212d18, /v1/domains/mouli51ch.github.io answers clean-vault; indexer run 42202206314 (manual, 6 Nov 10:22 UTC): "match mouli51ch.github.io 1 scripts", 249 sites, 2 match; explorer search for the domain shows Good to go, "Checked by the Hydra indexer 6 min ago", at 1440 and 375 px
+- Finding: the domain proof must sit at the domain root, so a GitHub project page (user.github.io/repo/) can never bind; only a user site or a custom domain can. The indexer scans every published domain on its next run with no list to edit, but GitHub's 30-minute schedule is best effort (no scheduled run between 08:09 and 10:22 UTC), so a manual run is the reliable way to get a first verdict
 ### T-A24, A failing Jina second view is loud, and stops wasting calls
 - Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a24-loud-jina
 - Suggested: Jishnu
