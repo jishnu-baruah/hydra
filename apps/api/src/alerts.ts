@@ -184,6 +184,33 @@ export function linkedChats(updates: unknown, app: string, now: number, windowMs
   return hits.filter((h) => !seen.has(h.id) && seen.add(h.id)).map(({ id, title }) => ({ id, title }))
 }
 
+// The bot's answer to "/hydra <app>" or "/chatid": the chat id to paste into the console. The proof
+// stays linkedChats, so the reply grants nothing. `seen` holds answered update ids (each message is
+// answered once); messages older than `since` (server start) are skipped so a restart does not
+// answer the last day again.
+export function chatIdReplies(updates: unknown, seen: Set<number>, since: number): { updateId: number; chatId: string; text: string }[] {
+  if (!Array.isArray(updates)) return []
+  const out: { updateId: number; chatId: string; text: string }[] = []
+  for (const u of updates) {
+    const updateId = (u as { update_id?: unknown })?.update_id
+    const m = (u as { message?: { chat?: { id?: unknown }; text?: unknown; date?: unknown } })?.message
+    const id = m?.chat?.id
+    if (typeof updateId !== 'number' || typeof id !== 'number' || typeof m?.text !== 'string' || seen.has(updateId)) continue
+    const cmd = m.text.trim().match(/^\/(hydra|chatid)(?:@[A-Za-z0-9_]+)?(?:\s+([a-z0-9-]{1,64}))?\s*$/)
+    if (!cmd || Number(m.date) * 1000 < since) continue
+    seen.add(updateId)
+    const app = cmd[2]
+    out.push({
+      updateId,
+      chatId: String(id),
+      text: app
+        ? `Chat id: ${id}\nPaste it in the Hydra console as the Telegram target for ${app} within 15 minutes.`
+        : `Chat id: ${id}\nTo add this chat to an app, send "/hydra <app>" here, then paste the id in the Hydra console within 15 minutes.`,
+    })
+  }
+  return out
+}
+
 const NAME: Record<Kind, string> = { webhook: 'the webhook', slack: 'Slack', discord: 'Discord', telegram: 'Telegram' }
 
 // One alert to one channel. HTTP kinds: at most 3 attempts with a short backoff for network errors

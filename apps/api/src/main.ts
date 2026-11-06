@@ -9,7 +9,7 @@ import { runOnce, sendTelegram } from '@hydra/indexer/run'
 import { privateKeyToAccount } from 'viem/accounts'
 import { sitesView, type TargetInfo } from './observations.ts'
 import { channelNotifier, deliver, type Channel, type Verdict } from './alerts.ts'
-import { linkedChats } from './alerts.ts'
+import { chatIdReplies, linkedChats } from './alerts.ts'
 import { activity, alertSubs, appForDomainFrom, appsPublishedBy, blockToMs, claimOf, filesByHash, keyVersion, releasesFor } from './reads.ts'
 import { createApi, indexerRunner, type AlertRoutes, type ApiDeps, type ConsoleRoutes } from './server.ts'
 import { swarmUploader } from './swarm.ts'
@@ -56,6 +56,31 @@ if (tgToken) {
     // No error detail: it could carry the URL, and the token is in it.
     .catch(() => console.error('Telegram getMe failed, so the console will not name the bot; check TELEGRAM_BOT_TOKEN'))
 }
+// The bot answers "/hydra <app>" and "/chatid" with the chat id (T-A33), read every 3 s. getUpdates
+// without an offset consumes nothing, so Find my chat still sees the same messages.
+const tgUpdates = async () => {
+  const res = await fetch(`https://api.telegram.org/bot${tgToken}/getUpdates?allowed_updates=%5B%22message%22%5D`, { signal: AbortSignal.timeout(10_000) }).catch(() => null)
+  return ((await res?.json().catch(() => null)) as { result?: unknown } | null)?.result
+}
+if (tgToken) {
+  const answered = new Set<number>()
+  const since = Date.now()
+  let polling = false
+  setInterval(async () => {
+    if (polling) return
+    polling = true
+    try {
+      for (const r of chatIdReplies(await tgUpdates(), answered, since)) {
+        const sent = await sendTelegram({ token: tgToken, chatId: r.chatId, text: r.text })
+        if (!sent.ok) console.error(`chat id reply not sent: ${sent.error}`)
+      }
+    } catch {
+      // never let a timer callback reject inside the API process
+    } finally {
+      polling = false
+    }
+  }, 3000).unref()
+}
 const deliverAlert = (ch: Channel, v: Verdict) =>
   deliver(ch, v, { telegram: tgToken ? (chatId, text) => sendTelegram({ token: tgToken, chatId, text }) : undefined })
 const alerts: AlertRoutes = {
@@ -73,11 +98,7 @@ const alerts: AlertRoutes = {
   bot: () => botName,
   // getUpdates without an offset reads the bot's recent messages and consumes none of them.
   telegramChats: tgToken
-    ? async (app: string) => {
-        const res = await fetch(`https://api.telegram.org/bot${tgToken}/getUpdates?allowed_updates=%5B%22message%22%5D`, { signal: AbortSignal.timeout(10_000) }).catch(() => null)
-        const j = (await res?.json().catch(() => null)) as { result?: unknown } | null
-        return linkedChats(j?.result, app, Date.now())
-      }
+    ? async (app: string) => linkedChats(await tgUpdates(), app, Date.now())
     : undefined,
   teamChatId: env.TELEGRAM_CHAT_ID,
 }

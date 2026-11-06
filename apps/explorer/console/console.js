@@ -40,7 +40,7 @@ const HOWTO = {
 
 function telegramHint(app) {
   const who = bot ? `@${bot}` : "the Hydra bot (its name is not set on the server yet)";
-  return `Add ${who} to your group, then send "/hydra ${app}" in the group. That proves the group is yours. Then press Find my chat (it looks back 15 minutes), or paste the chat id.`;
+  return `Add ${who} to your group, then send "/hydra ${app}" in the group. The bot replies with the chat id: paste it here within 15 minutes, or press Find my chat.`;
 }
 
 function say(text) {
