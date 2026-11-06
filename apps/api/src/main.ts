@@ -14,6 +14,7 @@ import { activity, alertSubs, appForDomainFrom, appsPublishedBy, blockToMs, clai
 import { createApi, indexerRunner, type AlertRoutes, type ApiDeps, type ConsoleRoutes } from './server.ts'
 import { swarmUploader } from './swarm.ts'
 import { createWatcher, runOk } from './watch.ts'
+import { ensStatusWriter } from './ens.ts'
 import { deployDemo, readDemoFiles } from './demo.ts'
 
 const env = process.env
@@ -166,6 +167,15 @@ function cached<T>(ttlMs: number, load: (key: string) => Promise<T>, max = 500) 
 // by DEMO_WATCH_TOKEN; without it the route answers 503 and says so.
 const watchToken = (env.DEMO_WATCH_TOKEN ?? '').length >= 16 ? env.DEMO_WATCH_TOKEN : undefined
 if (env.DEMO_WATCH_TOKEN && !watchToken) console.error('DEMO_WATCH_TOKEN must be at least 16 characters; the demo watch switch stays off.')
+// ENS status (T-A35): each flip also sets hydra.status on the app's status.<app>.eth, from the
+// indexer wallet on Sepolia. It runs after the Arkiv write and on its own, so an ENS failure is logged
+// but never fails or repeats the flip.
+let ensStatus: ReturnType<typeof ensStatusWriter>
+try {
+  ensStatus = ensStatusWriter({ config: env.HYDRA_ENS_STATUS, privateKey: indexerKey })
+} catch (err) {
+  console.error(`${err instanceof Error ? err.message : String(err)}; ENS status writes stay off`)
+}
 const watcher = writer
   ? createWatcher({
       resolve: async (domain) => {
@@ -179,6 +189,11 @@ const watcher = writer
         if (!indexer) throw new Error('no indexer wallet is configured, so no observation or alert can be written')
         const problem = runOk(await indexer.runOnly(e.domain))
         if (problem) throw new Error(problem)
+        ensStatus?.(e.domain, e.to).then(
+          (tx) => tx && console.log(`ENS status ${e.domain} -> ${e.to} tx ${tx}`),
+          (err) => console.error(`ENS status ${e.domain} -> ${e.to} not written: ${err instanceof Error ? (err as { shortMessage?: string }).shortMessage ?? err.message.split('
+')[0] : String(err)}`),
+        )
       },
     })
   : undefined

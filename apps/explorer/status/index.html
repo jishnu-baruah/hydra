@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ENS status, Hydra</title>
+    <meta name="description" content="An app's frontend security status, read straight from its ENS name." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
+    <link rel="stylesheet" href="../assets/hydra.css" />
+    <link rel="stylesheet" href="../publish/publish.css" />
+    <link rel="stylesheet" href="status.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="bar">
+      <a class="mark" href="../">Hydra</a>
+      <nav aria-label="Main">
+        <a href="../releases/">Builds</a>
+        <a href="../observed/">Monitor</a>
+        <a href="../search/">Search</a>
+        <a href="../publish/">Publish</a>
+        <a href="../console/" class="nav-console" hidden>Console</a>
+      </nav>
+      <span class="tag">ENS status</span>
+    </header>
+
+    <main id="main">
+      <section class="hero">
+        <p class="eyebrow">ENS status <span>/ Read from ENS, not from Hydra</span></p>
+        <h1 id="name">status.demodapp.eth</h1>
+        <p class="lede">The app team owns this name. Hydra's monitor may set one record on it, <code>hydra.status</code>, and nothing else. This page reads that record straight from ENSv2 on Sepolia every 5 seconds.</p>
+      </section>
+
+      <section class="panel">
+        <div class="verdict" id="verdict" data-v="unknown" role="status" aria-live="polite">
+          <span class="dot" aria-hidden="true"></span>
+          <span id="word">Reading ENS...</span>
+        </div>
+        <p class="help" id="what"></p>
+        <p class="help" id="checked"></p>
+        <form id="pick" autocomplete="off">
+          <div class="field">
+            <label for="ens">ENS status name</label>
+            <input id="ens" spellcheck="false" placeholder="status.yourapp.eth" />
+          </div>
+          <button class="btn" type="submit">Show</button>
+        </form>
+      </section>
+      <p class="err" id="error" role="alert" hidden></p>
+    </main>
+    <script type="module" src="status.js"></script>
+    <script type="module" src="../assets/motion.js"></script>
+  </body>
+</html>

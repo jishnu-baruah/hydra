@@ -771,7 +771,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: the explorer is a static site whose non-publish pages had a CSP allowing only the Arkiv RPC, so API calls added here would have worked locally and failed in production (connect-src now lists the API); the browser pane cached old ES modules on one port, a fresh port showed the real state; the Jina key ran out of credit again, most likely drained by the first 247-site indexer run, so the indexer second view needs a top-up or a stricter rule; GLM review found a stale verdict after a domain is re-bound, fixed with a test first
 
 ### T-A35, ENS status record: status.<app>.eth carries the live verdict
-- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-a35-ens-status
+- Status: in-review | Branch: feature/t-a35-ens-status
 - Suggested: Jishnu
 - Depends-on: T-A25
 - Touches: apps/api/, apps/explorer/status/, apps/explorer/vercel.json, apps/explorer/README.md, spikes/F4/, CLAUDE.md, docs/ARCHITECTURE.md

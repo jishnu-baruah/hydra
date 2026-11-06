@@ -127,6 +127,10 @@ domain serves the file.
 3. Re-fetch the page's scripts, hash them, and compare with `files` and `scripts` in the manifest.
 4. Badge: green = every script is in the release; red = something isn't (show which); grey = no release for this site. Also show the latest indexer `observation` if there is one (a `DOMAIN_PROOF_LOST` observation shows as mismatch, with that flag).
 
+## ENS status records (T-A35)
+
+A team owns `status.<app>.eth` on ENSv2 (Sepolia), with its own sub-registry and PermissionedResolver, and grants Hydra's indexer wallet `setText` for the `hydra.status` key only (`grantSetterRoles`; any other key reverts). At each watcher flip the API writes `match` or `mismatch` there (one transaction, never resent, after the Arkiv write and outside it). `HYDRA_ENS_STATUS` maps `<domain>=<ens name>@<resolver>`. Anyone reads it through UniversalResolverV2; the explorer `/status/` page does so in the browser. Setup steps: `spikes/F4/spike.mjs <label> --sub`.
+
 ## Open decisions
 
 - **Swarm setup.** Our own Bee node with a testnet postage batch, or a hosted gateway. This is a day-1 spike.

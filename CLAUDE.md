@@ -3,7 +3,7 @@
 Hydra keeps a public, tamper-evident record of every dApp frontend build on Arkiv, with the build
 on Swarm. Teams publish from CI with one API key. Users check builds in a Sourcify-style explorer
 and get warned by a Chrome extension when a site serves scripts that are in no release.
-ETHGlobal Mumbai, 5 to 7 Nov 2026. **Scope: Arkiv + Swarm only. No ENS, no wallet plugin.**
+ETHGlobal Mumbai, 5 to 7 Nov 2026. **Scope: Arkiv + Swarm, plus ENSv2 status records (T-A35). No wallet plugin.**
 
 ## Before you write any code
 
