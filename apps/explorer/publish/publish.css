@@ -81,6 +81,12 @@
 .ghost-btn:hover { border-color: var(--accent); color: var(--accent); }
 .ghost-btn:active { transform: scale(0.97); }
 .ghost-btn[disabled] { opacity: 0.4; cursor: not-allowed; }
+/* A check in progress: still dimmed, but busy rather than unavailable, with a turning ring. */
+.ghost-btn[aria-busy="true"] { opacity: 0.85; cursor: progress; }
+.ghost-btn[aria-busy="true"]::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 10px; vertical-align: -1px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 800ms linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ghost-btn[aria-busy="true"]::before { animation: none; border-right-color: currentColor; } }
+#s4 { margin: 12px 0 0; }
 
 .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 18px; }
 .tabs [role="tab"] {
