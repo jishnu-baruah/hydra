@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Manifest, Hydra explorer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
+    <link rel="stylesheet" href="../assets/hydra.css" />
+    <link rel="stylesheet" href="manifest.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="bar">
+      <a class="mark" href="../">Hydra</a>
+      <nav aria-label="Main">
+        <a href="../releases/">Builds</a>
+        <a href="../observed/">Monitor</a>
+        <a href="../search/">Search</a>
+        <a href="../publish/">Publish</a>
+        <a href="../console/" class="nav-console" hidden>Console</a>
+      </nav>
+      <span class="tag">Arkiv Rabdi / 7794095</span>
+    </header>
+    <span class="rail label" aria-hidden="true">Manifest</span>
+
+    <main id="main">
+      <section class="hero">
+        <p class="eyebrow">Release <span>/ Manifest on Swarm</span></p>
+        <h1 class="compact" id="name">Manifest</h1>
+        <p class="lede">The file list and sha256 of every file and script in this build, read from Swarm.</p>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>hydra-manifest.json</h2>
+          <a class="label" id="raw" hidden rel="noopener noreferrer">Raw file on Swarm</a>
+        </div>
+        <p id="status" role="status">Reading Swarm...</p>
+        <pre id="json" class="manifest-json" tabindex="0" hidden></pre>
+      </section>
+
+      <footer class="colophon label">
+        <span>Read only</span>
+        <span>Swarm, via download.gateway.ethswarm.org</span>
+      </footer>
+    </main>
+    <script type="module" src="page.js"></script>
+    <script type="module" src="../assets/motion.js"></script>
+  </body>
+</html>

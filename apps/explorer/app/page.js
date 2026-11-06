@@ -46,7 +46,7 @@ try {
         tr.insertCell().append(String(r.fileCount));
         tr.insertCell().append(
           r.swarmUrl
-            ? el("a", "Manifest", { href: r.swarmUrl, rel: "noopener noreferrer", target: "_blank" })
+            ? el("a", "Manifest", { href: `../manifest/?ref=${encodeURIComponent(r.swarmRef)}` })
             : el("span", "Not on Swarm yet", { className: "muted" }),
         );
         tr.insertCell().append(el("a", "View", { href: `../releases/?key=${encodeURIComponent(r.key)}` }));
