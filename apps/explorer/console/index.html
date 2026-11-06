@@ -35,55 +35,30 @@
       </section>
 
       <section class="panel" id="p1" data-state="current" aria-labelledby="h1-title">
-        <h2 id="h1-title"><span class="n">01</span> Your API key</h2>
-        <p class="why">Use the key the Publish page gave you for this app. It stays in this tab only and is gone when you close it. <a href="../publish/">Need a key?</a></p>
-        <form id="connect" autocomplete="off">
-          <div class="field">
-            <label for="key">API key</label>
-            <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="hyd_..." />
-          </div>
-          <button class="btn" id="connect-btn" type="submit">Connect</button>
-          <button class="ghost-btn" id="forget" type="button" hidden>Forget key</button>
-        </form>
-        <p class="ok" id="app-name" hidden></p>
+        <h2 id="h1-title"><span class="n">01</span> Sign in</h2>
+        <p class="why">Sign in with the wallet that published your apps. Hydra asks it to sign one message. It costs nothing and moves no funds. The sign-in stays in this tab only.</p>
+        <div class="row">
+          <button class="btn" id="wallet-btn" type="button">Sign in with wallet</button>
+          <button class="ghost-btn" id="signout" type="button" hidden>Sign out</button>
+        </div>
+        <p class="ok" id="who" hidden></p>
+        <details class="alt" id="alt">
+          <summary>Use an API key instead</summary>
+          <p class="why">Paste the key the Publish page gave you for one app. It stays in this tab only. Rotating a key needs a wallet sign-in. <a href="../publish/">Need a key?</a></p>
+          <form id="connect" autocomplete="off">
+            <div class="field">
+              <label for="key">API key</label>
+              <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="hyd_..." />
+            </div>
+            <button class="btn" id="connect-btn" type="submit">Connect</button>
+          </form>
+        </details>
       </section>
 
       <section class="panel" id="p2" data-state="locked" aria-labelledby="h2-title">
-        <h2 id="h2-title"><span class="n">02</span> Channels</h2>
-        <p class="why" id="empty">Connect with your key to see your channels.</p>
-        <ul class="channels" id="channels"></ul>
-      </section>
-
-      <section class="panel" id="p3" data-state="locked" aria-labelledby="h3-title">
-        <h2 id="h3-title"><span class="n">03</span> Add a channel</h2>
-        <p class="why">Hydra sends a test message first. If it fails, nothing is saved. You can have 5 channels.</p>
-        <form id="add" autocomplete="off">
-          <div class="field">
-            <label for="kind">Kind</label>
-            <select id="kind" disabled>
-              <option value="webhook">Webhook</option>
-              <option value="slack">Slack</option>
-              <option value="discord">Discord</option>
-              <option value="telegram">Telegram</option>
-            </select>
-            <p class="help" id="howto"></p>
-          </div>
-          <div class="field">
-            <label for="target" id="target-label">Webhook URL</label>
-            <input id="target" spellcheck="false" autocomplete="off" disabled />
-            <button class="ghost-btn" id="find-chat" type="button" hidden>Find my chat</button>
-            <div id="chats"></div>
-          </div>
-          <button class="btn" id="add-btn" type="submit" disabled>Add channel</button>
-        </form>
-        <div class="keybox" id="secretbox" hidden>
-          <p class="label">Webhook secret</p>
-          <div class="keyrow">
-            <code id="secret"></code>
-            <button class="ghost-btn" id="copy-secret" type="button">Copy</button>
-          </div>
-          <p class="warn">Copy this now. It is shown once and cannot be read again. Your server uses it to verify the webhook-signature header.</p>
-        </div>
+        <h2 id="h2-title"><span class="n">02</span> Your apps</h2>
+        <p class="why" id="empty">Sign in to see your apps.</p>
+        <div class="apps" id="apps"></div>
       </section>
 
       <p class="help" id="status" role="status" aria-live="polite"></p>
