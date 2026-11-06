@@ -894,3 +894,25 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Scope: /console/ in the explorer: paste the app's Hydra API key (kept in the tab's session storage only), see the app's channels, add a webhook, Slack, Discord or Telegram channel (each sends a test first), test or delete one; the webhook secret is shown once; plain wording, textContent only
 - Acceptance: unit tests written first for the pure form logic (all 4 channel kinds, 8 or more cases); in a browser on the deployed explorer, adding 1 Telegram channel for demo-dapp delivers its test message
 - Evidence: PR (this one); form tests written first, 9 pass; all explorer tests pass; exercised in a browser against a fake API (401, connect, add with webhook secret, delete); live check after T-A30 deploys in the PR conversation
+
+### T-A32, Console sessions by wallet, all apps, key rotation
+- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-a32-console-keys
+- Suggested: Jishnu
+- Depends-on: T-A30
+- Touches: apps/api/, packages/core/src/records.ts, packages/core/test/, docs/ARCHITECTURE.md
+- Serves: Practicality (judged) ; Arkiv track (prize)
+- Known: requested by Mouli on 7 Nov: a user must manage every app, its key and its alert channels in one place; keys are stateless today, so none can be listed or revoked and a leaked key works until it expires
+- Scope: a wallet signs one console message and gets a 2-hour session token; the session lists every app the wallet owns with its channels and key version; channel add, test and delete work through the session; rotating an app's key stores a new key version on Arkiv (`hydra.key_epoch`) and returns a new key once; every route that takes an app key refuses a key older than the current version, and keys issued from the Publish page carry the current version
+- Acceptance: unit tests written failing first (session sign-in, stale or wrong signature refused, owner-only apps, rotation makes the older key 401 and the new key work, channel routes through the session); API tests 66 or more pass; live: a wallet session lists demo-dapp and a rotation makes the old key fail
+- Evidence: <PR link>
+
+### T-B12, Console: sign in with a wallet, every app, keys and channels
+- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-b12-console-wallet
+- Suggested: Mouli
+- Depends-on: T-A32, T-B11
+- Touches: apps/explorer/console/, apps/explorer/README.md
+- Serves: Practicality (judged) ; WOW factor (judged)
+- Known: requested by Mouli on 7 Nov; the T-B11 page takes one pasted key per app
+- Scope: the console signs in with the browser wallet (one message, no gas), lists every app the wallet owns, and per app shows the key version with a Rotate button (new key shown once with the CI command), and the channels with add, test and delete; pasting a single app key stays as a fallback
+- Acceptance: unit tests written first for the pure view logic (8 or more cases); in a browser against a fake API: sign in, 2 apps listed, rotate shows a key once, add and delete a channel
+- Evidence: <PR link>
