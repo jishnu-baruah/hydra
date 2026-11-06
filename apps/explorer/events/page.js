@@ -44,7 +44,7 @@ function item(e, fresh) {
   const v = verdict(e);
   const app = (name) => link(name, `../app/?name=${encodeURIComponent(name)}`);
   cell(tr, `${clock(e.at)} (${ago(e.at)})`);
-  let site = "", appCell = "", detail = "";
+  let site = el("span", "muted", "not a site check"), appCell = "", detail = "";
   if (e.kind === "claim") {
     appCell = app(e.app);
     detail = `reserved by ${e.publisher.slice(0, 6)}...${e.publisher.slice(-4)} when it got its API key`;
