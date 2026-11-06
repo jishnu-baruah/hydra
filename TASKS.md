@@ -462,10 +462,10 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a18-alert-delivery
 - Suggested: Jishnu
 - Depends-on: T-A16, T-A17
-- Touches: apps/api/, packages/indexer/
+- Touches: apps/api/, packages/indexer/, apps/site/vercel.json
 - Serves: Practicality (judged) ; WOW factor (judged)
 - Known: Standard Webhooks headers webhook-id, webhook-timestamp, webhook-signature (HMAC-SHA256, 5 min replay window); protocol teams already route OpenZeppelin Monitor alerts to Slack, Discord, Telegram and webhooks
-- Scope: after each indexer run, every new problem per site (DNS_CHANGED, RESOLVER_SPLIT, CHANGED, EXTRA, RUNTIME_ORIGIN, NEW_RUNTIME_ORIGIN, mismatch) becomes 1 event with a stable id. Each subscription gets it signed per Standard Webhooks, or formatted for Discord and Slack, with 3 attempts and no duplicate per id
+- Scope: Telegram first (user choice, 6 Nov): a bot posts plain-text alerts to one chat set by env. After each indexer run, every new problem per site (DNS_CHANGED, RESOLVER_SPLIT, CHANGED, EXTRA, RUNTIME_ORIGIN, NEW_RUNTIME_ORIGIN, mismatch) becomes 1 event with a stable id. Each subscription gets it signed per Standard Webhooks, or formatted for Discord and Slack, with 3 attempts and no duplicate per id
 - Acceptance: changing 1 script on the demo site sends 1 signed webhook and 1 Discord message within 1 triggered run, and a receiver sample verifies the signature
 - Evidence: <Discord screenshot, Actions run>
 - Kill criterion: delivery not working by 6 Nov 22:00 IST, so Discord only
