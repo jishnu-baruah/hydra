@@ -1,6 +1,6 @@
 // The events feed, read live from Arkiv and refreshed every minute while the tab is visible.
 // Arkiv data is shown with textContent only.
-import { timeline, only } from "./events.js";
+import { timeline, only, verdict, integratedOnly } from "./events.js";
 
 const REFRESH_MS = 60_000;
 const $ = (id) => document.getElementById(id);
@@ -30,35 +30,45 @@ function ago(ms) {
   return `${Math.round(s / 86400)} d ago`;
 }
 
-function item(e, fresh) {
-  const li = el("li", `ev ev-${e.kind}${fresh ? " new" : ""}`);
-  const when = el("div", "when");
-  when.append(el("b", "", `${clock(e.at)} UTC`), el("small", "", ago(e.at)));
-  const what = el("div", "what");
-  const detail = el("p", "detail");
+const cell = (tr, text, cls = "") => {
+  const td = tr.insertCell();
+  if (cls) td.className = cls;
+  if (text instanceof Node) td.append(text);
+  else td.textContent = text;
+  td.title = td.textContent;
+  return td;
+};
 
+function item(e, fresh) {
+  const tr = el("tr", fresh ? "new" : "");
+  const v = verdict(e);
+  const app = (name) => link(name, `../app/?name=${encodeURIComponent(name)}`);
+  cell(tr, `${clock(e.at)} (${ago(e.at)})`);
+  let site = "", appCell = "", detail = "";
   if (e.kind === "claim") {
-    what.append(el("span", "kind", "Name claimed"), link(e.app, `../app/?name=${encodeURIComponent(e.app)}`));
-    detail.textContent = `reserved by ${e.publisher.slice(0, 6)}...${e.publisher.slice(-4)} when it got its API key`;
+    appCell = app(e.app);
+    detail = `reserved by ${e.publisher.slice(0, 6)}...${e.publisher.slice(-4)} when it got its API key`;
   } else if (e.kind === "release") {
-    what.append(el("span", "kind", "Release"), link(e.app, `../app/?name=${encodeURIComponent(e.app)}`), el("span", "chip", e.version));
-    detail.textContent = `commit ${e.commit.slice(0, 12)}, ${e.files} file${e.files === 1 ? "" : "s"}`;
-    if (e.ci) detail.append(", ", Object.assign(link("CI run", e.ci), { target: "_blank", rel: "noopener noreferrer" }));
+    appCell = app(e.app);
+    detail = `${e.version}, commit ${e.commit.slice(0, 12)}, ${e.files} file${e.files === 1 ? "" : "s"}`;
   } else {
-    what.append(el("span", "kind", "Observed"), link(e.domain, `../observed/?domain=${encodeURIComponent(e.domain)}`), el("span", `chip ${e.status}`, e.status));
-    // A site with no release churns its scripts on its own (spike F3), so a change there is news,
-    // not an alarm. On a published site it is the alarm.
-    if (e.changed) what.append(el("span", e.status === "unknown" ? "chip churn" : "chip changed", e.status === "unknown" ? "Script set changed" : "Scripts changed"));
+    site = link(e.domain, `../observed/?domain=${encodeURIComponent(e.domain)}`);
+    appCell = e.label;
     const parts = [];
     const unreachable = e.problems.some((x) => x.startsWith("UNREACHABLE"));
-    if (e.empty) parts.push(el("span", "warn", unreachable ? "the indexer could not reach the site" : "0 scripts seen: the indexer may have got a bot check or an empty shell"));
+    if (e.changed) parts.push("script set changed");
+    if (e.empty) parts.push(unreachable ? "site not reachable" : "0 scripts seen (bot check or empty shell?)");
     else if (e.scripts !== null) parts.push(`${e.scripts} script${e.scripts === 1 ? "" : "s"}`);
     if (e.problems.length) parts.push(`${e.problems[0]}${e.problems.length > 1 ? ` and ${e.problems.length - 1} more` : ""}`);
     if (e.status === "unknown" && !e.empty) parts.push("no Hydra release for this site yet");
-    parts.forEach((p, i) => detail.append(i ? ", " : "", p));
+    detail = parts.join(", ");
   }
-  li.append(when, what, detail);
-  return li;
+  cell(tr, site);
+  cell(tr, appCell);
+  const vd = cell(tr, el("span", `chip sev-${v.level}`, v.label));
+  vd.title = "";
+  cell(tr, detail, "detail-cell");
+  return tr;
 }
 
 let events = [];
@@ -92,8 +102,9 @@ async function load() {
   loading = true;
   try {
     arkiv ??= await import("../src/arkiv.js");
-    const [releases, observations, apps] = await Promise.all([arkiv.latestReleases(100), arkiv.latestObservations(100), arkiv.latestApps(100)]);
-    const next = timeline(releases, observations, apps);
+    const [releases, latest, bound, apps] = await Promise.all([arkiv.latestReleases(100), arkiv.latestObservations(100), arkiv.boundObservations(100), arkiv.latestApps(100)]);
+    const observations = [...new Map([...latest, ...bound].map((e) => [e.$key, e])).values()];
+    const next = integratedOnly(timeline(releases, observations, apps));
     const before = new Set(events.map((e) => e.key));
     const fresh = events.length ? new Set(next.filter((e) => !before.has(e.key)).map((e) => e.key)) : new Set();
     events = next;

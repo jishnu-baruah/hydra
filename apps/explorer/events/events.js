@@ -78,3 +78,27 @@ export function only(events, mode) {
   if (mode === "changes") return events.filter((e) => e.kind === "observation" && (e.status === "mismatch" || (e.changed && e.status !== "unknown")));
   return events;
 }
+
+// Severity of one event, in one place. green = match, release published, restored. yellow = a change
+// that is not proven compromise (unreachable, skipped, third-party runtime origin, unknown). red =
+// only a mismatch caused by a served script that is in no release or differs from it.
+export function verdict(e) {
+  if (e.kind === "claim") return { level: "neutral", label: "Claimed" };
+  if (e.kind === "release") return { level: "green", label: "Release" };
+  if (e.status === "match") return { level: "green", label: "Match" };
+  const p = e.problems ?? [];
+  if (e.status === "mismatch") {
+    const script = p.length === 0 || p.some((x) => /^(EXTRA|CHANGED|UNREADABLE) /.test(x));
+    if (script) return { level: "red", label: "Not in release" };
+    return { level: "yellow", label: p.some((x) => /RUNTIME_ORIGIN/.test(x)) ? "Origin changed" : "Check issue" };
+  }
+  if (p.some((x) => x.startsWith("UNREACHABLE"))) return { level: "yellow", label: "Unreachable" };
+  return { level: "yellow", label: e.empty ? "Skipped" : "Unknown" };
+}
+
+// Activity under the Monitor shows integrated sites only: releases, claims, and checks of a site the
+// indexer has compared with a release (match or mismatch at least once). Coverage-only sites drop out.
+export function integratedOnly(events) {
+  const bound = new Set(events.filter((e) => e.kind === "observation" && (e.status === "match" || e.status === "mismatch")).map((e) => e.domain));
+  return events.filter((e) => e.kind !== "observation" || bound.has(e.domain));
+}

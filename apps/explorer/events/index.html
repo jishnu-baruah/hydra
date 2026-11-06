@@ -27,7 +27,7 @@
 
     <main id="main">
       <nav class="subnav" aria-label="Monitor">
-        <a href="../observed/"><b>Sites</b><span>Every dApp the indexer checks, with its latest verdict</span></a>
+        <a href="../observed/"><b>Sites</b><span>dApps bound to a Hydra release, with their latest verdict</span></a>
         <a href="./" aria-current="page"><b>Activity</b><span>Releases and checks as they happen, newest first</span></a>
         <a href="../live/"><b>Live</b><span>Watch one site in real time, second by second</span></a>
       </nav>
@@ -45,7 +45,14 @@
           <button type="button" data-mode="changes" aria-pressed="false">Changes <span></span></button>
         </div>
         <p id="status" role="status">Reading Arkiv...</p>
-        <ol id="feed" class="feed"></ol>
+        <div class="tbl-wrap">
+          <table class="acts">
+            <colgroup><col class="c-time" /><col class="c-site" /><col class="c-app" /><col class="c-verdict" /><col /></colgroup>
+            <thead><tr><th>Time (UTC)</th><th>Site</th><th>App</th><th>Verdict</th><th>Detail</th></tr></thead>
+            <tbody id="feed"></tbody>
+          </table>
+        </div>
+        <p class="legend"><span class="chip sev-green">Green</span> match, release published <span class="chip sev-yellow">Yellow</span> change not proven harmful: unreachable, skipped, runtime origin, unknown <span class="chip sev-red">Red</span> a served script in no release</p>
       </section>
 
       <footer class="colophon label">
