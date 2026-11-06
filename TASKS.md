@@ -527,10 +527,20 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: the full sequence runs in under 90 seconds, 3 rehearsals in a row
 - Evidence: <recording>
 
+### T-A21, Swarm on the testnet gateway, not mainnet
+- Status: open
+- Suggested: Manish
+- Depends-on: T-A12, OP-11
+- Touches: .env.example, apps/explorer/app/releases.js, apps/explorer/app/releases.test.mjs, apps/extension/src/compare/lookup.js, README.md, arkiv/swarm.md, docs/swarm.md
+- Serves: Swarm bonus
+- Scope: `api.gateway.ethswarm.org` is the Swarm mainnet gateway and CLAUDE.md allows the Swarm testnet only; point the explorer and extension reads, `.env.example` and the docs at `https://api.gateway.testnet.ethswarm.org`, and relink the README and arkiv/swarm.md to a release published after OP-11. The API needs no code change, only its env (OP-11). `apps/api/deploy/README.md` belongs to T-A04, so Jishnu updates its gateway URL there
+- Acceptance: 1 release published after OP-11 has a 64-hex swarm_ref whose hydra-manifest.json opens on the testnet gateway (HTTP 200) and returns 404 on the mainnet gateway; explorer tests pass with the new URL
+- Evidence: <PR link>
+
 # P2, 6 Nov afternoon and night
 
 ### T-D11, Swarm requirements and integration fit (research plus validation)
-- Status: in-review https://github.com/jishnu-baruah/hydra/pull/86 | Branch: feature/t-d11-swarm-fit
+- Status: done
 - Suggested: Manish
 - Depends-on: T-F02
 - Touches: docs/research/swarm-fit.md
