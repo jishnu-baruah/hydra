@@ -528,7 +528,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <recording>
 
 ### T-A21, Swarm on the testnet gateway, not mainnet
-- Status: open
+- Status: claimed 2026-11-06 | Owner: Manish | Branch: feature/t-a21-swarm-testnet
 - Suggested: Manish
 - Depends-on: T-A12, OP-11
 - Touches: .env.example, apps/explorer/app/releases.js, apps/explorer/app/releases.test.mjs, apps/extension/src/compare/lookup.js, README.md, arkiv/swarm.md, docs/swarm.md
