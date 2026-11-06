@@ -785,7 +785,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 
 
 ### T-A25, Live checker: watch one bound site every 5 seconds, switched on from a page
-- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a25-live-checker
+- Status: in-review | Branch: feature/t-a25-live-checker
 - Suggested: Jishnu
 - Depends-on: T-A23
 - Touches: apps/api/src/watch.ts, apps/api/src/server.ts, apps/api/src/main.ts, apps/api/test/, packages/indexer/src/check.ts, packages/indexer/src/run.ts, packages/indexer/package.json, packages/indexer/test/, apps/explorer/live/, apps/explorer/vercel.json, apps/explorer/README.md, apps/explorer nav links
@@ -793,4 +793,5 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Known: a normal indexer run reads and writes Arkiv and takes about 14 s for one site (T-A23) and 5 min for all, so the demo cannot show a tamper within seconds without a laptop that holds the wallet key; the demo needs a switch on a page that watches the demo site every 5 s on Render
 - Scope: `POST /v1/watch {domain, on}` (bearer DEMO_WATCH_TOKEN, timing-safe) starts or stops one in-memory watcher for a domain that a release has bound; every 5 s it fetches the page and its scripts through safeGet, rechecks hydra.txt and compares with the release, with no Arkiv reads or writes per tick; when the verdict flips (match to mismatch or back) it runs the normal one-site observation write and Telegram alert once; it switches itself off after 15 minutes; `GET /v1/watch` is public and returns the state, the last 30 ticks and the flips; the explorer gets a Live page with the switch, the status and the tick strip
 - Acceptance: unit tests written failing first (watcher: baseline, flip once, flip back, unreachable is not a flip, overlap skipped, auto-off, stop; routes: 401, 503, 400, 200, 404); on the live demo, switching on and then changing app.js shows mismatch on the page within 12 s and 1 Telegram alert, and API tests 30 or more pass
-- Evidence: <PR link>
+- Evidence: PR (this one); tests: API 41 pass, indexer 38 pass, explorer 36 pass (new: watcher 14, routes 2, single-site check 7, Live page view 7); local API on the real demo site: a check takes 100 to 600 ms, switch on and off from the Live page works, 401 for a wrong token, 404 for an unbound site; /security-review found nothing at 80 percent; a flip rehearsal on the deployed site is still to run (needs this merged, a deploy and DEMO_WATCH_TOKEN on Render)
+- Finding: GLM review caught an unhandled rejection path in the timer (a throwing tick would have killed the process), a removed script read as unreachable instead of a mismatch, a failed alert never retried, a stale target after the binding vanished, and "alert sent" shown when the one-site run had found no target; all fixed with tests first. A tick skips Arkiv and Jina entirely, which is why it takes 100 to 600 ms against 14 s for a one-site run
