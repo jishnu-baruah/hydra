@@ -82,7 +82,7 @@ Status values: `open` | `claimed <date> | Owner: <name>` | `done <date>: <result
 - Done when: `GET /v1/apps/<app>/releases` on the API returns 1 release, and its app name is written here.
 
 ### OP-8, Turn on Swarm uploads on the deployed API
-- Status: claimed 2026-11-06 | Owner: Manish
+- Status: done 2026-11-06: /health reports "swarm": true; release hygra-demo2 2026-11-05.4 has swarm_ref c98c1935aa29b10a088779266dfddcb521985741175182ef1b9e11d5a42c04ad, its hydra-manifest.json opens through https://api.gateway.ethswarm.org (HTTP 200) and the JS file hash matches the manifest; index.html reads get the gateway 302 to bzz.link/forbidden, as in T-F02
 - Owner: Jishnu
 - Needed by: 2026-11-06 midday
 - Unblocks: T-B02, T-B03
