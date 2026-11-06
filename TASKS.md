@@ -333,14 +333,15 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: anyone can write an entity tagged hydra.app, so search and the home list must filter by the API wallet address (ownedBy) before showing real data; a bare 64-hex input is ambiguous (file sha256 or Swarm ref), so both are queried.
 
 ### T-D04, Demo dApp on a domain we control
-- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-d04-demo-dapp
+- Status: in-review | Branch: feature/t-d04-demo-dapp
 - Suggested: Manish
 - Depends-on: T-A19, T-A20
 - Touches: demo/, .gitignore
 - Serves: WOW factor (judged)
 - Known: spike T6: Vercel previews inject a vercel.live script and are login-protected, so demo and check the production deployment only
 - Acceptance: a 1-page static site with 1 JS file and 1 vendor script, live on a Vercel production domain, with /.well-known/hydra.txt naming its Hydra app, published as a release through the live API and showing `match` on /indexed. Deployed from demo/ in this repo with the Vercel CLI, not its own repo (time)
-- Evidence: <live URL>
+- Evidence: https://hydra-demo-dapp.vercel.app (production; /.well-known/hydra.txt serves hydra-app=hydra-demo; checkProof returns ok for hydra-demo and refuses another app name). Not yet published as a release or bound: waits for a Hydra API key for app hydra-demo from the wallet sign-in
+- Finding: `vercel link` writes demo/.gitignore and .env.local, so those stay out of git; the proof is checked against the live site, so the order is deploy first, then publish
 
 ### T-D05, Demo script, timed
 - Status: open

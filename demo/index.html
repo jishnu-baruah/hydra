@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Demo Swap</title>
+  <style>
+    body { margin: 0; font: 16px/1.5 system-ui, sans-serif; background: #0e1020; color: #e8eaf6; display: grid; place-items: center; min-height: 100vh; }
+    main { width: min(420px, 92vw); background: #171a30; border: 1px solid #2a2f55; border-radius: 16px; padding: 24px; }
+    h1 { margin: 0 0 4px; font-size: 22px; }
+    p { margin: 0 0 16px; color: #9aa3d6; font-size: 14px; }
+    label { display: block; margin: 12px 0 4px; font-size: 13px; color: #9aa3d6; }
+    input { width: 100%; box-sizing: border-box; padding: 10px; border-radius: 8px; border: 1px solid #2a2f55; background: #0e1020; color: inherit; font-size: 16px; }
+    button { width: 100%; margin-top: 16px; padding: 12px; border: 0; border-radius: 10px; background: #6f7bd6; color: #fff; font-size: 16px; font-weight: 600; }
+    small { display: block; margin-top: 12px; color: #9aa3d6; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Demo Swap</h1>
+    <p>A tiny stand-in dApp for Hydra. It does not connect a wallet or move funds.</p>
+    <label for="amount">You pay (ETH)</label>
+    <input id="amount" type="number" min="0" step="0.01" value="1">
+    <label for="out">You receive (DEMO)</label>
+    <input id="out" readonly>
+    <button id="swap" type="button">Swap (demo only)</button>
+    <small id="status">Loading...</small>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.13/dayjs.min.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
