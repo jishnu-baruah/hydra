@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Console, Hydra</title>
+    <meta name="description" content="Choose where Hydra sends an alert when your site changes from your release." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
+    <link rel="stylesheet" href="../assets/hydra.css" />
+    <link rel="stylesheet" href="../publish/publish.css" />
+    <link rel="stylesheet" href="console.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="bar">
+      <a class="mark" href="../">Hydra</a>
+      <nav aria-label="Main">
+        <a href="../releases/">Builds</a>
+        <a href="../observed/">Monitor</a>
+        <a href="../search/">Search</a>
+        <a href="../publish/">Publish</a>
+        <a href="./" aria-current="page">Console</a>
+      </nav>
+      <span class="tag">For teams</span>
+    </header>
+    <span class="rail label" aria-hidden="true">Console</span>
+
+    <main id="main">
+      <section class="hero">
+        <p class="eyebrow">Console <span>/ For teams</span></p>
+        <h1 class="compact">Alerts for your app</h1>
+        <p class="lede">When Hydra sees your site change from your release, it tells these channels within seconds.</p>
+      </section>
+
+      <section class="panel" id="p1" data-state="current" aria-labelledby="h1-title">
+        <h2 id="h1-title"><span class="n">01</span> Your API key</h2>
+        <p class="why">Use the key the Publish page gave you for this app. It stays in this tab only and is gone when you close it. <a href="../publish/">Need a key?</a></p>
+        <form id="connect" autocomplete="off">
+          <div class="field">
+            <label for="key">API key</label>
+            <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="hyd_..." />
+          </div>
+          <button class="btn" id="connect-btn" type="submit">Connect</button>
+          <button class="ghost-btn" id="forget" type="button" hidden>Forget key</button>
+        </form>
+        <p class="ok" id="app-name" hidden></p>
+      </section>
+
+      <section class="panel" id="p2" data-state="locked" aria-labelledby="h2-title">
+        <h2 id="h2-title"><span class="n">02</span> Channels</h2>
+        <p class="why" id="empty">Connect with your key to see your channels.</p>
+        <ul class="channels" id="channels"></ul>
+      </section>
+
+      <section class="panel" id="p3" data-state="locked" aria-labelledby="h3-title">
+        <h2 id="h3-title"><span class="n">03</span> Add a channel</h2>
+        <p class="why">Hydra sends a test message first. If it fails, nothing is saved. You can have 5 channels.</p>
+        <form id="add" autocomplete="off">
+          <div class="field">
+            <label for="kind">Kind</label>
+            <select id="kind" disabled>
+              <option value="webhook">Webhook</option>
+              <option value="slack">Slack</option>
+              <option value="discord">Discord</option>
+              <option value="telegram">Telegram</option>
+            </select>
+            <p class="help" id="howto"></p>
+          </div>
+          <div class="field">
+            <label for="target" id="target-label">Webhook URL</label>
+            <input id="target" spellcheck="false" autocomplete="off" disabled />
+            <button class="ghost-btn" id="find-chat" type="button" hidden>Find my chat</button>
+            <div id="chats"></div>
+          </div>
+          <button class="btn" id="add-btn" type="submit" disabled>Add channel</button>
+        </form>
+        <div class="keybox" id="secretbox" hidden>
+          <p class="label">Webhook secret</p>
+          <div class="keyrow">
+            <code id="secret"></code>
+            <button class="ghost-btn" id="copy-secret" type="button">Copy</button>
+          </div>
+          <p class="warn">Copy this now. It is shown once and cannot be read again. Your server uses it to verify the webhook-signature header.</p>
+        </div>
+      </section>
+
+      <p class="help" id="status" role="status" aria-live="polite"></p>
+      <p class="err" id="error" role="alert" hidden></p>
+    </main>
+    <script type="module" src="console.js"></script>
+  </body>
+</html>

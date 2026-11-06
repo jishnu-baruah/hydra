@@ -25,6 +25,7 @@ cd apps/explorer && python -m http.server 5173
 - `/events/` (nav: Activity): releases, app claims and indexer observations, newest first.
 - `/live/` (nav: Live): the demo's live checker. Shows the Hydra API's watch state for one bound site (a check every 5 s, the last 30 checks, what changed and whether the alert went out) and switches it on or off with the demo token. Reads `GET /v1/watch`; the switch is `POST /v1/watch`.
 - `/publish/`: sign in with a wallet, get an API key, add the workflow, bind the domain.
+- `/console/`: paste your API key, then list, test, add and delete the alert channels (webhook, Slack, Discord, Telegram) that hear when your site changes from your release. Calls `/v1/alerts`.
 
 Everything read from Arkiv is shown with `textContent`, never as HTML.
 
