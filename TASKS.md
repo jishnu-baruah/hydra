@@ -863,7 +863,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: PR (this one); the demo site now answers Cache-Control no-store with X-Vercel-Cache MISS; Hack and Fix timings after the API deploy are in the PR conversation
 
 ### T-A30, Alert channels per app: webhook, Slack, Discord and Telegram, stored on Arkiv
-- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a30-alert-channels
+- Status: in-review | Branch: feature/t-a30-alert-channels
 - Suggested: Jishnu
 - Depends-on: T-A18, T-A25
 - Touches: packages/core/src/domain.ts, packages/core/src/records.ts, packages/core/src/index.ts, packages/core/test/, apps/api/, packages/indexer/src/run.ts, packages/indexer/test/, docs/ARCHITECTURE.md, .env.example
@@ -871,7 +871,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Known: alerts today go to one Telegram chat set by env (T-A18), so a team cannot receive its own; T-A17 (subscriptions) was cut for time and the console now needs it. Requested by Mouli on 6 Nov
 - Scope: a team signs with its Hydra API key and adds up to 5 channels for its app: a generic webhook (Standard Webhooks signed, secret shown once), a Slack or Discord incoming webhook, or a Telegram chat with the Hydra bot added. Each channel is a `hydra.alert_sub` entity on Arkiv whose body is AES-256-GCM encrypted with a server key (ALERT_KEY), owned by the API wallet; routes to list, add (sends a test first), test and delete; every indexer or watcher alert for an app is also delivered to its channels through a pinned public-address POST (no SSRF), 3 attempts
 - Acceptance: unit tests written failing first (encrypt round trip, payload formats, Standard Webhooks signature, safe POST refuses private and non-https, routes 401/403/400/201); live: add a Telegram and a webhook channel for demo-dapp, then a Hack reaches both
-- Evidence: <PR link>
+- Evidence: PR (this one); tests written first: core 51, API 64, indexer 47 pass; live channel test after deploy in the PR conversation
 
 ### T-A31, Monitored sites are dApps only, and a status address
 - Status: in-review | Branch: feature/t-a31-dapps-only
