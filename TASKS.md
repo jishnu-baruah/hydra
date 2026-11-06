@@ -397,7 +397,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Status: in-review https://github.com/jishnu-baruah/hydra/pull/77 | Branch: feature/t-d08-readme-swarm
 - Suggested: Manish
 - Depends-on: T-A12, OP-8
-- Touches: README.md
+- Touches: README.md, arkiv/swarm.md
 - Serves: Swarm bonus
 - Scope: what lives on Swarm (build plus `hydra-manifest.json`) and what on Arkiv (`swarm_ref`), the gateway and stamping choice (OP-2), the HTML-blocked finding, and links a judge can open
 - Acceptance: the section links at least 1 live release whose `swarm_ref` opens `hydra-manifest.json` through the gateway, plus its Arkiv entity in the explorer
