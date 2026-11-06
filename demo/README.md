@@ -2,14 +2,14 @@
 
 A one-page stand-in dApp ("Demo Swap") for the Hydra demo: 1 script of ours (`app.js`), 1 vendor
 script (`dayjs` from jsdelivr, pinned), and `/.well-known/hydra.txt` binding the domain to the Hydra
-app `hydra-demo`. Production domain: see `DEMO_URL` below once deployed. Vercel previews inject
+app `demo-dapp`. Production domain: see `DEMO_URL` below once deployed. Vercel previews inject
 a `vercel.live` script and are login-protected, so only the production deployment is used.
 
 ## Publish it (deploy first, then publish: the domain proof is checked against the live site)
 
 ```bash
 cd demo && vercel --prod --yes
-# key from the Hydra site (sign in with the wallet, app name hydra-demo); keep it in .env, never in chat
+# key from the Hydra site (sign in with the wallet, app name demo-dapp); keep it in .env, never in chat
 HYDRA_API_KEY=... HYDRA_DOMAINS=<the production domain> node ../packages/action/publish.mjs .
 ```
 
