@@ -71,7 +71,7 @@ export function toHex(s) {
 }
 
 export function walletErrorText(e) {
-  if (!e) return "No wallet found in this browser. Install MetaMask or Rabby, then reload, or use an API key instead.";
+  if (!e) return "No wallet found in this browser. Install MetaMask or Rabby, then reload.";
   if (e.code === 4001) return "The wallet request was rejected. Press Sign in with wallet to try again.";
   if (e.code === -32002) return "Your wallet already has a request open. Open your wallet, finish it, then try again.";
   return `${e.message ?? "The wallet failed"}. Check your wallet is unlocked, then try again.`;

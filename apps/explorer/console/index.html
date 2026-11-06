@@ -42,20 +42,9 @@
           <button class="ghost-btn" id="signout" type="button" hidden>Sign out</button>
         </div>
         <p class="ok" id="who" hidden></p>
-        <details class="alt" id="alt">
-          <summary>Use an API key instead</summary>
-          <p class="why">Paste the key the Publish page gave you for one app. It stays in this tab only. Rotating a key needs a wallet sign-in. <a href="../publish/">Need a key?</a></p>
-          <form id="connect" autocomplete="off">
-            <div class="field">
-              <label for="key">API key</label>
-              <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="hyd_..." />
-            </div>
-            <button class="btn" id="connect-btn" type="submit">Connect</button>
-          </form>
-        </details>
       </section>
 
-      <section class="panel" id="p2" data-state="locked" aria-labelledby="h2-title">
+      <section class="panel" id="p2" data-state="locked" aria-labelledby="h2-title" hidden>
         <h2 id="h2-title"><span class="n">02</span> Your apps</h2>
         <p class="why" id="empty">Sign in to see your apps.</p>
         <div class="apps" id="apps"></div>

@@ -907,7 +907,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <PR link>
 
 ### T-B12, Console: sign in with a wallet, every app, keys and channels
-- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-b12-console-wallet
+- Status: in-review | Branch: feature/t-b12-console-wallet
 - Suggested: Mouli
 - Depends-on: T-A32, T-B11
 - Touches: apps/explorer/console/, apps/explorer/README.md
@@ -915,4 +915,4 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Known: requested by Mouli on 7 Nov; the T-B11 page takes one pasted key per app
 - Scope: the console signs in with the browser wallet (one message, no gas), lists every app the wallet owns, and per app shows the key version with a Rotate button (new key shown once with the CI command), and the channels with add, test and delete; pasting a single app key stays as a fallback
 - Acceptance: unit tests written first for the pure view logic (8 or more cases); in a browser against a fake API: sign in, 2 apps listed, rotate shows a key once, add and delete a channel
-- Evidence: <PR link>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/132
