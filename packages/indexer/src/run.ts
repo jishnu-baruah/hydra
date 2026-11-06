@@ -7,6 +7,7 @@ import { readFile } from 'node:fs/promises'
 import {
   OBSERVATION_TTL,
   checkProof,
+  safeGet,
   ObservationSchema,
   arkivClients,
   guardedBatch,
@@ -19,17 +20,12 @@ import { bindTargets, compare, proofProblem, runtimeProblems, scriptUrls, script
 const MAX_SCRIPTS = 60
 const MAX_BYTES = 5 * 1024 * 1024
 const BATCH = 10 // observations per transaction; 20 targets is 2 transactions
-const UA = 'HydraIndexer/0.1 (+https://hydra-site-one.vercel.app)'
 
 type Target = BoundTarget
 
-async function get(url: string, timeoutMs = 15_000): Promise<Uint8Array> {
-  const res = await fetch(url, { headers: { 'User-Agent': UA }, redirect: 'follow', signal: AbortSignal.timeout(timeoutMs) })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  const buf = new Uint8Array(await res.arrayBuffer())
-  if (buf.byteLength > MAX_BYTES) throw new Error(`over ${MAX_BYTES} bytes`)
-  return buf
-}
+// Pages and scripts come from domains a publisher chose, so they are fetched only from public
+// addresses, https only, pinned, with each redirect rechecked (safeGet in @hydra/core).
+const get = (url: string, timeoutMs = 15_000): Promise<Uint8Array> => safeGet(url, { maxBytes: MAX_BYTES, timeoutMs })
 
 // The page as a browser renders it, from Jina's network (needs JINA_KEY). null when there is no
 // key, the call fails, or the result has no scripts (a bot challenge page, e.g. balancer.fi).

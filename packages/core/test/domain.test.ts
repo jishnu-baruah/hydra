@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { PROOF_PATH, checkProof, isPrivateAddress, normalizeDomain, proofNames } from '../src/domain.ts'
+import { PROOF_PATH, checkProof, isPrivateAddress, normalizeDomain, proofNames, safeGet } from '../src/domain.ts'
 
 test('normalizeDomain lowercases and drops a trailing dot', () => {
   assert.equal(normalizeDomain(' App.Example.com. '), 'app.example.com')
@@ -76,4 +76,57 @@ test('checkProof marks server errors and network failures as transient, not lost
 test('checkProof ignores a file over 4 KiB', async () => {
   const r = await checkProof('app.example.com', 'demo', { lookup: pub, get: async () => ({ status: 200, body: null }) })
   assert.match((r as { reason: string }).reason, /over 4096 bytes/)
+})
+
+// safeGet: the fetch the indexer uses for pages and scripts on domains a publisher chose.
+const site = (pages: Record<string, { status: number; location?: string; body?: string }>) => {
+  const asked: string[] = []
+  const get = async (host: string, addr: { address: string }, path: string) => {
+    asked.push(`${host}${path}@${addr.address}`)
+    const p = pages[`${host}${path}`] ?? { status: 404 }
+    return { status: p.status, location: p.location, body: p.body === undefined ? Buffer.from('') : Buffer.from(p.body) }
+  }
+  return { get, asked }
+}
+
+test('safeGet returns the body from the checked address', async () => {
+  const s = site({ 'app.example.com/a.js?v=1': { status: 200, body: 'x' } })
+  const body = await safeGet('https://app.example.com/a.js?v=1', { maxBytes: 100 }, { lookup: pub, get: s.get })
+  assert.equal(Buffer.from(body).toString(), 'x')
+  assert.deepEqual(s.asked, ['app.example.com/a.js?v=1@93.184.216.34'])
+})
+
+test('safeGet refuses http, other ports, credentials and IP literals before any lookup', async () => {
+  let looked = 0
+  const lookup = async () => (looked++, [{ address: '93.184.216.34', family: 4 }])
+  for (const url of ['http://app.example.com/', 'https://app.example.com:8443/', 'https://u:p@app.example.com/',
+    'https://127.0.0.1/', 'https://[::1]/', 'https://169.254.169.254/latest', 'https://localhost/', 'ftp://app.example.com/'])
+    await assert.rejects(safeGet(url, { maxBytes: 100 }, { lookup, get: site({}).get }), /public https URL/, url)
+  assert.equal(looked, 0)
+})
+
+test('safeGet refuses a host that resolves to a private address', async () => {
+  const s = site({ 'evil.example.com/': { status: 200, body: 'x' } })
+  await assert.rejects(
+    safeGet('https://evil.example.com/', { maxBytes: 100 }, { lookup: async () => [{ address: '10.0.0.5', family: 4 }], get: s.get }),
+    /private address/,
+  )
+  assert.equal(s.asked.length, 0)
+})
+
+test('safeGet rechecks every redirect hop and stops after 3', async () => {
+  const toPrivate = site({ 'app.example.com/': { status: 302, location: 'http://127.0.0.1:8080/admin' } })
+  await assert.rejects(safeGet('https://app.example.com/', { maxBytes: 100 }, { lookup: pub, get: toPrivate.get }), /public https URL/)
+  assert.equal(toPrivate.asked.length, 1)
+  const ok = site({ 'app.example.com/': { status: 301, location: '/next' }, 'app.example.com/next': { status: 200, body: 'y' } })
+  assert.equal(Buffer.from(await safeGet('https://app.example.com/', { maxBytes: 100 }, { lookup: pub, get: ok.get })).toString(), 'y')
+  const loop = site({ 'app.example.com/': { status: 302, location: '/' } })
+  await assert.rejects(safeGet('https://app.example.com/', { maxBytes: 100 }, { lookup: pub, get: loop.get }), /redirects/)
+  assert.equal(loop.asked.length, 4)
+})
+
+test('safeGet reports HTTP errors and oversize bodies', async () => {
+  await assert.rejects(safeGet('https://app.example.com/x', { maxBytes: 100 }, { lookup: pub, get: site({}).get }), /HTTP 404/)
+  const big = async () => ({ status: 200, body: null })
+  await assert.rejects(safeGet('https://app.example.com/', { maxBytes: 100 }, { lookup: pub, get: big }), /over 100 bytes/)
 })

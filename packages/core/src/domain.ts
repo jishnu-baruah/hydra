@@ -52,32 +52,67 @@ export interface ProofDeps {
 // transient: the file could not be read (network, timeout, 5xx), which says nothing about a hijack.
 export type ProofResult = { ok: true } | { ok: false; reason: string; transient?: true }
 
+export type RawGet = (host: string, addr: Addr, path: string, maxBytes: number, timeoutMs: number) =>
+  Promise<{ status: number; location?: string; body: Buffer | null }>
+
 // The connection goes to the address we checked (no second DNS answer), never follows a redirect,
-// and stops reading past MAX_PROOF bytes.
-function pinnedGet(host: string, addr: Addr, path: string): Promise<{ status: number; body: string | null }> {
-  return new Promise((resolve, reject) => {
+// and stops reading past maxBytes (body null). No Accept-Encoding, so the bytes are the file itself.
+const pinnedGet: RawGet = (host, addr, path, maxBytes, timeoutMs) =>
+  new Promise((resolve, reject) => {
     const req = request(
       {
-        host, path, servername: host, agent: false, timeout: 5_000, headers: { 'User-Agent': 'HydraProof/0.1' },
+        host, path, servername: host, agent: false, timeout: timeoutMs, headers: { 'User-Agent': 'HydraIndexer/0.1 (+https://hydra-site-one.vercel.app)' },
         lookup: (_h: string, o: { all?: boolean }, cb: (...a: unknown[]) => void) =>
           o?.all ? cb(null, [addr]) : cb(null, addr.address, addr.family),
       } as never,
       (res) => {
+        const status = res.statusCode ?? 0
+        const location = typeof res.headers.location === 'string' ? res.headers.location : undefined
         let size = 0
         const chunks: Buffer[] = []
         res.on('data', (c: Buffer) => {
           size += c.length
-          if (size > MAX_PROOF) return res.destroy(), resolve({ status: res.statusCode ?? 0, body: null })
+          if (size > maxBytes) return res.destroy(), resolve({ status, location, body: null })
           chunks.push(c)
         })
-        res.on('end', () => resolve({ status: res.statusCode ?? 0, body: Buffer.concat(chunks).toString('utf8') }))
+        res.on('end', () => resolve({ status, location, body: Buffer.concat(chunks) }))
         res.on('error', reject)
       },
     )
-    req.on('timeout', () => req.destroy(new Error('timed out after 5 s')))
+    const timer = setTimeout(() => req.destroy(new Error(`timed out after ${timeoutMs / 1000} s`)), timeoutMs)
+    req.on('close', () => clearTimeout(timer))
+    req.on('timeout', () => req.destroy(new Error(`timed out after ${timeoutMs / 1000} s`)))
     req.on('error', reject)
     req.end()
   })
+
+const defaultLookup = (h: string) => dnsLookup(h, { all: true })
+
+// GET a URL that a publisher's site chose (its page, its scripts). https on the default port only,
+// hostname not an IP literal, every resolved address public, the connection pinned to it, each
+// redirect hop checked the same way (at most 3), body capped. Throws an Error naming the cause.
+export async function safeGet(
+  url: string,
+  o: { maxBytes: number; timeoutMs?: number },
+  deps: { lookup?: ProofDeps['lookup']; get?: RawGet } = {},
+): Promise<Uint8Array> {
+  let next = url
+  for (let hop = 0; hop <= 3; hop++) {
+    const u = new URL(next)
+    const host = u.protocol === 'https:' && !u.port && !u.username && !u.password ? normalizeDomain(u.hostname) : null
+    if (!host) throw new Error(`${next.slice(0, 120)} is not a public https URL on the default port`)
+    const addrs = await (deps.lookup ?? defaultLookup)(host)
+    if (!addrs.length || addrs.some((a) => isPrivateAddress(a.address))) throw new Error(`${host} resolves to a private address or none`)
+    const r = await (deps.get ?? pinnedGet)(host, addrs[0], `${u.pathname}${u.search}`, o.maxBytes, o.timeoutMs ?? 15_000)
+    if (r.status >= 300 && r.status < 400 && r.location) {
+      next = new URL(r.location, u).href
+      continue
+    }
+    if (r.status !== 200) throw new Error(`HTTP ${r.status}`)
+    if (r.body === null) throw new Error(`over ${o.maxBytes} bytes`)
+    return new Uint8Array(r.body)
+  }
+  throw new Error('more than 3 redirects')
 }
 
 // Never throws: every failure comes back as a reason that names the fix.
@@ -86,11 +121,12 @@ export async function checkProof(domain: string, app: string, deps: ProofDeps = 
   if (!host) return { ok: false, reason: `${String(domain).slice(0, 80)} is not a public hostname; list a domain such as app.example.com` }
   const fix = `serve https://${host}${PROOF_PATH} with the line hydra-app=${app}`
   try {
-    const addrs = await (deps.lookup ?? ((h) => dnsLookup(h, { all: true })))(host)
+    const addrs = await (deps.lookup ?? defaultLookup)(host)
     if (!addrs.length || addrs.some((a) => isPrivateAddress(a.address))) {
       return { ok: false, reason: `${host} resolves to a private address or none; point it at your public site` }
     }
-    const { status, body } = await (deps.get ?? pinnedGet)(host, addrs[0], PROOF_PATH)
+    const { status, body } = await (deps.get ?? ((h, a, p) =>
+      pinnedGet(h, a, p, MAX_PROOF, 5_000).then((r) => ({ status: r.status, body: r.body && r.body.toString('utf8') }))))(host, addrs[0], PROOF_PATH)
     if (status >= 500) return { ok: false, transient: true, reason: `HTTP ${status} for ${PROOF_PATH}, the site may be down; ${fix}` }
     if (status >= 300 && status < 400) return { ok: false, reason: `HTTP ${status} for ${PROOF_PATH}: redirects are not followed; ${fix} directly` }
     if (status !== 200) return { ok: false, reason: `HTTP ${status} for ${PROOF_PATH}; ${fix}` }

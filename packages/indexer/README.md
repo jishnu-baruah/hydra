@@ -26,3 +26,6 @@ node src/main.ts --dry                          # one run, print only, no key, n
   victims bad ones (spike T8); the extension is the better vantage point.
 
 Binding: a site is compared with a release only when that app's latest manifest lists the domain (the API adds it after the `/.well-known/hydra.txt` proof passed). A `targets.json` app label alone binds nothing, so the site stays `unknown`. A bound site is re-proved every run; if the proof fails the status is `mismatch` with `DOMAIN_PROOF_LOST <reason>`. An unreadable file (network, timeout, 5xx) is only `DOMAIN_PROOF_UNREACHABLE`; the script compare decides.
+- **Safe fetch:** pages and scripts are fetched with `safeGet` from `@hydra/core`: https on the default port,
+  no IP-literal hosts, public addresses only, pinned connection, each redirect rechecked (at most 3).
+  A script on plain http or a private host is recorded as unreadable.
