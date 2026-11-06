@@ -484,12 +484,12 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Kill criterion: not merged by 6 Nov 16:00 IST, so bind domains in targets.json by hand for the demo and say so
 
 ### T-A20, Coverage: DefiLlama discovery, write on change, background run
-- Status: open
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a20-coverage
 - Suggested: Jishnu
 - Depends-on: T-A19
-- Touches: packages/indexer/, apps/api/src/server.ts, apps/api/src/main.ts, .github/workflows/indexer.yml
+- Touches: packages/indexer/, packages/core/src/arkiv.ts, packages/core/src/index.ts, packages/core/test/, apps/api/, apps/site/indexed/, docs/ARCHITECTURE.md, .github/workflows/indexer.yml
 - Serves: WOW factor (judged) ; Practicality (judged)
-- Known: DefiLlama lists 5,253 protocols with a URL, 227 above $100M TVL (measured 6 Nov). 2 of the last 100 site runs changed, and 20 sites take 80 s, so 227 sites every run would mean about 1,100 Arkiv tx and 10,900 Jina reads a day
+- Known: Render free sleeps between 30-minute runs, so "previous observation" must be read from Arkiv, not memory; Arkiv queries return at most 100 rows per page (SDK MAX_LIMIT), so reads page with offset. DefiLlama lists 5,253 protocols with a URL, 227 above $100M TVL (measured 6 Nov). 2 of the last 100 site runs changed, and 20 sites take 80 s, so 227 sites every run would mean about 1,100 Arkiv tx and 10,900 Jina reads a day
 - Scope: daily list of the top 227 by TVL from api.llama.fi (cached; an outage keeps yesterday's list) plus targets.json; write an observation only when status, scripts or problems change, plus 1 heartbeat a day; Jina only for changed sites and once a day; POST /v1/indexer/run returns 202 and scans in the background
 - Acceptance: a run covers at least 200 sites inside 30 minutes and writes under 10 tx when nothing changed
 - Evidence: <Actions run, tx hashes>
@@ -527,6 +527,19 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <recording>
 
 # P2, 6 Nov afternoon and night
+
+### T-D11, Swarm requirements and integration fit (research plus validation)
+- Status: open
+- Suggested: Manish
+- Depends-on: T-F02
+- Touches: docs/research/swarm-fit.md
+- Serves: Swarm track (prize) ; Technicality (judged)
+- Known: publish already uploads each build plus hydra-manifest.json through the EF gateway (https://api.gateway.ethswarm.org) and stores swarm_ref on Arkiv. Open: is that gateway mainnet or testnet (CLAUDE.md says testnet only), how long uploads live without our own postage batch, and whether a release can be served back as a working site (a "revert" to the last good release, like git revert: history stays, a new record points at a good state)
+- Scope: answer each with a primary source (Swarm docs, Bee API reference, the Swarm prize page) or a measured test, in docs/research/swarm-fit.md. 1 Network: which network the EF gateway writes to; the testnet gateway or Bee setup if it is mainnet; cost. 2 Retention: how long a gateway upload stays retrievable, the postage TTL, and the cost to keep a release 30 days and 6 months. 3 Prize fit: the Swarm track requirements quoted, and which we meet (upload, feeds, ACT, own Bee node). 4 Revert and mirror: open an existing release swarm_ref at /bzz/<ref>/ and record whether index.html loads its assets, for 1 static SPA and 1 Next.js build, with time to first byte. 5 Evidence snapshots: upload a 200 KB HTML file plus 3 scripts as one collection, read it back byte-identical, record ref and time. 6 Feeds: whether a Swarm feed fits "last good release", and what signing it needs (only apps/api may hold keys)
+- Acceptance: all 6 answered, every number with a link or a measured run; a fit table (use, works yes or no, cost, effort in hours, recommendation)
+- Evidence: <refs uploaded, gateway URLs, timings>
+- Kill criterion: by 6 Nov 20:00 IST, ship what is answered and mark the rest unverified; never guess a number
+- Finding: <write it here>
 
 ### T-A04, Deploy the API with HTTPS
 - Status: claimed 2026-11-05 | Owner: Jishnu | Branch: feature/t-a04-deploy-api
