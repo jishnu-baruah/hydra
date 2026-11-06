@@ -104,3 +104,11 @@ Status values: `open` | `claimed <date> | Owner: <name>` | `done <date>: <result
 - Unblocks: T-B06
 - What exactly: hosting needs an account sign-in, which no agent does. The repo is Jishnu's and Mouli is not an admin, so the simplest path is Jishnu adding the explorer as a second project in the Vercel account that already hosts apps/site: import jishnu-baruah/hydra with Root Directory apps/explorer and Framework Preset Other, then deploy (apps/explorer/deploy/README.md, option A). Mouli can instead deploy from a local checkout with the Vercel CLI (option B).
 - Done when: the explorer's public URL is written here and in the T-B06 row.
+
+### OP-11, Point the deployed API at the Swarm testnet gateway, then republish
+- Status: open
+- Owner: Manish
+- Needed by: 2026-11-06 night
+- Unblocks: T-A21
+- What exactly: since OP-8 the API uploads through `api.gateway.ethswarm.org`, which is Swarm mainnet (a reference uploaded to `https://api.gateway.testnet.ethswarm.org` returns 404 there), and CLAUDE.md allows the Swarm testnet only. On Render set `BEE_API_URL` and `SWARM_GATEWAY_URL` to `https://api.gateway.testnet.ethswarm.org`, delete `SWARM_POSTAGE_BATCH_ID` (the testnet gateway also stamps for us), redeploy, then publish 1 release each for hydra-test-a, test-dapp and hygra-demo2 with their API keys.
+- Done when: `/health` shows `"swarm": true` and each of the 3 apps has a new release whose `hydra-manifest.json` opens on `https://api.gateway.testnet.ethswarm.org`; the 3 swarm_refs are written here.
