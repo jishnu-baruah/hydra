@@ -724,3 +724,13 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: PR #92 (this one); `node scripts/query-releases.mjs demo-dapp` printed release demo-1 with swarm_ref 311afb3f...09a4 and its entity key against live Arkiv
 - Finding: `@hydra/core` does not resolve from the root scripts/ folder (only linked inside workspace packages), so the query script imports the package source by relative path; a u64 column filter needs the value wrapped as u64(...) (SDK error, hit live); arkiv/swarm.md already on main has 4 dash characters the lint rule bans, left for its owner
 
+### T-A22, Domain lookup: the extension finds an app by its hostname
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a22-domain-lookup
+- Suggested: Jishnu
+- Depends-on: T-A19
+- Touches: apps/api/src/reads.ts, apps/api/src/server.ts, apps/api/src/main.ts, apps/api/test/, apps/extension/src/compare/lookup.js, apps/extension/src/compare/lookup.test.mjs, apps/extension/src/background.js, apps/extension/README.md
+- Serves: WOW factor (judged) ; Practicality (judged)
+- Known: tested 6 Nov in real Chrome 156: on the tampered demo site the extension showed grey `?` for a first-time visitor and red `!` only for a returning one, because it finds the app from the hashes of the page's own scripts and a site whose every script changed matches nothing. Since T-A19 a release lists only proven domains, so the hostname can name the app. The extension is Mouli's code; this adds one lookup before the hash lookup and changes nothing else
+- Scope: `GET /v1/domains/<hostname>` returns the app whose releases list that domain (the earliest app to prove it keeps it, so a later claim cannot silence the check), kept only for releases created by the publisher wallet and by the app's owner; the extension asks it first, falls back to the script hashes, and keeps remembering a matched site
+- Acceptance: unit tests (failing first) for the route and the extension lookup; in real Chrome a first visit to the tampered demo site is red `!` with no remembered state, the published site is green, and a site with no release stays grey
+- Evidence: <PR link>
