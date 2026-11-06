@@ -18,6 +18,7 @@ import {
 } from '@hydra/core'
 import { hexToString, type Hex } from 'viem'
 import { alertText, sendTelegram } from './alerts.ts'
+import { createRenderer, type JinaReport } from './jina.ts'
 import { onlyTargets, shouldWrite, topTargets } from './coverage.ts'
 import { bindTargets, compare, proofProblem, runtimeProblems, scriptUrls, scriptHash, scriptsHash, type BoundTarget, type Manifest, type Seen } from './scan.ts'
 
@@ -30,24 +31,6 @@ type Target = BoundTarget
 // Pages and scripts come from domains a publisher chose, so they are fetched only from public
 // addresses, https only, pinned, with each redirect rechecked (safeGet in @hydra/core).
 const get = (url: string, timeoutMs = 15_000): Promise<Uint8Array> => safeGet(url, { maxBytes: MAX_BYTES, timeoutMs })
-
-// The page as a browser renders it, from Jina's network (needs JINA_KEY). null when there is no
-// key, the call fails, or the result has no scripts (a bot challenge page, e.g. balancer.fi).
-async function rendered(pageUrl: string): Promise<string | null> {
-  const key = process.env.JINA_KEY
-  if (!key) return null
-  try {
-    const res = await fetch(`https://r.jina.ai/${pageUrl}`, {
-      headers: { Authorization: `Bearer ${key}`, 'X-Return-Format': 'html' },
-      signal: AbortSignal.timeout(60_000),
-    })
-    if (!res.ok) return null
-    const html = await res.text()
-    return scriptUrls(html, pageUrl).length ? html : null
-  } catch {
-    return null
-  }
-}
 
 // The newest release's manifest for a Hydra app, read through the API's trust-filtered route.
 async function manifestFor(api: string, app: string): Promise<Manifest | null> {
@@ -87,7 +70,7 @@ interface Prev {
 
 const DAY = 86_400_000
 
-async function scan(t: Target, prev: Prev | undefined, now: number) {
+async function scan(t: Target, prev: Prev | undefined, now: number, rendered: (url: string) => Promise<string | null>) {
   const pageUrl = `https://${t.domain}/`
   let seen: Seen[] = []
   let problems: string[] = []
@@ -167,6 +150,7 @@ export interface RunSummary {
   errors: string[]
   lines: string[] // notable sites plus one count line, for logs
   ms: number
+  jina?: JinaReport // the rendered second view: calls, failures and the cause
 }
 
 const PREV_WINDOW = 3 * DAY
@@ -237,7 +221,8 @@ export async function runOnce(o: { api: string; clients: ReturnType<typeof arkiv
       errors.push(`could not read earlier observations: ${rootCause(err)}. Every site counts as first sight this run; check ARKIV_ACCESS_KEY and the Arkiv RPC`)
     }
 
-  const results = await pool(targets, Number(process.env.INDEXER_POOL ?? 8), (t) => scan(t, prevs.get(t.domain), started))
+  const jina = createRenderer({ key: process.env.JINA_KEY })
+  const results = await pool(targets, Number(process.env.INDEXER_POOL ?? 8), (t) => scan(t, prevs.get(t.domain), started, jina.render))
   const due = results.filter((r) => shouldWrite(prevs.get(r.t.domain) ?? null, { status: r.status, scripts_hash: r.hash, problems: r.problems }, started))
   const lines = results
     .filter((r) => r.status !== 'unknown' || r.problems.length || r.changed)
@@ -247,7 +232,16 @@ export async function runOnce(o: { api: string; clients: ReturnType<typeof arkiv
     })
   const count = (st: string) => results.filter((r) => r.status === st).length
   lines.push(`${results.length} sites: ${count('match')} match, ${count('mismatch')} mismatch, ${count('unknown')} unknown; ${due.length} to write, ${results.length - due.length} unchanged`)
-  const summary: RunSummary = { sites: results.length, written: 0, skipped: results.length - due.length, txs: [], errors, lines, ms: 0, alerts: 0 }
+  // The second view fails quietly (a failed render just reuses the previous run's origins), so say so.
+  const jr = jina.report()
+  if (jr.failed > 0) {
+    const fix = /402/.test(jr.reason) ? 'top up the Jina account' : /40[13]/.test(jr.reason) ? 'replace JINA_KEY on the host' : 'check https://status.jina.ai and rerun'
+    errors.push(
+      `Jina second view failed ${jr.failed} of ${jr.calls} renders (${jr.reason})${jr.skipped ? `, ${jr.skipped} more were not tried` : ''}. ` +
+        `Runtime-only script origins and sites that block direct fetches were not checked this run; earlier results were reused. To fix: ${fix}.`,
+    )
+  } else if (jr.state === 'off') lines.push(`Jina second view is off (${jr.reason}); runtime-only script origins are not checked`)
+  const summary: RunSummary = { sites: results.length, written: 0, skipped: results.length - due.length, txs: [], errors, lines, ms: 0, alerts: 0, jina: jr }
   if (o.clients && wallet) {
     const specs: CreateSpec[] = due.map((r) => ({
       schema: ObservationSchema,
