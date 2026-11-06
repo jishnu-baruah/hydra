@@ -27,7 +27,8 @@ import { timingSafeEqual } from 'node:crypto'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { normalizeDomain, rootCause, WriteNotVerifiedError } from '@hydra/core'
 import { APP_NAME, checkInput, keyFromSignature, signInMessage } from './auth.ts'
-import { ADDRESS, consoleMessage, sessionFromSignature, verifySession } from './console.ts'
+import { getAddress } from 'viem'
+import { ADDRESS, consoleMessage, issueSession, SESSION_TTL_MS, sessionFromSignature, verifySession } from './console.ts'
 import { issueKey, KEY_TTL_MS, verifyKey, type KeyClaims } from './keys.ts'
 import { claimApp, ownedError, publish, type PublishDeps } from './publish.ts'
 import type { createWatcher } from './watch.ts'
@@ -345,7 +346,10 @@ export function createApi(deps: ApiDeps) {
           if (!takeClaim(address)) return send(res, 429, { error: 'too many new app names for this address; try again within the hour' })
           claimTx = (await claimApp(deps.publish, app, address, Date.now())).txHash
         }
-        return send(res, 200, { ...out.value, claimTx })
+        // The same signature proves the wallet, so it also opens the console: one sign-in, not two.
+        const now = Date.now()
+        const session = issueSession(deps.secret, { address: getAddress(address), scope: 'console', iat: now, exp: now + SESSION_TTL_MS })
+        return send(res, 200, { ...out.value, claimTx, session, expires: now + SESSION_TTL_MS })
       }
 
       if (req.method === 'POST' && path === '/v1/releases') {
