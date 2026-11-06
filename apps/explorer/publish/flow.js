@@ -56,4 +56,5 @@ HYDRA_API_URL: ${api}
 3. Commit and push to main, then watch the run: gh run watch
 4. Confirm the release: curl ${api}/v1/apps/${app}/releases
 If a step fails, read the error section of the docs before retrying. A 401 or 403 means the key
-cannot be used: ask the human for a new block from the Hydra site; never retry with the same key.`;
+cannot be used: ask the human for a new block from the Hydra site; never retry with the same key.
+Optional: to bind your domain, serve /.well-known/hydra.txt with the line hydra-app=${app} on it and set HYDRA_DOMAINS=<your domain> in the publish step's env.`;

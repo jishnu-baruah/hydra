@@ -667,13 +667,13 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: Windows' 260-character path limit broke the first unzip inside a deep folder, though the zip's longest path is 22 characters, so users should unzip to a short path; each page sends up to 5 script hashes to the API, so its operator can see which checked sites a user visits, and the README says so
 
 ### T-B06, Deploy the explorer
-- Status: blocked, see OP-10 | Branch: feature/t-b06-deploy-explorer
+- Status: done
 - Suggested: Mouli
 - Depends-on: T-B02
 - Touches: apps/explorer/deploy/, apps/explorer/vercel.json, apps/extension/src/ui/links.js
 - Serves: Usability (judged)
 - Acceptance: the public URL loads the home page and 1 app page in under 3 s each
-- Evidence: apps/explorer/vercel.json and deploy/README.md; served locally with exactly those headers, every page loads with 0 CSP violations (landing 2.3 s to its hero check, releases 953 ms, app 470 ms, search 521 ms, record 529 ms) and /releases redirects to /releases/; the public URL waits for OP-10
+- Evidence: https://hydra-registry.vercel.app (live, 6 Nov): search by domain finds demo-dapp, the app page shows its bound domain with a match, 0 console errors; deployed by Jishnu from apps/explorer with the Vercel CLI (OP-10). Fixes and copy in #103 (T-B09)
 - Finding: the repo belongs to Jishnu and Mouli is not an admin, so Mouli cannot connect it to their own Vercel through GitHub; the deploy comes from the account that already hosts apps/site, or from a local checkout with the Vercel CLI
 
 
@@ -749,7 +749,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: Chrome 156 branded builds ignore --load-extension, so the extension is loaded with Extensions.loadUnpacked over --remote-debugging-pipe; the extension now sends the page hostname to the API, which the README says; earliest-proof-wins means a domain cannot move to another app until the first one lapses, by design; /security-review found nothing at 80 percent, GLM found a malformed %-escape returning 500 and a looser hostname check in the extension, both fixed with tests first
 
 ### T-B09, Explorer fixes from the 6 Nov walkthrough: domain search, honest copy, domain step
-- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-b09-explorer-fixes
+- Status: done
 - Suggested: Jishnu
 - Depends-on: T-A22
 - Touches: apps/explorer/, apps/extension/src/ui/links.js, apps/extension/README.md, apps/site/index.html
@@ -757,4 +757,16 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Known: walked every explorer page on 6 Nov (local run against live Arkiv). Searching any domain returns nothing, including the demo site, because search reads a `domain` column our API fills with "none"; the app page shows no bound domain or live verdict; the publish page has no domain-binding step, so a team that follows it stays "unknown"; copy says "every 15 minutes" (it is about 30), "every check is a public record on Arkiv" (extension checks are not), and "1,081/1,081 scripts on 5 live dApps" (an old spike figure shown as current); the explorer is not hosted (OP-10) so the extension links to localhost. The explorer is Mouli's code; his last push was 08:20 IST and these are scoped fixes
 - Scope: search resolves a hostname through the API's /v1/domains route and the indexer's observations (a site nobody published shows "observed, not published"); the app page lists its bound domains with the latest observation verdict, or tells the team how to bind; the publish page and its agent handoff get the domain step; copy corrected; nav labels Releases, Events become Builds, Activity and Sites is added; the explorer is deployed (OP-10) and the extension links point at it
 - Acceptance: unit tests (failing first) for domain search and the app page's site rows (explorer tests 20 or more pass); in a browser, searching hydra-demo-dapp.vercel.app finds demo-dapp, searching app.uniswap.org finds "observed, not published", and the app page of demo-dapp shows its domain with a match; 0 copy lines left saying "15 minutes"
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/103 (merged); explorer deployed at https://hydra-registry.vercel.app (Vercel project hydra-registry, from apps/explorer with the CLI); on the live site searching hydra-demo-dapp.vercel.app finds demo-dapp (matched by domain), https://app.uniswap.org/swap finds "watched by the indexer, not published by the team", and the demo-dapp app page shows hydra-demo-dapp.vercel.app with a match; explorer tests 29 pass, extension 17 pass; 0 lines say "15 min"
+- Finding: the explorer is a static site whose non-publish pages had a CSP allowing only the Arkiv RPC, so API calls added here would have worked locally and failed in production (connect-src now lists the API); the browser pane cached old ES modules on one port, a fresh port showed the real state; the Jina key ran out of credit again, most likely drained by the first 247-site indexer run, so the indexer second view needs a top-up or a stricter rule; GLM review found a stale verdict after a domain is re-bound, fixed with a test first
+
+### T-A24, A failing Jina second view is loud, and stops wasting calls
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a24-loud-jina
+- Suggested: Jishnu
+- Depends-on: T-A14
+- Touches: packages/indexer/src/jina.ts, packages/indexer/src/run.ts, packages/indexer/test/jina.test.ts, packages/indexer/README.md
+- Serves: Practicality (judged)
+- Known: the Jina key ran out of credit twice on 6 Nov (HTTP 402 from r.jina.ai) and the indexer kept reporting 0 errors, because a failed render falls back to the previous run's runtime origins, so lists still looked plausible; sites that block us directly lose their only way in and runtime-only origins stop being detected, with nothing saying so
+- Scope: one small renderer that counts calls and failures and names the reason (no key, HTTP status such as 402 credit out, timeout), and after 3 failures in a row stops calling for the rest of the run; the run summary gains a `jina` field and, when the view failed, 1 error line that says what broke, how many sites it affected and what to do. The 30-minute workflow and /v1/indexer/status already print errors
+- Acceptance: unit tests written failing first (renderer: ok, no key, 402 then stop after 3, network error, a page with no scripts is not a failure; indexer 30 or more tests pass); a dry run with an invalid key prints 1 error line naming HTTP 401 or 402 and makes at most 3 calls
 - Evidence: <PR link>

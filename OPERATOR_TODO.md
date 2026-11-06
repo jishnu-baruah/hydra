@@ -99,7 +99,7 @@ Status values: `open` | `claimed <date> | Owner: <name>` | `done <date>: <result
 - Done when: the time is written here and in the T-C04 row.
 
 ### OP-10, Deploy the explorer on Vercel
-- Status: open
+- Status: done 2026-11-06: the explorer is live at https://hydra-registry.vercel.app (Vercel project hydra-registry in the account that hosts apps/site, deployed from apps/explorer with the CLI, option B); all 7 pages return 200 and the production CSP allows the Arkiv RPC and the Hydra API. Redeploy by hand with `cd apps/explorer && vercel --prod --yes` after changes
 - Owner: Jishnu
 - Needed by: 2026-11-06 afternoon
 - Unblocks: T-B06
