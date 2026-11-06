@@ -551,6 +551,16 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Scope: the bonus page lists 7 items for `/arkiv/swarm.md`; answer each for the gateway we actually use (`api.gateway.ethswarm.org`, OP-11), with links a judge can open, and keep README "How we used Swarm" and docs/swarm.md consistent with it. Replaces the earlier testnet-switch scope, cut with OP-11
 - Acceptance: 6 of 7 bonus items answered with links that return 200; the 7th (demo-video timestamp) filled when the video exists
 - Evidence: <PR link>
+### T-D12, CROPS section in the README for the EF "Best CROPS App" prize
+- Status: open
+- Suggested: Manish
+- Depends-on: none
+- Touches: README.md
+- Serves: Practicality (judged) ; EF Best CROPS App prize
+- Known: EF's idea list names "a tool that proves the shipped frontend or extension matches the public repo"; lead property is Secure. Rules: README section titled CROPS, 1 or 2 lines per letter (C: what we control and what happens if it goes away; O: license and build from the repo; P: what each third party learns; S: how keys and data are protected, trust assumptions); no trackers in the client; keys or personal data stay on the device or the README says why not; video of 3 min max showing the lead property
+- Acceptance: 4 of 4 CROPS lines, each true of the code on main; 0 third-party trackers or analytics in explorer, extension and site
+- Evidence: <PR link>
+
 # P2, 6 Nov afternoon and night
 
 ### T-D11, Swarm requirements and integration fit (research plus validation)
