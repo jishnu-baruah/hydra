@@ -69,7 +69,7 @@ SWARM_POSTAGE_BATCH_ID=
 SWARM_GATEWAY_URL=
 ```
 
-- `BEE_API_URL`: the Bee endpoint the API writes to. Can be `http://localhost:1633` (own node) or a hosted URL (`https://api.gateway.ethswarm.org`, `https://gateway.etherna.io`, etc.).
+- `BEE_API_URL`: the Bee endpoint the API writes to. Can be `http://localhost:1633` (own node) or a hosted URL (`https://api.gateway.testnet.ethswarm.org` for the testnet, `https://gateway.etherna.io`, etc.).
 - `SWARM_POSTAGE_BATCH_ID`: required if the Bee endpoint needs us to stamp; empty if the hosted gateway envelope-stamps for us.
 - `SWARM_GATEWAY_URL`: the public URL the **explorer** and **extension** read from. Can equal `BEE_API_URL` or be a separate public gateway.
 
@@ -86,7 +86,7 @@ Walk up, ask for either a hosted Bee URL for the event or a testnet batch id. Ta
 - Read: `GET /bzz/<ref>/<path>` serves JSON, JS, CSS and plain text byte-identical. HTML is **blocked** with a 302 to `https://bzz.link/forbidden?hash=<ref>` (anti-phishing). `Accept: text/plain` and `Accept: application/octet-stream` do not bypass it. `<ref>.bzz.link` subdomain does not resolve.
 - **Batch-id header is ignored by the gateway.** Verified 2026-11-05: `Swarm-Postage-Batch-Id:` (empty) and 64-zero dummy both return HTTP 201 with a valid reference. The gateway envelope-stamps regardless. So we don't need a real batch id to run Path B against the current API code.
 - **Impact on Hydra:** none on the critical path. The extension fetches the manifest JSON from Swarm (works) and verifies scripts by hash against the dApp's own origin. Swarm is never asked to render HTML. The explorer can link to any non-HTML asset by Swarm URL; a "render the site on Swarm" link would need a different gateway and is not a demo requirement.
-- **How to run it:** set `BEE_API_URL=https://api.gateway.ethswarm.org` and `SWARM_GATEWAY_URL=https://api.gateway.ethswarm.org`, and leave `SWARM_POSTAGE_BATCH_ID` empty. The API then sends no batch header (`apps/api/src/swarm.ts`); with a batch id set it sends one, so Path C still works.
+- **How to run it:** set `BEE_API_URL=https://api.gateway.testnet.ethswarm.org` and `SWARM_GATEWAY_URL=https://api.gateway.testnet.ethswarm.org` (the testnet gateway; `https://api.gateway.ethswarm.org` is mainnet, DECISIONS.md 2026-11-06), and leave `SWARM_POSTAGE_BATCH_ID` empty. The API then sends no batch header (`apps/api/src/swarm.ts`); with a batch id set it sends one, so Path C still works.
 - OP-2 is amended to "an upload succeeds and reads back byte-identical through a gateway URL" and marked decided (DECISIONS.md, 2026-11-06).
 
 ### Path C — Run a Bee light node on Sepolia

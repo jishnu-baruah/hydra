@@ -22,7 +22,7 @@ Every release's build lives on Swarm, and Arkiv holds the index that points at i
 
 - **What goes on Swarm.** On each publish the API uploads the build files plus a `hydra-manifest.json` (app, version, commit, the sha256 of every file and of every external script) as one Swarm collection. Code: `apps/api/src/swarm.ts`, called from `apps/api/src/publish.ts`.
 - **What goes on Arkiv.** The `hydra.release` record stores the collection's reference in `swarm_ref`, next to the version and commit. The explorer and the extension read `swarm_ref` from Arkiv, then fetch `<gateway>/bzz/<swarm_ref>/hydra-manifest.json` and compare hashes.
-- **Stamping.** We upload through the public gateway `https://api.gateway.ethswarm.org`, which stamps uploads itself, so we hold no postage batch (OP-2, `DECISIONS.md`). An own Bee node works too: set `SWARM_POSTAGE_BATCH_ID` and the API sends it.
+- **Stamping.** We upload through the Swarm testnet gateway `https://api.gateway.testnet.ethswarm.org`, which stamps uploads itself, so we hold no postage batch (OP-2, `DECISIONS.md`). An own Bee node works too: set `SWARM_POSTAGE_BATCH_ID` and the API sends it.
 - **What we found.** The gateway refuses to serve HTML (a 302 to `bzz.link/forbidden`, against phishing). That costs us nothing: Hydra only reads the JSON manifest from Swarm and checks scripts by hash, so Swarm never has to render a page.
 
 A live release to check, `hygra-demo2` version `2026-11-05.4`:

@@ -2,7 +2,7 @@
 // belongs to the publisher of its earliest hydra.app record, and releases by anyone else are
 // dropped. Pure, so it runs in the page and under `node --test`.
 
-export const GATEWAY = "https://api.gateway.ethswarm.org";
+export const GATEWAY = "https://api.gateway.testnet.ethswarm.org";
 
 const val = (e, k) => e.$attributes?.[k]?.value;
 

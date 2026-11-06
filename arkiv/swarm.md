@@ -28,7 +28,7 @@ Release `hygra-demo2` version `2026-11-05.4`, published through the live API on 
 
 ## 4. Postage batch ID and purchasing wallet
 
-**We do not hold a postage batch.** Uploads go to the Ethereum Foundation's public Swarm gateway at `https://api.gateway.ethswarm.org`, which envelope-stamps on our behalf. Confirmed 2026-11-05 that the gateway accepts and ignores the `Swarm-Postage-Batch-Id` header entirely (see `spikes/F2/result.json` and the "batch-id header is ignored" test in `docs/swarm.md` § Path B). So:
+**We do not hold a postage batch.** Uploads go to the Swarm testnet gateway at `https://api.gateway.testnet.ethswarm.org`, which envelope-stamps on our behalf. Confirmed 2026-11-05 that the gateway accepts and ignores the `Swarm-Postage-Batch-Id` header entirely (see `spikes/F2/result.json` and the "batch-id header is ignored" test in `docs/swarm.md` § Path B). So:
 
 - **Batch ID:** none (gateway-managed).
 - **Purchasing wallet:** none (the EF gateway owns its batch).
@@ -37,7 +37,7 @@ This is the Arkiv + Swarm bonus's expected answer for teams using the public gat
 
 ## 5. Bee node or hosted service used for uploads
 
-**EF public gateway** `https://api.gateway.ethswarm.org`. No local Bee node. Spike `T-F02` ran a 5-file folder upload and read every file back, see `spikes/F2/result.json`.
+**Swarm testnet gateway** `https://api.gateway.testnet.ethswarm.org` (until 2026-11-06 the mainnet gateway `https://api.gateway.ethswarm.org`; see DECISIONS.md). No local Bee node. Spike `T-F02` ran a 5-file folder upload and read every file back, see `spikes/F2/result.json`.
 
 ## 6. Files in this repo that upload to and read from Swarm
 
@@ -63,12 +63,12 @@ curl -sS -X POST \
   -H "Content-Type: application/x-tar" \
   -H "Swarm-Collection: true" \
   --data-binary @demo.tar \
-  "https://api.gateway.ethswarm.org/bzz"
+  "https://api.gateway.testnet.ethswarm.org/bzz"
 # -> {"reference":"<64-hex>"}
 
 # 2. Read back
 REF=<paste reference>
-curl -sS "https://api.gateway.ethswarm.org/bzz/$REF/hydra-manifest.json"
+curl -sS "https://api.gateway.testnet.ethswarm.org/bzz/$REF/hydra-manifest.json"
 # -> {"hi":"hydra"}
 ```
 

@@ -33,7 +33,7 @@ test("only the owner's releases, newest first", () => {
     publishedAt: 1730800000000,
     fileCount: 4,
     swarmRef: REF,
-    swarmUrl: `https://api.gateway.ethswarm.org/bzz/${REF}/hydra-manifest.json`,
+    swarmUrl: `https://api.gateway.testnet.ethswarm.org/bzz/${REF}/hydra-manifest.json`,
   });
 });
 
