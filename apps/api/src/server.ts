@@ -7,7 +7,8 @@
 //   POST /v1/releases                  Authorization: Bearer <apiKey>
 //   GET  /v1/apps/:app/releases
 //   GET  /v1/files/:sha256
-//   POST /v1/indexer/run              Authorization: Bearer <INDEXER_TRIGGER_SECRET>; one indexer pass
+//   POST /v1/indexer/run              Authorization: Bearer <INDEXER_TRIGGER_SECRET>; starts one pass, 202
+//   GET  /v1/indexer/status           { running, startedAt, finishedAt, last }; public
 //   GET  /v1/observations             every indexed site with its latest observation and recent history
 //   GET  /v1/activity                 everything our wallet wrote, newest block first
 
@@ -31,8 +32,56 @@ export interface ApiDeps {
   filesByHash?: (sha256: string) => Promise<unknown>
   activity?: () => Promise<unknown>
   observations?: () => Promise<unknown>
-  indexer?: { secret: string; run: () => Promise<unknown> } // scheduled trigger; spends indexer gas
+  indexer?: { secret: string; run: () => Promise<RunSummary>; runner?: IndexerRunner } // trigger; spends indexer gas
   health?: Record<string, unknown>
+}
+
+export interface RunSummary {
+  sites: number
+  written: number
+  txs: string[]
+  errors: string[]
+  lines: string[]
+  ms: number
+  skipped?: unknown
+}
+
+export type StartResult = { ok: true; startedAt: number } | { ok: false; status: 409 | 429; error: string }
+export type IndexerRunner = ReturnType<typeof indexerRunner>
+
+// One guard for the route and the timer: a pass spends gas, so one at a time and at most once every
+// 5 minutes. start() returns at once; the pass continues and its outcome lands in status().
+export function indexerRunner(run: () => Promise<RunSummary>, now: () => number = Date.now) {
+  let running = false
+  let startedAt: number | null = null
+  let finishedAt: number | null = null
+  let last: RunSummary | null = null
+  const start = (): StartResult => {
+    if (running) return { ok: false, status: 409, error: 'an indexer run is already in progress; poll /v1/indexer/status' }
+    if (startedAt !== null && now() - startedAt < 5 * 60_000) {
+      return { ok: false, status: 429, error: 'the indexer ran less than 5 minutes ago; read /v1/indexer/status or retry later' }
+    }
+    running = true
+    const t0 = now()
+    startedAt = t0
+    // A run that never settles (a socket that never errors) must not hold the busy flag forever.
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const cap = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('the run took over 40 minutes and was abandoned')), 40 * 60_000)
+    })
+    Promise.race([run(), cap])
+      .then((s) => { last = s })
+      .catch((err) => {
+        last = { sites: 0, written: 0, txs: [], errors: [`indexer run failed: ${rootCause(err)}. Check the API logs and rerun`], lines: [], ms: now() - t0 }
+      })
+      .finally(() => {
+        clearTimeout(timer)
+        finishedAt = now()
+        running = false
+      })
+    return { ok: true, startedAt: t0 }
+  }
+  return { start, status: () => ({ running, startedAt, finishedAt, last }) }
 }
 
 const SMALL = 16 * 1024
@@ -81,10 +130,8 @@ export function createApi(deps: ApiDeps) {
   const takeSlot = limiter(deps.publishesPerHour ?? 30)
   const takeClaim = limiter(deps.claimsPerHour ?? 5)
 
-  // The indexer trigger spends gas, so it needs its own secret, runs one pass at a time, and at most
-  // once every 5 minutes however often it is called.
-  let indexerBusy = false
-  let indexerLast = 0
+  // The indexer trigger spends gas, so it needs its own secret and the shared runner guard.
+  const runner = deps.indexer ? (deps.indexer.runner ?? indexerRunner(deps.indexer.run)) : undefined
   const triggerOk = (auth: string | undefined) => {
     const want = Buffer.from(`Bearer ${deps.indexer?.secret ?? ''}`)
     const got = Buffer.from(auth ?? '')
@@ -160,16 +207,11 @@ export function createApi(deps: ApiDeps) {
 
       if (req.method === 'POST' && path === '/v1/indexer/run' && deps.indexer) {
         if (!triggerOk(req.headers.authorization)) return send(res, 401, { error: 'missing or wrong indexer trigger secret' })
-        if (indexerBusy) return send(res, 409, { error: 'an indexer run is already in progress' })
-        if (Date.now() - indexerLast < 5 * 60_000) return send(res, 429, { error: 'the indexer ran less than 5 minutes ago' })
-        indexerBusy = true
-        indexerLast = Date.now()
-        try {
-          return send(res, 200, await deps.indexer.run())
-        } finally {
-          indexerBusy = false
-        }
+        const out = runner!.start()
+        return out.ok ? send(res, 202, { started: true, startedAt: out.startedAt }) : send(res, out.status, { error: out.error })
       }
+
+      if (req.method === 'GET' && path === '/v1/indexer/status' && runner) return send(res, 200, runner.status())
 
       if (req.method === 'GET' && path === '/v1/observations' && deps.observations) {
         return send(res, 200, await deps.observations())

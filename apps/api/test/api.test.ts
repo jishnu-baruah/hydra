@@ -9,7 +9,7 @@ import { privateKeyToAccount, generatePrivateKey } from 'viem/accounts'
 import { AppSchema, LEASE, LONG } from '@hydra/core'
 import { keyFromSignature, signInMessage } from '../src/auth.ts'
 import { issueKey, verifyKey } from '../src/keys.ts'
-import { createApi } from '../src/server.ts'
+import { createApi, indexerRunner } from '../src/server.ts'
 import { swarmUploader } from '../src/swarm.ts'
 import { tar } from '../src/tar.ts'
 
@@ -222,29 +222,63 @@ test('reserve at key time: a key claims its unowned name once; another wallet is
   assert.deepEqual(calls.lastExt, [{ entityKey: `0x${'aa'.repeat(32)}`, expiration: LONG() }])
 })
 
-test('indexer trigger: wrong secret 401, one run at a time, then rate limited', async () => {
+test('indexer trigger: wrong secret 401, 202 and runs in the background, one at a time, then rate limited', async () => {
   let runs = 0
   let release: () => void = () => {}
   const srv = createApi({
     secret: SECRET,
-    indexer: { secret: 'k'.repeat(40), run: () => new Promise((r) => { runs++; release = () => r({ written: 20 }) }) },
+    indexer: { secret: 'k'.repeat(40), run: () => new Promise((r) => { runs++; release = () => r({ sites: 3, written: 20, txs: [], errors: [], lines: ['l'], ms: 5 }) }) },
   }).listen(0)
   try {
-    const url = `http://127.0.0.1:${(srv.address() as AddressInfo).port}/v1/indexer/run`
-    const hit = (secret: string) => fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${secret}` } })
+    const root = `http://127.0.0.1:${(srv.address() as AddressInfo).port}`
+    const hit = (secret: string) => fetch(`${root}/v1/indexer/run`, { method: 'POST', headers: { Authorization: `Bearer ${secret}` } })
+    const status = async () => (await (await fetch(`${root}/v1/indexer/status`)).json()) as { running: boolean; startedAt: number | null; finishedAt: number | null; last: { written: number } | null }
     assert.equal((await hit('wrong')).status, 401)
-    const first = hit('k'.repeat(40))
-    await new Promise((r) => setTimeout(r, 50))
+    assert.deepEqual(await status(), { running: false, startedAt: null, finishedAt: null, last: null })
+    const first = await hit('k'.repeat(40))
+    assert.equal(first.status, 202) // returns before the run ends
+    const startedAt = ((await first.json()) as { started: boolean; startedAt: number }).startedAt
+    assert.ok(startedAt > 0)
     assert.equal((await hit('k'.repeat(40))).status, 409) // still running
+    const mid = await status()
+    assert.equal(mid.running, true)
+    assert.equal(mid.startedAt, startedAt)
     release()
-    const done = await first
-    assert.equal(done.status, 200)
-    assert.deepEqual(await done.json(), { written: 20 })
+    await new Promise((r) => setTimeout(r, 50))
+    const done = await status()
+    assert.equal(done.running, false)
+    assert.ok((done.finishedAt ?? 0) >= startedAt)
+    assert.equal(done.last?.written, 20)
     assert.equal((await hit('k'.repeat(40))).status, 429) // under 5 minutes since the last run
     assert.equal(runs, 1)
   } finally {
     srv.close()
   }
+})
+
+test('indexer trigger: a run that throws is recorded in status as an error, without a stack', async () => {
+  const srv = createApi({ secret: SECRET, indexer: { secret: 'k'.repeat(40), run: async () => { throw new Error('arkiv down') } } }).listen(0)
+  try {
+    const root = `http://127.0.0.1:${(srv.address() as AddressInfo).port}`
+    assert.equal((await fetch(`${root}/v1/indexer/run`, { method: 'POST', headers: { Authorization: `Bearer ${'k'.repeat(40)}` } })).status, 202)
+    await new Promise((r) => setTimeout(r, 50))
+    const st = (await (await fetch(`${root}/v1/indexer/status`)).json()) as { running: boolean; finishedAt: number | null; last: { errors: string[] } }
+    assert.equal(st.running, false)
+    assert.ok(st.finishedAt)
+    assert.match(st.last.errors[0], /arkiv down/)
+    assert.doesNotMatch(st.last.errors[0], /\n\s+at /)
+  } finally {
+    srv.close()
+  }
+})
+
+test('indexer runner: one guard serves the route and the timer', async () => {
+  const r = indexerRunner(async () => ({ sites: 1, written: 1, txs: [], errors: [], lines: [], ms: 1 }))
+  assert.equal(r.start().ok, true)
+  assert.equal(r.start().ok, false) // busy
+  await new Promise((x) => setTimeout(x, 20))
+  const b = r.start()
+  assert.equal(!b.ok && b.status, 429)
 })
 
 test('swarm: the batch header is sent only when a batch id is set (gateway mode stamps for us)', async () => {

@@ -48,11 +48,27 @@ test('sitesView: summary counts states, categories and the last run time', () =>
   assert.equal(v.summary.sites, 3)
 })
 
-test('sitesView: an observation for a domain not in the targets is ignored; a bad body does not break the page', () => {
+test('sitesView: a domain seen in rows but not in targets is listed; category falls back to the newest body, then other', () => {
   const bad = obs('curve.fi', 300, 'unknown', 'h4')
   bad.body = '0xzz'
-  const v = sitesView(targets, [obs('stranger.example', 999, 'match', 'h9'), bad])
-  assert.equal(v.sites.find((s) => s.domain === 'stranger.example'), undefined)
-  assert.equal(v.sites[1].latest?.scripts, 0)
-  assert.equal(v.summary.lastRun, 300)
+  const v = sitesView(targets, [
+    obs('stranger.example', 100, 'match', 'h8', { category: 'old' }),
+    obs('stranger.example', 999, 'match', 'h9', { category: 'nft' }),
+    obs('plain.example', 50, 'unknown', 'h5'),
+    bad,
+  ])
+  const by = (d: string) => v.sites.find((s) => s.domain === d)!
+  assert.equal(by('stranger.example').category, 'nft')
+  assert.equal(by('plain.example').category, 'other')
+  assert.equal(by('curve.fi').category, 'dex') // targets.json wins
+  assert.equal(by('curve.fi').latest?.scripts, 0) // a bad body does not break the page
+  assert.equal(v.summary.sites, 5)
+  assert.equal(v.summary.lastRun, 999)
+})
+
+test('sitesView: history is newest first and capped at 8 per site', () => {
+  const rows = Array.from({ length: 12 }, (_, i) => obs('curve.fi', 100 + i, 'match', `h${i}`))
+  const h = sitesView(targets, rows).sites.find((s) => s.domain === 'curve.fi')!.history
+  assert.equal(h.length, 8)
+  assert.equal(h[0].observed_at, 111)
 })

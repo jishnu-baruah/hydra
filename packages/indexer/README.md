@@ -1,8 +1,8 @@
 # indexer
 
-Every 15 minutes: fetch each site in `targets.json` (Manish), hash every script it loads (`<script
-src>`, modulepreload), compare with the app's latest Hydra release, and write 1 `hydra.observation`
-per site to Arkiv from the indexer wallet. Owner: Jishnu.
+Scheduled (GitHub Actions): fetch each site in `targets.json` (Manish) plus the top `INDEXER_TOP` (227) protocols by TVL from DefiLlama (`api.llama.fi/protocols`), hash every script it loads (`<script
+src>`, modulepreload), compare with the app's latest Hydra release, and write a `hydra.observation`
+to Arkiv, only when the site changed (see Cost) from the indexer wallet. Owner: Jishnu.
 
 ```bash
 node --env-file=../../.env src/main.ts          # forever (needs ARKIV_INDEXER_PRIVATE_KEY)
@@ -20,7 +20,7 @@ node src/main.ts --dry                          # one run, print only, no key, n
   the previous run are flagged (`NEW_RUNTIME_ORIGIN`). Sites that block us directly are read through
   the renderer (`DIRECT_BLOCKED`), and every script is still hashed by a direct fetch.
 - **Expiry:** observations live 3 days, so "checked recently" is "an observation exists".
-- **Cost:** 20 sites = 2 transactions, about 0.0053 tGLM per run, about 0.5 tGLM per day.
+- **Cost:** earlier observations are read back from Arkiv (last 3 days, indexer wallet), not memory. A site is written only when its status, script hash or problem codes changed, or once a day as a heartbeat; unchanged sites are skipped, so a steady run costs a few transactions (10 per tx) instead of one per site. Jina is called only for a first sight, a site last seen over 24 h ago, a changed script hash, or a blocked direct fetch; otherwise the previous runtime origins are reused. Concurrency is `INDEXER_POOL` (8). A dry run reads for `HYDRA_INDEXER_ADDRESS`, or the address of `ARKIV_INDEXER_PRIVATE_KEY` if set.
 - **Limits:** 60 scripts per site (Uniswap loads 713); regex-grade HTML parsing; inline scripts
   are not checked (Next.js Flight data, spike T12). A host can serve the indexer clean files and
   victims bad ones (spike T8); the extension is the better vantage point.
