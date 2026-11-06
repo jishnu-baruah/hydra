@@ -153,6 +153,47 @@ export interface RunSummary {
   jina?: JinaReport // the rendered second view: calls, failures and the cause
 }
 
+export { sendTelegram } // the API sends apps' Telegram channels through the same bot
+
+export interface AlertEvent {
+  app?: string // undefined for a site no release binds
+  domain: string
+  from: string // previous status
+  to: string
+  problems: string[]
+  text: string // the plain-text message, as sent to Telegram
+  observedAt: number
+}
+
+// One message per site with news: to the Hydra team chat (env TELEGRAM_*) and to `notify`, the
+// app's own channels. A dry run (live false) only logs. Never throws: failures land in errors.
+export async function sendAlerts(
+  sites: { domain: string; app?: string; status: string; problems: string[]; prev: { status: string; problems: string[] } | null }[],
+  at: number,
+  o: { live: boolean; token?: string; chatId?: string; notify?: (e: AlertEvent) => Promise<void>; send?: typeof sendTelegram },
+): Promise<{ alerts: number; lines: string[]; errors: string[] }> {
+  const out = { alerts: 0, lines: [] as string[], errors: [] as string[] }
+  for (const s of sites) {
+    const text = alertText(s, s.prev, at)
+    if (!text) continue
+    out.alerts++
+    out.lines.push(`ALERT ${text.split('\n')[0]}`)
+    if (!o.live) continue // dry run: logged only
+    if (o.token && o.chatId) {
+      const sent = await (o.send ?? sendTelegram)({ token: o.token, chatId: o.chatId, text })
+      if (!sent.ok) out.errors.push(`alert for ${s.domain} not sent: ${sent.error}`)
+    }
+    if (o.notify) {
+      try {
+        await o.notify({ app: s.app, domain: s.domain, from: s.prev?.status ?? 'unknown', to: s.status, problems: s.problems, text, observedAt: at })
+      } catch (err) {
+        out.errors.push(`alert channels for ${s.domain} failed: ${rootCause(err)}`)
+      }
+    }
+  }
+  return out
+}
+
 const PREV_WINDOW = 3 * DAY
 const LLAMA = 'https://api.llama.fi/protocols'
 const EMPTY = scriptsHash([]) // the hash of a run that read no scripts
@@ -184,7 +225,8 @@ async function previous(reader: unknown, addr: Hex, now: number): Promise<Map<st
 
 // `clients` without a wallet (or null) scans and reports but writes nothing. `indexerAddress` is for
 // a dry run: with no wallet it names whose earlier observations to read (read-only).
-export async function runOnce(o: { api: string; clients: ReturnType<typeof arkivClients> | null; indexerAddress?: Hex; only?: string }): Promise<RunSummary> {
+// `notify` gets every alert a live run sends, for the app's own alert channels (T-A30).
+export async function runOnce(o: { api: string; clients: ReturnType<typeof arkivClients> | null; indexerAddress?: Hex; only?: string; notify?: (e: AlertEvent) => Promise<void> }): Promise<RunSummary> {
   const only = o.only ?? process.env.INDEXER_ONLY // a comma list of domains: a one-site run (T-A23), or the live watcher's flip (T-A25)
   const { targets: listed } = JSON.parse(await readFile(new URL('../targets.json', import.meta.url), 'utf8')) as { targets: { app?: string; domain: string; category: string }[] }
   const started = Date.now()
@@ -270,18 +312,14 @@ export async function runOnce(o: { api: string; clients: ReturnType<typeof arkiv
   }
   // Alerts come only from sites whose state changed (due). The next run reads this run's
   // observation as previous, so the same news is not sent twice; a failed write may repeat it.
-  const token = process.env.TELEGRAM_BOT_TOKEN
-  const chatId = process.env.TELEGRAM_CHAT_ID
-  for (const r of due) {
-    const p = prevs.get(r.t.domain)
-    const text = alertText({ domain: r.t.domain, app: r.t.app, status: r.status, problems: r.problems }, p ?? null, started)
-    if (!text) continue
-    summary.alerts++
-    summary.lines.push(`ALERT ${text.split('\n')[0]}`)
-    if (!wallet || !token || !chatId) continue // dry run, or Telegram not configured: logged only
-    const sent = await sendTelegram({ token, chatId, text })
-    if (!sent.ok) summary.errors.push(`alert for ${r.t.domain} not sent: ${sent.error}`)
-  }
+  const sent = await sendAlerts(
+    due.map((r) => ({ domain: r.t.domain, app: r.t.app, status: r.status, problems: r.problems, prev: prevs.get(r.t.domain) ?? null })),
+    started,
+    { live: !!wallet, token: process.env.TELEGRAM_BOT_TOKEN, chatId: process.env.TELEGRAM_CHAT_ID, notify: o.notify },
+  )
+  summary.alerts = sent.alerts
+  summary.lines.push(...sent.lines)
+  summary.errors.push(...sent.errors)
   summary.ms = Date.now() - started
   return summary
 }

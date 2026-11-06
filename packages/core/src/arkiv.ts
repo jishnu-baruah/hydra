@@ -192,6 +192,13 @@ export function guardedCreate(c: { walletClient: Wallet; publicClient: Reader } 
   )
 }
 
+// Deletes one entity our wallet owns, through the same queue and single-submission path.
+export function guardedDelete(c: { walletClient: Wallet; publicClient: Reader; entityKey: Hex }) {
+  return enqueue(c.walletClient, () =>
+    submitOnce(c.walletClient, c.publicClient, 1, (tx) => c.walletClient.deleteEntity({ entityKey: c.entityKey }, tx)),
+  )
+}
+
 export interface ExtendSpec {
   entityKey: Hex
   expiration: CreateSpec['expiration'] // must not be earlier than the entity's current expiry

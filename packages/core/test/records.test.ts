@@ -3,12 +3,14 @@ import { test } from 'node:test'
 import { generatePrivateKey } from 'viem/accounts'
 import { arkivClients } from '../src/arkiv.ts'
 import {
+  AlertSubSchema,
   AppSchema,
   FileSchema,
   LONG,
   ObservationSchema,
   ReleaseSchema,
   SCHEMAS,
+  alertSubValues,
   appValues,
   fileValues,
   observationValues,
@@ -68,4 +70,12 @@ test('observation record values pass the SDK schema check', async () => {
 test('control: a bare number in a u64 time column is rejected before sending', async () => {
   const v = { ...releaseValues({ app: 'demo', publisher: '0x00000000000000000000000000000000000000aa', version: '1', commit: 'c', swarmRef: 'r', fileCount: 1, publishedAt: NOW, payload: {} }), published_at: NOW }
   assert.match(await create(ReleaseSchema, v), /^invalid:/)
+})
+
+test('alert subscription values pass the SDK schema check and the body is the sealed bytes', async () => {
+  const sealed = new Uint8Array([1, 2, 3, 250])
+  const v = alertSubValues({ app: 'demo', kind: 'webhook', createdAt: NOW, sealed })
+  assert.equal(await create(AlertSubSchema, v), 'network')
+  assert.ok(SCHEMAS.includes(AlertSubSchema as never))
+  assert.equal(AlertSubSchema.name, 'hydra.alert_sub')
 })
