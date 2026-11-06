@@ -761,15 +761,16 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: the explorer is a static site whose non-publish pages had a CSP allowing only the Arkiv RPC, so API calls added here would have worked locally and failed in production (connect-src now lists the API); the browser pane cached old ES modules on one port, a fresh port showed the real state; the Jina key ran out of credit again, most likely drained by the first 247-site indexer run, so the indexer second view needs a top-up or a stricter rule; GLM review found a stale verdict after a domain is re-bound, fixed with a test first
 
 ### T-A24, A failing Jina second view is loud, and stops wasting calls
-- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a24-loud-jina
+- Status: in-review | Branch: feature/t-a24-loud-jina
 - Suggested: Jishnu
 - Depends-on: T-A14
 - Touches: packages/indexer/src/jina.ts, packages/indexer/src/run.ts, packages/indexer/test/jina.test.ts, packages/indexer/README.md
 - Serves: Practicality (judged)
 - Known: the Jina key ran out of credit twice on 6 Nov (HTTP 402 from r.jina.ai) and the indexer kept reporting 0 errors, because a failed render falls back to the previous run's runtime origins, so lists still looked plausible; sites that block us directly lose their only way in and runtime-only origins stop being detected, with nothing saying so
 - Scope: one small renderer that counts calls and failures and names the reason (no key, HTTP status such as 402 credit out, timeout), and after 3 failures in a row stops calling for the rest of the run; the run summary gains a `jina` field and, when the view failed, 1 error line that says what broke, how many sites it affected and what to do. The 30-minute workflow and /v1/indexer/status already print errors
-- Acceptance: unit tests written failing first (renderer: ok, no key, 402 then stop after 3, network error, a page with no scripts is not a failure; indexer 30 or more tests pass); a dry run with an invalid key prints 1 error line naming HTTP 401 or 402 and makes at most 3 calls
-- Evidence: <PR link>
+- Acceptance: unit tests written failing first (renderer: ok, no key, 402 then stop after 3, network error, a page with no scripts is not a failure; indexer 30 or more tests pass); a dry run with an invalid key prints 1 error line naming HTTP 401 or 402 and makes at most 3 calls plus those already in flight (the pool scans 8 sites at once)
+- Evidence: PR (this one); indexer tests 38 pass (7 new), API 25 pass; dry run with a bad key: "failed 4 of 4 renders (HTTP 401: JINA_KEY is wrong or revoked), 2 more were not tried"; dry run with the real key: "failed 3 of 3 renders (HTTP 402: Jina credit is out), 4 more were not tried", which confirms the account is out of credit
+- Finding: the 8-way pool means up to 8 renders are in flight when the breaker opens, so the call count after opening is a few over 3; a failed render reuses the previous runtime origins, which is why 0 errors hid a dead second view; a 402 on the key in the research kit proved it before the code did
 
 ### T-C06, Extension flags a hostname on a public phishing list
 - Status: in-review | Branch: feature/t-c06-known-bad
@@ -793,4 +794,15 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Known: a normal indexer run reads and writes Arkiv and takes about 14 s for one site (T-A23) and 5 min for all, so the demo cannot show a tamper within seconds without a laptop that holds the wallet key; the demo needs a switch on a page that watches the demo site every 5 s on Render
 - Scope: `POST /v1/watch {domain, on}` (bearer DEMO_WATCH_TOKEN, timing-safe) starts or stops one in-memory watcher for a domain that a release has bound; every 5 s it fetches the page and its scripts through safeGet, rechecks hydra.txt and compares with the release, with no Arkiv reads or writes per tick; when the verdict flips (match to mismatch or back) it runs the normal one-site observation write and Telegram alert once; it switches itself off after 15 minutes; `GET /v1/watch` is public and returns the state, the last 30 ticks and the flips; the explorer gets a Live page with the switch, the status and the tick strip
 - Acceptance: unit tests written failing first (watcher: baseline, flip once, flip back, unreachable is not a flip, overlap skipped, auto-off, stop; routes: 401, 503, 400, 200, 404); on the live demo, switching on and then changing app.js shows mismatch on the page within 12 s and 1 Telegram alert, and API tests 30 or more pass
+- Evidence: <PR link>
+
+### T-D12, Demo kit: hack, restore and status scripts plus a runbook
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-d12-demo-kit
+- Suggested: Jishnu
+- Depends-on: T-D04, T-A23
+- Touches: demo/hack.mjs, demo/restore.mjs, demo/status.mjs, demo/lib.mjs, demo/RUNBOOK.md, demo/README.md, demo/.vercelignore
+- Serves: WOW factor (judged)
+- Known: on 6 Nov a tamper left in a shared checkout made the repo's demo/app.js differ from the release while the live site was clean, and the latest observation stayed mismatch until a one-site run recorded match again; the stage needs one command to break the site, one to heal it, and one to say what every screen will show
+- Scope: `node demo/hack.mjs` deploys a tampered copy of the demo from a temp folder (the repo stays clean), waits until the live site serves it, then lets the live watcher (T-A25) catch it or runs the one-site check (T-A23) itself and prints the time to alert; `node demo/restore.mjs` deploys the clean demo, waits until the live script hash equals the release, and records match the same way; `node demo/status.mjs` prints the live hash against the release, the latest observation and the watcher state; RUNBOOK.md has the stage order and the fallbacks
+- Acceptance: hack then restore run for real once each; hack reaches a mismatch observation and 1 Telegram alert in under 60 s without the watcher; restore returns to match; status reports both states correctly; the repo stays clean (git status shows 0 changes in demo/ after both)
 - Evidence: <PR link>
