@@ -929,7 +929,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: https://github.com/jishnu-baruah/hydra/pull/132
 
 ### T-A34, Swarm reads go through a host that resolves on more networks
-- Status: claimed 2026-11-07 | Owner: Manish | Branch: feature/t-a34-swarm-read-host
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/139 | Branch: feature/t-a34-swarm-read-host
 - Suggested: Manish
 - Depends-on: T-A21
 - Touches: apps/explorer/app/releases.js, apps/explorer/app/releases.test.mjs, apps/extension/src/compare/lookup.js, arkiv/swarm.md
@@ -937,4 +937,4 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Known: on 7 Nov a home router's DNS (Mumbai) returned nothing for api.gateway.ethswarm.org, so the explorer's Manifest link failed; download.gateway.ethswarm.org resolved on the same network, is the same server (128.140.29.197) and returned the test-hydra0 manifest with HTTP 200
 - Scope: the explorer's Manifest link and the extension's manifest fetch read from download.gateway.ethswarm.org; uploads stay on api.gateway.ethswarm.org; arkiv/swarm.md names the read host and adds the DNS finding to friction
 - Acceptance: explorer and extension tests pass with the new host; 2 published manifests (hygra-demo2, test-hydra0) open with HTTP 200 on the read host
-- Evidence: <PR link>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/139
