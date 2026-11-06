@@ -16,6 +16,22 @@ A team adds the Hydra GitHub Action to their deploy workflow with one secret, `H
 - **Chrome extension** (`apps/extension`). On every page it compares the scripts the site serves with the latest release on Arkiv, and warns when they don't match.
 - **Indexer** (`packages/indexer`). Watches popular dApp frontends that haven't onboarded yet and records what they serve, so the explorer and extension are useful from day one.
 
+## How we used Swarm
+
+Every release's build lives on Swarm, and Arkiv holds the index that points at it.
+
+- **What goes on Swarm.** On each publish the API uploads the build files plus a `hydra-manifest.json` (app, version, commit, the sha256 of every file and of every external script) as one Swarm collection. Code: `apps/api/src/swarm.ts`, called from `apps/api/src/publish.ts`.
+- **What goes on Arkiv.** The `hydra.release` record stores the collection's reference in `swarm_ref`, next to the version and commit. The explorer and the extension read `swarm_ref` from Arkiv, then fetch `<gateway>/bzz/<swarm_ref>/hydra-manifest.json` and compare hashes.
+- **Stamping.** We upload through the public gateway `https://api.gateway.ethswarm.org`, which stamps uploads itself, so we hold no postage batch (OP-2, `DECISIONS.md`). An own Bee node works too: set `SWARM_POSTAGE_BATCH_ID` and the API sends it.
+- **What we found.** The gateway refuses to serve HTML (a 302 to `bzz.link/forbidden`, against phishing). That costs us nothing: Hydra only reads the JSON manifest from Swarm and checks scripts by hash, so Swarm never has to render a page.
+
+A live release to check, `hygra-demo2` version `2026-11-05.4`:
+
+- Manifest on Swarm: [`bzz/c98c1935.../hydra-manifest.json`](https://api.gateway.ethswarm.org/bzz/c98c1935aa29b10a088779266dfddcb521985741175182ef1b9e11d5a42c04ad/hydra-manifest.json)
+- Its Arkiv record: [`0xda3a4c82...`](https://rabdi.explorer.arkiv.network/entity/0xda3a4c82685b8f7c1ff3ea77eb53e928decbc98fcb6e33ce253bfa5af40ab289), field `swarm_ref` = `c98c1935aa29b10a088779266dfddcb521985741175182ef1b9e11d5a42c04ad`
+
+More detail for judges: [`arkiv/swarm.md`](arkiv/swarm.md). Design notes: [`docs/swarm.md`](docs/swarm.md).
+
 ## Layout
 
 | Path | What | Owner |
