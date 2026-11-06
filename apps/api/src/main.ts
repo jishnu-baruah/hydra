@@ -191,8 +191,7 @@ const watcher = writer
         if (problem) throw new Error(problem)
         ensStatus?.(e.domain, e.to).then(
           (tx) => tx && console.log(`ENS status ${e.domain} -> ${e.to} tx ${tx}`),
-          (err) => console.error(`ENS status ${e.domain} -> ${e.to} not written: ${err instanceof Error ? (err as { shortMessage?: string }).shortMessage ?? err.message.split('
-')[0] : String(err)}`),
+          (err) => console.error(`ENS status ${e.domain} -> ${e.to} not written: ${err instanceof Error ? (err as { shortMessage?: string }).shortMessage ?? err.message.split('\n')[0] : String(err)}`),
         )
       },
     })
