@@ -57,7 +57,7 @@ export function showBanner(view) {
   const close = el("button", "close", "Dismiss");
   close.type = "button";
   close.setAttribute("aria-label", "Dismiss the Hydra warning");
-  top.append(el("span", "mark", "Hydra"), el("span", "state", "This site changed"), close);
+  top.append(el("span", "mark", "Hydra"), el("span", "state", view.kind === "listed" ? "On a phishing list" : "This site changed"), close);
   box.append(top, el("p", "msg", view.message));
   if (view.items.length) {
     const ul = el("ul");

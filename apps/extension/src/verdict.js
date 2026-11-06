@@ -7,6 +7,11 @@ export const STATES = {
     color: "#b91c1c",
     label: "This site serves scripts that are in no release. Do not sign anything here until the team confirms.",
   },
+  listed: {
+    text: "BAD",
+    color: "#7f1d1d",
+    label: "This hostname is on a public phishing list. Do not connect a wallet or sign anything unless you are sure.",
+  },
   grey: {
     text: "?",
     color: "#6b7280",
