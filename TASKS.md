@@ -333,13 +333,13 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: anyone can write an entity tagged hydra.app, so search and the home list must filter by the API wallet address (ownedBy) before showing real data; a bare 64-hex input is ambiguous (file sha256 or Swarm ref), so both are queried.
 
 ### T-D04, Demo dApp on a domain we control
-- Status: open
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-d04-demo-dapp
 - Suggested: Manish
-- Depends-on: OP-3
-- Touches: demo/
+- Depends-on: T-A19, T-A20
+- Touches: demo/, .gitignore
 - Serves: WOW factor (judged)
 - Known: spike T6: Vercel previews inject a vercel.live script and are login-protected, so demo and check the production deployment only
-- Acceptance: a 1-page static site with 1 JS file and 1 vendor script, live on Vercel at our domain, deployed from its own repo
+- Acceptance: a 1-page static site with 1 JS file and 1 vendor script, live on a Vercel production domain, with /.well-known/hydra.txt naming its Hydra app, published as a release through the live API and showing `match` on /indexed. Deployed from demo/ in this repo with the Vercel CLI, not its own repo (time)
 - Evidence: <live URL>
 
 ### T-D05, Demo script, timed
@@ -435,7 +435,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <PR link, live URL>
 
 ### T-A16, DNS checker from two resolvers
-- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a16-dns-checker
+- Status: cut 2026-11-06: a DNS trigger adds nothing to a demo staged with a script change, and free DNS monitors already exist; roadmap item
 - Suggested: Jishnu
 - Depends-on: T-A13
 - Touches: packages/indexer/
@@ -448,7 +448,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Kill criterion: DoH rate-limited or flaky after 2 hours, so keep 1 resolver and NS only
 
 ### T-A17, Alert subscriptions stored on Arkiv as leases
-- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a17-alert-subs
+- Status: cut 2026-11-06: not worth the remaining hours; alerts go to one Telegram chat set by env (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID) and the demo says so
 - Suggested: Jishnu
 - Depends-on: T-A11, T-A13
 - Touches: apps/api/, packages/core/src/records.ts, docs/ARCHITECTURE.md
@@ -459,7 +459,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Kill criterion: no persisted subscription by 6 Nov 18:00 IST, so keep subscriptions in env config for the demo and say so
 
 ### T-A18, Alert delivery: signed webhooks plus Discord and Slack
-- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a18-alert-delivery
+- Status: done
 - Suggested: Jishnu
 - Depends-on: T-A16, T-A17
 - Touches: apps/api/, packages/indexer/, apps/site/vercel.json
@@ -467,11 +467,12 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Known: Standard Webhooks headers webhook-id, webhook-timestamp, webhook-signature (HMAC-SHA256, 5 min replay window); protocol teams already route OpenZeppelin Monitor alerts to Slack, Discord, Telegram and webhooks
 - Scope: Telegram first (user choice, 6 Nov): a bot posts plain-text alerts to one chat set by env. After each indexer run, every new problem per site (DNS_CHANGED, RESOLVER_SPLIT, CHANGED, EXTRA, RUNTIME_ORIGIN, NEW_RUNTIME_ORIGIN, mismatch) becomes 1 event with a stable id. Each subscription gets it signed per Standard Webhooks, or formatted for Discord and Slack, with 3 attempts and no duplicate per id
 - Acceptance: changing 1 script on the demo site sends 1 signed webhook and 1 Discord message within 1 triggered run, and a receiver sample verifies the signature
-- Evidence: <Discord screenshot, Actions run>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/87 (merged as e7d35b5; indexer tests 30 pass; a test message reached the Hydra Test group; no real alert fired yet)
+- Finding: scope narrowed to Telegram on the user's choice; signed Standard Webhooks and Discord are not built and move to the roadmap. Alerts fire only on news (turned mismatch, new loud problem, recovery), or 247 sites would page every run
 - Kill criterion: delivery not working by 6 Nov 22:00 IST, so Discord only
 
 ### T-A19, Domain proof: bind a domain to an app
-- Status: in-review | Branch: feature/t-a19-domain-proof
+- Status: done
 - Suggested: Jishnu
 - Depends-on: T-A13
 - Touches: packages/core/src/domain.ts, packages/core/src/index.ts, packages/core/test/, apps/api/, packages/indexer/, packages/action/, docs/ARCHITECTURE.md, apps/site/llms.txt, apps/site/skill/
@@ -479,12 +480,12 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Known: without a binding every indexed site is "unknown", and an app name alone lets anyone who claims "uniswap" on Hydra raise a false mismatch against app.uniswap.org
 - Scope: a publish may list up to 5 domains. The API keeps a domain only when `https://<domain>/.well-known/hydra.txt` has the line `hydra-app=<app>`; others are returned with the reason and the fix. The indexer compares a site with a release only when that release lists the domain, and rechecks the file every run: a bound domain that loses it is `DOMAIN_PROOF_LOST` (mismatch), because a hijacker controls the domain and could remove it to dodge the check
 - Acceptance: unit tests (failing first) for domain normalisation, private-address refusal and the proof line; a publish with 1 proven and 1 unproven domain keeps 1; an indexer run marks a bound domain whose file is gone as mismatch
-- Evidence: PR #79; tests core 41, api 17, indexer 17; live dry run of 20 sites. No release with a bound domain yet
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/79 (merged as 2bf307b); tests core 41, api 17, indexer 17; live dry run of 20 sites. No release with a bound domain yet
 - Finding: /security-review caught that bound domains let any publisher make the indexer fetch hosts it chose (blind SSRF, results public on Arkiv); every page and script fetch now goes through safeGet (https, public addresses only, pinned, redirects rechecked). GLM review caught DNS rebinding and transient proofs reading as hijacks
 - Kill criterion: not merged by 6 Nov 16:00 IST, so bind domains in targets.json by hand for the demo and say so
 
 ### T-A20, Coverage: DefiLlama discovery, write on change, background run
-- Status: in-review | Branch: feature/t-a20-coverage
+- Status: done
 - Suggested: Jishnu
 - Depends-on: T-A19
 - Touches: packages/indexer/, packages/core/src/arkiv.ts, packages/core/src/index.ts, packages/core/test/, apps/api/, apps/site/indexed/, docs/ARCHITECTURE.md, .github/workflows/indexer.yml
@@ -492,7 +493,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Known: Render free sleeps between 30-minute runs, so "previous observation" must be read from Arkiv, not memory; Arkiv queries return at most 100 rows per page (SDK MAX_LIMIT), so reads page with offset. DefiLlama lists 5,253 protocols with a URL, 227 above $100M TVL (measured 6 Nov). 2 of the last 100 site runs changed, and 20 sites take 80 s, so 227 sites every run would mean about 1,100 Arkiv tx and 10,900 Jina reads a day
 - Scope: daily list of the top 227 by TVL from api.llama.fi (cached; an outage keeps yesterday's list) plus targets.json; write an observation only when status, scripts or problems change, plus 1 heartbeat a day; Jina only for changed sites and once a day; POST /v1/indexer/run returns 202 and scans in the background
 - Acceptance: a run covers at least 200 sites inside 30 minutes and writes under 10 tx when nothing changed
-- Evidence: PR #82; tests core 44, api 20, indexer 22; live paged read 180 rows; dry run top 40 = 60 sites in 74 s
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/82 (merged as d6edf27; first live run: 247 sites, 236 observations, 24 tx, 0 errors, 7.7 min); tests core 44, api 20, indexer 22; live paged read 180 rows; dry run top 40 = 60 sites in 74 s
 - Finding: write on change silently wrote every site (scan result field `hash` vs `scripts_hash`), caught only by a dry run that skipped 0; 1inch answers its script URL with a per-request HTML page, so HTML at a script URL now counts as unreadable; GitHub fired the 30-minute schedule once in 6 hours, so an in-process timer was added
 - Kill criterion: over 30 minutes per run on the free instance, so cut to the top 100
 
@@ -520,10 +521,10 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 ### T-D10, Live demo: hijack our own site, alert lands
 - Status: open
 - Suggested: Manish
-- Depends-on: T-D04, T-A18, T-C05
+- Depends-on: T-D04, T-A18
 - Touches: docs/demo.md
 - Serves: WOW factor (judged)
-- Scope: on stage, change 1 script on the demo domain (or repoint its DNS), trigger 1 indexer run, show the Discord alert, the explorer, and the extension banner
+- Scope: on stage, change 1 script on the demo domain (or repoint its DNS), trigger 1 indexer run, show the Telegram alert, the explorer, and the extension banner
 - Acceptance: the full sequence runs in under 90 seconds, 3 rehearsals in a row
 - Evidence: <recording>
 
