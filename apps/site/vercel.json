@@ -3,6 +3,7 @@
   "installCommand": "",
   "buildCommand": "",
   "outputDirectory": ".",
+  "trailingSlash": true,
   "rewrites": [{ "source": "/llm.txt", "destination": "/llms.txt" }],
   "headers": [
     { "source": "/llms.txt", "headers": [{ "key": "Content-Type", "value": "text/plain; charset=utf-8" }] },

@@ -17,6 +17,7 @@ import {
   type CreateSpec,
 } from '@hydra/core'
 import { hexToString, type Hex } from 'viem'
+import { alertText, sendTelegram } from './alerts.ts'
 import { shouldWrite, topTargets } from './coverage.ts'
 import { bindTargets, compare, proofProblem, runtimeProblems, scriptUrls, scriptHash, scriptsHash, type BoundTarget, type Manifest, type Seen } from './scan.ts'
 
@@ -161,6 +162,7 @@ export interface RunSummary {
   sites: number
   written: number
   skipped: number // unchanged since the last observation, so not written
+  alerts: number // news sent to Telegram (or only logged on a dry run or without Telegram config)
   txs: string[]
   errors: string[]
   lines: string[] // notable sites plus one count line, for logs
@@ -244,7 +246,7 @@ export async function runOnce(o: { api: string; clients: ReturnType<typeof arkiv
     })
   const count = (st: string) => results.filter((r) => r.status === st).length
   lines.push(`${results.length} sites: ${count('match')} match, ${count('mismatch')} mismatch, ${count('unknown')} unknown; ${due.length} to write, ${results.length - due.length} unchanged`)
-  const summary: RunSummary = { sites: results.length, written: 0, skipped: results.length - due.length, txs: [], errors, lines, ms: 0 }
+  const summary: RunSummary = { sites: results.length, written: 0, skipped: results.length - due.length, txs: [], errors, lines, ms: 0, alerts: 0 }
   if (o.clients && wallet) {
     const specs: CreateSpec[] = due.map((r) => ({
       schema: ObservationSchema,
@@ -269,6 +271,20 @@ export async function runOnce(o: { api: string; clients: ReturnType<typeof arkiv
         summary.errors.push(`batch ${i / BATCH + 1} not written: ${rootCause(err)}`)
       }
     }
+  }
+  // Alerts come only from sites whose state changed (due). The next run reads this run's
+  // observation as previous, so the same news is not sent twice; a failed write may repeat it.
+  const token = process.env.TELEGRAM_BOT_TOKEN
+  const chatId = process.env.TELEGRAM_CHAT_ID
+  for (const r of due) {
+    const p = prevs.get(r.t.domain)
+    const text = alertText({ domain: r.t.domain, app: r.t.app, status: r.status, problems: r.problems }, p ?? null, started)
+    if (!text) continue
+    summary.alerts++
+    summary.lines.push(`ALERT ${text.split('\n')[0]}`)
+    if (!wallet || !token || !chatId) continue // dry run, or Telegram not configured: logged only
+    const sent = await sendTelegram({ token, chatId, text })
+    if (!sent.ok) summary.errors.push(`alert for ${r.t.domain} not sent: ${sent.error}`)
   }
   summary.ms = Date.now() - started
   return summary
