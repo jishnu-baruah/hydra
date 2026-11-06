@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { PROOF_PATH, checkProof, isPrivateAddress, normalizeDomain, proofNames, safeGet } from '../src/domain.ts'
+import { PROOF_PATH, checkProof, isPrivateAddress, normalizeDomain, proofNames, safeGet, safePost } from '../src/domain.ts'
 
 test('normalizeDomain lowercases and drops a trailing dot', () => {
   assert.equal(normalizeDomain(' App.Example.com. '), 'app.example.com')
@@ -129,4 +129,68 @@ test('safeGet reports HTTP errors and oversize bodies', async () => {
   await assert.rejects(safeGet('https://app.example.com/x', { maxBytes: 100 }, { lookup: pub, get: site({}).get }), /HTTP 404/)
   const big = async () => ({ status: 200, body: null })
   await assert.rejects(safeGet('https://app.example.com/', { maxBytes: 100 }, { lookup: pub, get: big }), /over 100 bytes/)
+})
+
+// safePost: the POST alert channels use for URLs a team chose. Same address rules as safeGet, but
+// no redirects, and errors never carry the URL (a Slack or Discord URL is a secret).
+const SECRET_URL = 'https://hooks.example.com/services/T000/SECRETPATH?token=abc'
+const poster = (status = 200, fail?: Error) => {
+  const asked: { host: string; address: string; method: string; path: string; headers: Record<string, string>; body?: string; maxBytes: number; timeoutMs: number }[] = []
+  const request = async (host: string, addr: { address: string }, r: { method: string; path: string; headers: Record<string, string>; body?: string; maxBytes: number; timeoutMs: number }) => {
+    asked.push({ host, address: addr.address, ...r })
+    if (fail) throw fail
+    return { status, location: status >= 300 && status < 400 ? 'https://elsewhere.example.com/' : undefined, body: Buffer.from('ok') }
+  }
+  return { request, asked }
+}
+
+test('safePost sends the body and headers to the checked address and returns the status', async () => {
+  const p = poster(204)
+  const r = await safePost(SECRET_URL, '{"a":1}', { 'Content-Type': 'application/json' }, { lookup: pub, request: p.request })
+  assert.deepEqual(r, { status: 204 })
+  assert.equal(p.asked.length, 1)
+  const a = p.asked[0]
+  assert.equal(a.host, 'hooks.example.com')
+  assert.equal(a.address, '93.184.216.34')
+  assert.equal(a.method, 'POST')
+  assert.equal(a.path, '/services/T000/SECRETPATH?token=abc')
+  assert.equal(a.body, '{"a":1}')
+  assert.equal(a.headers['Content-Type'], 'application/json')
+  assert.equal(a.timeoutMs, 10_000)
+  assert.equal(a.maxBytes, 64 * 1024)
+})
+
+test('safePost never follows a redirect: it returns the 3xx status after one request', async () => {
+  const p = poster(302)
+  assert.deepEqual(await safePost(SECRET_URL, '{}', {}, { lookup: pub, request: p.request }), { status: 302 })
+  assert.equal(p.asked.length, 1)
+})
+
+test('safePost refuses non-public URLs before any lookup, without echoing the URL', async () => {
+  let looked = 0
+  const lookup = async () => (looked++, [{ address: '93.184.216.34', family: 4 }])
+  for (const url of ['http://hooks.example.com/SECRETPATH', 'https://hooks.example.com:8443/SECRETPATH', 'https://u:SECRETPATH@hooks.example.com/',
+    'https://127.0.0.1/SECRETPATH', 'https://[::1]/SECRETPATH', 'https://localhost/SECRETPATH', 'not a url SECRETPATH']) {
+    await assert.rejects(safePost(url, '{}', {}, { lookup, request: poster().request }), (e: Error) => /not a public https URL/.test(e.message) && !e.message.includes('SECRETPATH'), url)
+  }
+  assert.equal(looked, 0)
+})
+
+test('safePost refuses a host with any private address, without sending', async () => {
+  const p = poster()
+  await assert.rejects(
+    safePost(SECRET_URL, '{}', {}, { lookup: async () => [{ address: '8.8.8.8', family: 4 }, { address: '169.254.169.254', family: 4 }], request: p.request }),
+    (e: Error) => /private address/.test(e.message) && !e.message.includes('hooks.example.com'),
+  )
+  assert.equal(p.asked.length, 0)
+})
+
+test('safePost names a timeout or network failure without the URL or the address', async () => {
+  const t = poster(200, new Error('timed out after 10 s'))
+  await assert.rejects(safePost(SECRET_URL, '{}', {}, { lookup: pub, request: t.request }), /timed out/)
+  const refused = Object.assign(new Error('connect ECONNREFUSED 93.184.216.34:443 hooks.example.com SECRETPATH'), { code: 'ECONNREFUSED' })
+  await assert.rejects(
+    safePost(SECRET_URL, '{}', {}, { lookup: pub, request: poster(200, refused).request }),
+    (e: Error) => /ECONNREFUSED/.test(e.message) && !/SECRETPATH|93\.184|hooks\.example/.test(e.message),
+  )
 })

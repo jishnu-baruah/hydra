@@ -8,6 +8,7 @@ import {
   arkivClients,
   guardedBatch,
   guardedCreate,
+  guardedDelete,
   guardedTransport,
   policyGas,
 } from '../src/arkiv.ts'
@@ -141,4 +142,15 @@ test('guardedBatch counts extensions as operations: 19 creates + 2 extensions is
     (err: Error) => err instanceof WriteNotVerifiedError && err.phase === 'submission_unknown',
   )
   assert.equal(seen.filter((m) => m === 'eth_sendRawTransaction').length, 1)
+})
+
+test('guardedDelete sends at most 1 transaction and does not resend', async () => {
+  const { transport, seen } = fakeNode()
+  const { walletClient, publicClient } = arkivClients({ privateKey: generatePrivateKey(), transport })
+  await assert.rejects(
+    guardedDelete({ walletClient: walletClient!, publicClient, entityKey: `0x${'ab'.repeat(32)}` }),
+    (err: Error) => err instanceof WriteNotVerifiedError && err.phase === 'submission_unknown' && !/SECRETKEY/.test(err.message),
+  )
+  assert.equal(seen.filter((m) => m === 'eth_sendRawTransaction').length, 1)
+  assert.ok(seen.includes('eth_getTransactionCount'))
 })

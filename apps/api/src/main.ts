@@ -2,14 +2,15 @@
 
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
-import { arkivClients, checkProof, guardedBatch, guardedCreate, recentObservations } from '@hydra/core'
+import { AlertSubSchema, LONG, alertSubValues, arkivClients, checkProof, guardedBatch, guardedCreate, guardedDelete, recentObservations } from '@hydra/core'
 import type { Hex } from 'viem'
 import { checkSite } from '@hydra/indexer/check'
-import { runOnce } from '@hydra/indexer/run'
+import { runOnce, sendTelegram } from '@hydra/indexer/run'
 import { privateKeyToAccount } from 'viem/accounts'
 import { sitesView, type TargetInfo } from './observations.ts'
-import { activity, appForDomainFrom, claimOf, filesByHash, releasesFor } from './reads.ts'
-import { createApi, indexerRunner, type ApiDeps } from './server.ts'
+import { channelNotifier, deliver, type Channel, type Verdict } from './alerts.ts'
+import { activity, alertSubs, appForDomainFrom, claimOf, filesByHash, releasesFor } from './reads.ts'
+import { createApi, indexerRunner, type AlertRoutes, type ApiDeps } from './server.ts'
 import { swarmUploader } from './swarm.ts'
 import { createWatcher, runOk } from './watch.ts'
 import { deployDemo, readDemoFiles } from './demo.ts'
@@ -36,6 +37,45 @@ const script = fileURLToPath(new URL('../../../packages/action/publish.mjs', imp
 const writer = (walletClient?.account.address ?? env.HYDRA_PUBLISHER_ADDRESS) as Hex | undefined
 const allow = (env.HYDRA_ALLOWED_ADDRESSES ?? '').split(',').map((a) => a.trim().toLowerCase()).filter(Boolean)
 
+// Alert channels (T-A30). ALERT_KEY seals each channel's target before it goes to Arkiv; without a
+// valid one the routes answer 503 and runs alert only the Hydra team chat. Telegram channels use the
+// team bot (TELEGRAM_BOT_TOKEN); its username comes from getMe so the console can name it.
+const alertKey = (env.ALERT_KEY ?? '').trim()
+const alertKeyOk = /^[0-9a-f]{64}$/i.test(alertKey)
+if (env.ALERT_KEY && !alertKeyOk) console.error(`ALERT_KEY must be 64 hex characters (32 bytes); alert channels stay off. Generate one with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`)
+const tgToken = env.TELEGRAM_BOT_TOKEN
+let botName: string | null = null
+if (tgToken) {
+  fetch(`https://api.telegram.org/bot${tgToken}/getMe`, { signal: AbortSignal.timeout(10_000) })
+    .then((r) => r.json() as Promise<{ result?: { username?: unknown } }>)
+    .then((j) => {
+      if (typeof j.result?.username !== 'string') throw new Error()
+      botName = j.result.username
+    })
+    // No error detail: it could carry the URL, and the token is in it.
+    .catch(() => console.error('Telegram getMe failed, so the console will not name the bot; check TELEGRAM_BOT_TOKEN'))
+}
+const deliverAlert = (ch: Channel, v: Verdict) =>
+  deliver(ch, v, { telegram: tgToken ? (chatId, text) => sendTelegram({ token: tgToken, chatId, text }) : undefined })
+const alerts: AlertRoutes = {
+  key: alertKeyOk ? alertKey : undefined,
+  store: walletClient && writer
+    ? {
+        list: (app) => alertSubs(publicClient, writer, app),
+        create: async (app, kind, sealed, createdAt) => ({
+          id: (await guardedCreate({ walletClient, publicClient, schema: AlertSubSchema, values: alertSubValues({ app, kind, createdAt, sealed }), expiration: LONG() })).entityKey,
+        }),
+        remove: async (id) => void (await guardedDelete({ walletClient, publicClient, entityKey: id as Hex })),
+      }
+    : undefined,
+  deliver: deliverAlert,
+  bot: () => botName,
+}
+// Every alert a live indexer run sends also goes to the app's channels, read at most every 30 s.
+const notify = alertKeyOk && writer
+  ? channelNotifier({ key: alertKey, list: cached(30_000, (app: string) => alertSubs(publicClient, writer, app)), deliver: deliverAlert })
+  : undefined
+
 // The indexer runs inside the API with its own wallet, triggered by a scheduled GitHub Actions job.
 const indexerKey = env.ARKIV_INDEXER_PRIVATE_KEY as Hex | undefined
 const indexer =
@@ -43,8 +83,8 @@ const indexer =
     ? (() => {
         const clients = arkivClients({ accessKey: env.ARKIV_ACCESS_KEY, privateKey: indexerKey })
         const port = Number(env.PORT ?? env.HYDRA_API_PORT ?? 8787)
-        const run = () => runOnce({ api: `http://127.0.0.1:${port}`, clients })
-        return { secret: env.INDEXER_TRIGGER_SECRET!, run, runner: indexerRunner(run), runOnly: (domain: string) => runOnce({ api: `http://127.0.0.1:${port}`, clients, only: domain }) }
+        const run = () => runOnce({ api: `http://127.0.0.1:${port}`, clients, notify })
+        return { secret: env.INDEXER_TRIGGER_SECRET!, run, runner: indexerRunner(run), runOnly: (domain: string) => runOnce({ api: `http://127.0.0.1:${port}`, clients, only: domain, notify }) }
       })()
     : undefined
 
@@ -143,8 +183,9 @@ const deps: ApiDeps = {
       : undefined,
   },
   observations: sites,
+  alerts,
   activity: async () => (writer ? activity(publicClient, writer) : { head: null, events: [] }),
-  health: { watch: Boolean(watcher && watchToken), publisherWallet: walletClient?.account.address ?? null, accessKey: Boolean(env.ARKIV_ACCESS_KEY), indexer: Boolean(indexer) },
+  health: { watch: Boolean(watcher && watchToken), publisherWallet: walletClient?.account.address ?? null, accessKey: Boolean(env.ARKIV_ACCESS_KEY), indexer: Boolean(indexer), alerts: Boolean(alerts.key && alerts.store) },
 }
 
 const port = Number(env.PORT ?? env.HYDRA_API_PORT ?? 8787)
