@@ -34,14 +34,35 @@ const HOWTO = {
 };
 let bot = null; // Telegram bot username, or null when the server has none
 
+let appName = ""; // the connected app, for the Telegram command
+
 function telegramHint() {
   const who = bot ? `@${bot}` : "the Hydra bot (its name is not set on the server yet)";
-  return `Add ${who} to your group and send it any message. Then paste the group's chat id. To find it, add @RawDataBot to the group, or open the bot's getUpdates page. Group ids are negative.`;
+  return `Add ${who} to your group, then send "/hydra ${appName || "<your app>"}" in the group. That proves the group is yours. Then press Find my chat (it looks back 15 minutes), or paste the chat id.`;
+}
+
+// Chats where "/hydra <app>" was sent recently; one fills the box, several become buttons.
+async function findChat() {
+  const box = $("chats");
+  box.replaceChildren();
+  const r = await run("Looking for your chat...", "/v1/alerts/telegram-chats", { headers: authHeaders(key) });
+  setBusy(false);
+  if (!r) return;
+  const chats = r.chats ?? [];
+  if (!chats.length) return say(`No chat found. Send "/hydra ${appName}" in your group first, then try again.`);
+  say(chats.length === 1 ? `Found ${chats[0].title}.` : "Pick your chat:");
+  if (chats.length === 1) return void ($("target").value = chats[0].id);
+  for (const c of chats) {
+    const b = Object.assign(document.createElement("button"), { type: "button", className: "ghost-btn", textContent: `${c.title} (${c.id})` });
+    b.onclick = () => { $("target").value = c.id; box.replaceChildren(); say(`Picked ${c.title}.`); };
+    box.append(b);
+  }
 }
 
 function renderKind() {
   const k = $("kind").value;
   $("howto").textContent = k === "telegram" ? telegramHint() : HOWTO[k].hint;
+  $("find-chat").hidden = k !== "telegram";
   $("target-label").textContent = HOWTO[k].label;
   $("target").placeholder = HOWTO[k].ph;
 }
@@ -123,6 +144,8 @@ function renderChannels(list) {
 async function load(label = "Loading your channels...") {
   const r = await run(label, "/v1/alerts", { headers: authHeaders(key) });
   if (!r) return false;
+  appName = r.app;
+  renderKind();
   $("app-name").textContent = `Connected to ${r.app}`;
   $("app-name").hidden = false;
   $("forget").hidden = false;
@@ -209,3 +232,5 @@ if (saved) {
   key = saved;
   load("Reconnecting...");
 }
+
+$("find-chat").addEventListener("click", findChat);
