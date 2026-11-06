@@ -7,6 +7,7 @@ const $ = (id) => document.getElementById(id)
 const STATES = ['match', 'mismatch', 'unknown', 'pending']
 let data = null
 let filter = 'all'
+let query = ''
 let open = null
 
 const el = (tag, text, cls) => {
@@ -82,7 +83,7 @@ function renderFilters() {
   }
 }
 
-const visible = (s) => filter === 'all' || s.state === filter || s.category === filter
+const visible = (s) => (filter === 'all' || s.state === filter || s.category === filter) && s.domain.toLowerCase().includes(query)
 
 function card(s, maxScripts) {
   const b = el('button', null, 'site')
@@ -120,7 +121,7 @@ function detail(s) {
   const d = el('div', null, 'detail')
   const l = s.latest
   d.append(el('strong', s.domain))
-  if (!l) return d.append(el('p', 'No observation yet. The indexer runs every 30 minutes.')), d
+  if (!l) return d.append(el('p', 'No observation yet. Observations are written when a site changes, and once a day.')), d
   const list = (title, items) => {
     d.append(el('div', title, 'hint'))
     const ul = el('ul')
@@ -167,5 +168,10 @@ async function load() {
 
 $('api').textContent = API_URL
 $('refresh').onclick = load
+$('q').oninput = (e) => {
+  query = e.target.value.trim().toLowerCase()
+  open = null
+  if (data) render()
+}
 load()
 setInterval(load, 60_000)

@@ -7,6 +7,7 @@
 
 import { arkivClients, rootCause } from '@hydra/core'
 import type { Hex } from 'viem'
+import { privateKeyToAccount } from 'viem/accounts'
 import { runOnce } from './run.ts'
 
 const env = process.env
@@ -20,17 +21,19 @@ if (!DRY && !key) {
   console.error('ARKIV_INDEXER_PRIVATE_KEY is not set; use --dry to scan without writing.')
   process.exit(1)
 }
+// Dry runs read earlier observations for this address (read-only): explicit, or derived from the key.
+const indexerAddress = (env.HYDRA_INDEXER_ADDRESS as Hex | undefined) ?? (DRY && key ? privateKeyToAccount(key).address : undefined)
 const clients = DRY ? null : arkivClients({ accessKey: env.ARKIV_ACCESS_KEY, privateKey: key })
 if (clients) console.log(`indexer wallet ${clients.walletClient!.account.address}, every ${INTERVAL_MS / 60_000} min`)
 
 do {
   const t0 = Date.now()
   try {
-    const s = await runOnce({ api, clients })
+    const s = await runOnce({ api, clients, indexerAddress })
     for (const line of s.lines) console.log(line)
     for (const tx of s.txs) console.log(`wrote observations: tx ${tx}`)
     for (const e of s.errors) console.error(e)
-    console.log(`${s.sites} sites, ${s.written} observations written, ${s.ms} ms`)
+    console.log(`${s.sites} sites, ${s.written} observations written, ${s.skipped} unchanged, ${s.ms} ms`)
   } catch (err) {
     console.error(`run failed: ${rootCause(err)}`)
   }

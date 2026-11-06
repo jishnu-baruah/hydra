@@ -127,6 +127,24 @@ export async function readWithRetry<T>(
   throw new Error(`Arkiv read failed: ${rootCause(last)}`)
 }
 
+// Arkiv returns at most 100 rows per query (SDK MAX_LIMIT). Reads page after page, each retried
+// as a read, until a page covers fewer than 100 matches or maxRows is reached. Skipped rows (did
+// not fit the schema) count toward the offset, as the SDK documents.
+export async function readAll<T>(
+  page: (offset: number) => Promise<{ entities: readonly T[]; skipped: number }>,
+  maxRows = 2000,
+): Promise<T[]> {
+  const out: T[] = []
+  for (let offset = 0; out.length < maxRows; ) {
+    const p = await readWithRetry(() => page(offset))
+    out.push(...p.entities)
+    const covered = p.entities.length + p.skipped
+    if (covered < 100) break
+    offset += covered
+  }
+  return out.slice(0, maxRows)
+}
+
 // `phase` says what the caller may do next. `preflight`: nothing was sent, safe to try again
 // later. `submission_unknown` or `submitted`: a transaction may exist, so do NOT resend; look up
 // `txHash` (if any) and reconcile with a query first.

@@ -32,7 +32,7 @@ export interface Snapshot {
   expires_at: number
 }
 
-type Body = { scripts?: unknown[]; problems?: unknown[]; changed?: unknown; via?: unknown; runtime_origins?: unknown[] }
+type Body = { category?: unknown; scripts?: unknown[]; problems?: unknown[]; changed?: unknown; via?: unknown; runtime_origins?: unknown[] }
 
 const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
 
@@ -57,18 +57,32 @@ function snapshot(r: ObservationRow): Snapshot {
   }
 }
 
-export function sitesView(targets: TargetInfo[], rows: ObservationRow[]) {
-  const byDomain = new Map<string, Snapshot[]>()
-  for (const r of rows) {
-    const list = byDomain.get(r.domain) ?? []
-    list.push(snapshot(r))
-    byDomain.set(r.domain, list)
+const HISTORY = 8
+
+function bodyCategory(r: ObservationRow): string | null {
+  try {
+    if (typeof r.body !== 'string') return null
+    const c = (JSON.parse(hexToString(r.body as Hex)) as Body).category
+    return typeof c === 'string' && c ? c : null
+  } catch {
+    return null
   }
-  const sites = targets.map((t) => {
-    const history = (byDomain.get(t.domain) ?? []).sort((a, b) => b.observed_at - a.observed_at)
+}
+
+// Every domain seen in the rows plus every target. Category: targets.json, else the newest row's body, else other.
+export function sitesView(targets: TargetInfo[], rows: ObservationRow[]) {
+  const byDomain = new Map<string, ObservationRow[]>()
+  for (const r of rows) byDomain.set(r.domain, [...(byDomain.get(r.domain) ?? []), r])
+  const listed = new Map(targets.map((t) => [t.domain, t]))
+  const domains = [...new Set([...targets.map((t) => t.domain), ...byDomain.keys()])]
+  const sites = domains.map((domain) => {
+    const t = listed.get(domain)
+    const mine = (byDomain.get(domain) ?? []).sort((a, b) => Number(b.observed_at) - Number(a.observed_at))
+    const history = mine.slice(0, HISTORY).map(snapshot)
     const latest = history[0] ?? null
+    const category = t?.category ?? mine.map(bodyCategory).find(Boolean) ?? 'other'
     const state = latest ? latest.status : 'pending'
-    return { domain: t.domain, app: t.app ?? null, category: t.category ?? 'other', state, latest, history }
+    return { domain, app: t?.app ?? null, category, state, latest, history }
   })
   const states: Record<string, number> = { match: 0, mismatch: 0, unknown: 0, pending: 0 }
   const categories: Record<string, number> = {}
