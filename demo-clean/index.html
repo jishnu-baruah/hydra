@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clean Vault</title>
+  <meta name="description" content="A test dApp whose every build is published on Hydra, so Hydra can vouch for it.">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header class="top">
+    <span class="logo" aria-hidden="true"></span>
+    <span class="name">Clean Vault</span>
+    <span class="net">Testnet demo</span>
+  </header>
+
+  <main>
+    <section class="card" aria-labelledby="t">
+      <h1 id="t">Deposit</h1>
+      <p class="sub">A test vault for Hydra. It never connects a wallet and moves no funds.</p>
+
+      <label for="amount">Amount (ETH)</label>
+      <div class="field">
+        <input id="amount" type="number" min="0" step="0.01" value="1.5" inputmode="decimal">
+        <button id="max" type="button">Max</button>
+      </div>
+
+      <dl class="quote">
+        <div><dt>APY</dt><dd id="apy">4.20%</dd></div>
+        <div><dt>Earned in 1 year</dt><dd id="earn">0.0630 ETH</dd></div>
+        <div><dt>Unlocks</dt><dd id="unlock"></dd></div>
+      </dl>
+
+      <button id="go" class="go" type="button">Deposit (demo only)</button>
+      <p id="note" class="note" role="status">Nothing is sent. This page only shows numbers.</p>
+    </section>
+
+    <aside class="proof">
+      <p>Every file of this site is published on Hydra. Search <b>mouli51ch.github.io</b> on the Hydra explorer to see it verified.</p>
+    </aside>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
