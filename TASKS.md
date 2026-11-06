@@ -552,7 +552,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: 6 of 7 bonus items answered with links that return 200; the 7th (demo-video timestamp) filled when the video exists
 - Evidence: <PR link>
 ### T-D13, CROPS section in the README for the EF "Best CROPS App" prize
-- Status: claimed 2026-11-06 | Owner: Manish | Branch: feature/t-d13-crops
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/125 | Branch: feature/t-d13-crops
 - Suggested: Manish
 - Depends-on: none
 - Touches: README.md
