@@ -808,3 +808,14 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: hack then restore run for real once each; hack reaches a mismatch observation and 1 Telegram alert in under 60 s without the watcher; restore returns to match; status reports both states correctly; the repo stays clean (git status shows 0 changes in demo/ after both)
 - Evidence: PR (this one); rehearsed for real on 6 Nov without the watcher: hack.mjs tamper live after 22.7 s, mismatch recorded and Telegram alert sent after 49.1 s (tx 0x74c4ad32...2860); restore.mjs live restored after 8.7 s, match recorded and recovery alert after 27.3 s (tx 0x2586c06e...70d8); status.mjs answers in about 1 s in both states; git shows demo/app.js unchanged after both
 - Finding: the first hack failed on a 20 s timeout while the free Render API woke up, so API calls now wait 70 s; the API's /v1/observations took 87 s uncached because the API has no Arkiv access key and reads every site through the rate-limited public RPC, so status.mjs reads Arkiv directly for the one domain (1 query, about 1 s) and the runbook says to warm that route before stage
+
+### T-A26, Watcher: a Jina outage is not a failed alert
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a26-watch-jina
+- Suggested: Jishnu
+- Depends-on: T-A24, T-A25
+- Touches: apps/api/src/watch.ts, apps/api/test/watch.test.ts
+- Serves: WOW factor (judged)
+- Known: in the 6 Nov rehearsal with the live watcher, both flips were detected (mismatch 14.5 s after the tamper went live, match 17 s after the restore) and the observations were written, but each flip showed "alert failed": T-A24 puts a "Jina second view failed" line in the run's errors when the Jina credit is out, and the watcher's runOk treats any error as a failed write, so the Live page says the alert failed and the watcher retries
+- Scope: runOk ignores the Jina second-view line (it says nothing about the observation write or the alert) and still fails on every other error
+- Acceptance: a unit test written failing first (a Jina-only error is ok, a batch write error is not); API tests 41 or more pass; after deploy, a hack and restore with the watcher on show the alert as done on both flips
+- Evidence: <PR link>
