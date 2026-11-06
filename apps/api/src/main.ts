@@ -4,12 +4,14 @@ import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { arkivClients, checkProof, guardedBatch, guardedCreate, recentObservations } from '@hydra/core'
 import type { Hex } from 'viem'
+import { checkSite } from '@hydra/indexer/check'
 import { runOnce } from '@hydra/indexer/run'
 import { privateKeyToAccount } from 'viem/accounts'
 import { sitesView, type TargetInfo } from './observations.ts'
 import { activity, appForDomainFrom, claimOf, filesByHash, releasesFor } from './reads.ts'
 import { createApi, indexerRunner, type ApiDeps } from './server.ts'
 import { swarmUploader } from './swarm.ts'
+import { createWatcher } from './watch.ts'
 
 const env = process.env
 const secret = env.HYDRA_KEY_SECRET ?? ''
@@ -41,7 +43,7 @@ const indexer =
         const clients = arkivClients({ accessKey: env.ARKIV_ACCESS_KEY, privateKey: indexerKey })
         const port = Number(env.PORT ?? env.HYDRA_API_PORT ?? 8787)
         const run = () => runOnce({ api: `http://127.0.0.1:${port}`, clients })
-        return { secret: env.INDEXER_TRIGGER_SECRET!, run, runner: indexerRunner(run) }
+        return { secret: env.INDEXER_TRIGGER_SECRET!, run, runner: indexerRunner(run), runOnly: (domain: string) => runOnce({ api: `http://127.0.0.1:${port}`, clients, only: domain }) }
       })()
     : undefined
 
@@ -87,6 +89,27 @@ function cached<T>(ttlMs: number, load: (key: string) => Promise<T>, max = 500) 
   }
 }
 
+// The live demo watcher (T-A25): in-memory, one bound site, a tick every 5 s with no Arkiv traffic.
+// A flip runs the normal one-site observation write and Telegram alert, once. The switch is guarded
+// by DEMO_WATCH_TOKEN; without it the route answers 503 and says so.
+const watchToken = (env.DEMO_WATCH_TOKEN ?? '').length >= 16 ? env.DEMO_WATCH_TOKEN : undefined
+if (env.DEMO_WATCH_TOKEN && !watchToken) console.error('DEMO_WATCH_TOKEN must be at least 16 characters; the demo watch switch stays off.')
+const watcher = writer
+  ? createWatcher({
+      resolve: async (domain) => {
+        const app = await appForDomainFrom(publicClient, writer, domain)
+        if (!app) return null
+        const manifest = ((await releasesFor(publicClient, writer, app)) as { payload?: { manifest?: unknown } }[])[0]?.payload?.manifest
+        return manifest ? { domain, app, manifest } : null
+      },
+      tick: (t) => checkSite({ ...t, manifest: t.manifest as never }),
+      onFlip: async (e) => {
+        if (!indexer) throw new Error('no indexer wallet is configured, so no observation or alert can be written')
+        await indexer.runOnly(e.domain)
+      },
+    })
+  : undefined
+
 const deps: ApiDeps = {
   secret,
   corsOrigin: env.HYDRA_CORS_ORIGIN,
@@ -106,6 +129,7 @@ const deps: ApiDeps = {
   filesByHash: async (sha) => (writer ? filesByHash(publicClient, writer, sha) : []),
   appForDomain: writer ? cached(30_000, (d: string) => appForDomainFrom(publicClient, writer, d)) : undefined,
   indexer,
+  watch: watcher ? { watcher, token: watchToken } : undefined,
   observations: sites,
   activity: async () => (writer ? activity(publicClient, writer) : { head: null, events: [] }),
   health: { publisherWallet: walletClient?.account.address ?? null, accessKey: Boolean(env.ARKIV_ACCESS_KEY), indexer: Boolean(indexer) },

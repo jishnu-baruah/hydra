@@ -333,3 +333,56 @@ test('domain route: names the app for a hostname, rejects junk, and is absent wi
   assert.equal((await fetch(`http://127.0.0.1:${(bare.address() as AddressInfo).port}/v1/domains/app.example.com`)).status, 404)
 })
 
+
+// The demo watch switch: GET is public status, POST is guarded by DEMO_WATCH_TOKEN.
+function fakeWatcher() {
+  const calls: string[] = []
+  const state = { on: false, domain: null as string | null }
+  return {
+    calls,
+    watcher: {
+      start: async (d: string) => (calls.push(`start ${d}`), d === 'bound.example.com' ? ((state.on = true), (state.domain = d), { ok: true as const }) : { ok: false as const, status: 404, error: 'no release binds ' + d }),
+      stop: () => (calls.push('stop'), (state.on = false)),
+      status: () => ({ ...state }),
+      tickNow: async () => {},
+    },
+  }
+}
+
+test('watch route: public status, a guarded switch, and clear errors', async () => {
+  const f = fakeWatcher()
+  const api = createApi({ secret: SECRET, watch: { watcher: f.watcher as never, token: 't'.repeat(24) } })
+  const server = api.listen(0)
+  after(() => server.close())
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
+  const post = (body: unknown, token?: string) =>
+    fetch(`${base}/v1/watch`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) })
+
+  assert.deepEqual(await (await fetch(`${base}/v1/watch`)).json(), { on: false, domain: null }) // status is public
+  assert.equal((await post({ domain: 'bound.example.com', on: true })).status, 401) // no token
+  assert.equal((await post({ domain: 'bound.example.com', on: true }, 'wrong'.repeat(5))).status, 401)
+  assert.equal((await post({ domain: 'localhost', on: true }, 't'.repeat(24))).status, 400) // not a public hostname
+  assert.equal((await post({ domain: 'bound.example.com', on: 'yes' }, 't'.repeat(24))).status, 400)
+  assert.deepEqual(f.calls, []) // nothing reached the watcher yet
+  const missing = await post({ domain: 'other.example.com', on: true }, 't'.repeat(24))
+  assert.equal(missing.status, 404)
+  assert.match((await missing.json()).error, /no release binds/)
+  const ok = await post({ domain: 'Bound.Example.com', on: true }, 't'.repeat(24))
+  assert.equal(ok.status, 200)
+  assert.equal((await ok.json()).on, true)
+  assert.ok(f.calls.includes('start bound.example.com')) // normalised before it is used
+  assert.equal((await post({ on: false }, 't'.repeat(24))).status, 200)
+  assert.equal(f.calls.at(-1), 'stop')
+})
+
+test('watch route: 503 when no token is configured, 404 when there is no watcher', async () => {
+  const f = fakeWatcher()
+  const noToken = createApi({ secret: SECRET, watch: { watcher: f.watcher as never } }).listen(0)
+  after(() => noToken.close())
+  const r = await fetch(`http://127.0.0.1:${(noToken.address() as AddressInfo).port}/v1/watch`, { method: 'POST', headers: { Authorization: 'Bearer x' }, body: '{"domain":"bound.example.com","on":true}' })
+  assert.equal(r.status, 503)
+  assert.match((await r.json()).error, /DEMO_WATCH_TOKEN/)
+  const bare = createApi({ secret: SECRET }).listen(0)
+  after(() => bare.close())
+  assert.equal((await fetch(`http://127.0.0.1:${(bare.address() as AddressInfo).port}/v1/watch`)).status, 404)
+})
