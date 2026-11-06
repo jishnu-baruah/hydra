@@ -29,3 +29,4 @@ Binding: a site is compared with a release only when that app's latest manifest 
 - **Safe fetch:** pages and scripts are fetched with `safeGet` from `@hydra/core`: https on the default port,
   no IP-literal hosts, public addresses only, pinned connection, each redirect rechecked (at most 3).
   A script on plain http or a private host is recorded as unreadable.
+- **A failing second view is loud (T-A24):** `src/jina.ts` counts renders and failures and names the cause (HTTP 402 credit out, 401 bad key, 429, timeout). After 3 failures in a row it stops calling for the rest of the run. The run summary then carries 1 error line, which the workflow and `/v1/indexer/status` print, and a `jina` field with the counts. Because up to 8 sites are scanned at once, a few calls already in flight can still fail after the breaker opens.
