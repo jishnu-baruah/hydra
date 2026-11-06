@@ -63,3 +63,14 @@ test("before the worker answers, the page is being checked", () => {
 test("the app name is encoded into the link", () => {
   assert.equal(present({ ...red(1), app: "a b&c" }, opts).link.href, "http://localhost:5173/app/?name=a%20b%26c");
 });
+
+test("a hostname on a public phishing list is a distinct red verdict, worded as a list hit and not as a safety verdict", () => {
+  const v = present({ verdict: "listed", host: "claim.evil.example", entry: "evil.example" }, opts);
+  assert.equal(v.state, "red");
+  assert.equal(v.kind, "listed");
+  assert.equal(v.label, "On a phishing list");
+  assert.match(v.message, /evil\.example/);
+  assert.match(v.message, /MetaMask/);
+  assert.match(v.message, /lists can be wrong/i);
+  assert.deepEqual(v.items, []);
+});
