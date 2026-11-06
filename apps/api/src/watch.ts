@@ -58,10 +58,12 @@ const ATTEMPTS = 3
 
 // A one-site run that resolved is not necessarily a run that worked: it can have found no target for
 // the domain or failed to write. Returns what went wrong, or null.
+// A failed Jina second view (T-A24) is reported as an error so runs say so, but it says nothing about
+// the observation write or the alert, so it does not fail a flip.
 export function runOk(s: { sites: number; errors: string[] }): string | null {
   if (!s.sites) return 'the one-site run found no target for this domain, so nothing was written'
-  if (s.errors.length) return s.errors[0]
-  return null
+  const fatal = s.errors.filter((e) => !e.startsWith('Jina second view'))
+  return fatal[0] ?? null
 }
 
 export function createWatcher(d: WatchDeps) {

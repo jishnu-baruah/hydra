@@ -171,6 +171,14 @@ test('three failed attempts end as failed and stop trying', async () => {
   assert.equal(w.status().flips[0].alert, 'failed')
 })
 
+test('runOk: a Jina second-view outage is not a failed write or alert, any other error still is', async () => {
+  const { runOk } = await import('../src/watch.ts')
+  const jina = 'Jina second view failed 1 of 1 renders (HTTP 402: Jina credit is out). Runtime-only script origins ...'
+  assert.equal(runOk({ sites: 1, errors: [jina] }), null)
+  assert.match(runOk({ sites: 1, errors: [jina, 'batch 1 not written: nonce too low'] }) ?? '', /batch 1 not written/)
+  assert.match(runOk({ sites: 1, errors: ['alert for hydra-demo-dapp.vercel.app not sent: Telegram HTTP 400'] }) ?? '', /not sent/)
+})
+
 test('runOk accepts a one-site run that saw the site and wrote cleanly, and names what went wrong otherwise', async () => {
   const { runOk } = await import('../src/watch.ts')
   assert.equal(runOk({ sites: 1, errors: [] }), null)
