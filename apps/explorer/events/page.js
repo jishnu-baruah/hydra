@@ -74,7 +74,7 @@ function render(fresh = new Set()) {
   }
   const shown = only(events, mode);
   $("feed").replaceChildren(...shown.map((e) => item(e, fresh.has(e.key))));
-  if (!events.length) status("Nothing on Arkiv yet. Releases appear when a team publishes; observations every 15 minutes once the indexer runs.");
+  if (!events.length) status("Nothing on Arkiv yet. Releases appear when a team publishes; observations once the indexer runs, about every 30 minutes. It writes a new observation when something changes, plus one a day.");
   else if (!shown.length) status(mode === "changes" ? "No changes that matter: no mismatch, and no published site changed its scripts. Sites without a release that churn are under Observed." : "Nothing of this kind yet.");
   else status(`${shown.length} event(s). Updated ${clock(updated)} UTC; refreshes every minute.`);
 }

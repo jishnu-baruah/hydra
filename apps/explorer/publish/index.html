@@ -18,8 +18,9 @@
     <header class="bar">
       <a class="mark" href="../">Hydra</a>
       <nav aria-label="Main">
-        <a href="../releases/">Releases</a>
-        <a href="../events/">Events</a>
+        <a href="../releases/">Builds</a>
+        <a href="../observed/">Sites</a>
+        <a href="../events/">Activity</a>
         <a href="../search/">Search</a>
         <a href="./" aria-current="page">Publish</a>
       </nav>
@@ -110,6 +111,7 @@
       <section class="panel" id="p4" data-state="locked" aria-labelledby="h4-title">
         <h2 id="h4-title"><span class="n">04</span> Your first release</h2>
         <p class="why" id="watch">Push once. This page watches for the release and links to it.</p>
+        <p class="why">Then bind your site, so it can show a match: serve /.well-known/hydra.txt on your domain with the single line hydra-app=&lt;your app name&gt;, and set HYDRA_DOMAINS to your domain in the workflow. Without it your site stays unknown even after you publish. Deploy first, then publish, because Hydra checks the live site.</p>
         <div class="release" id="release" hidden></div>
         <button class="ghost-btn" id="check" type="button" disabled>Check now</button>
         <p class="err" id="e4" role="alert" hidden></p>

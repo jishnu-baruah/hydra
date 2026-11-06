@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { lookups, search } from "./search.js";
+import { hostOf, lookups, search } from "./search.js";
 
 const HEX = "a".repeat(64);
 const SWARM = "b".repeat(64);
@@ -16,14 +16,10 @@ const find = async (schema, field, value) =>
 
 test("each input kind becomes the right lookups", () => {
   assert.deepEqual(lookups("  "), []);
-  assert.deepEqual(lookups("https://App.Demo.xyz/swap?x=1"), [
-    { schema: "hydra.app", field: "domain", value: "app.demo.xyz", via: "domain" },
-  ]);
-  // A dotted word may be a domain or an app name, so both are asked.
-  assert.deepEqual(lookups("swap.v2"), [
-    { schema: "hydra.app", field: "domain", value: "swap.v2", via: "domain" },
-    { schema: "hydra.app", field: "app", value: "swap.v2", via: "app name" },
-  ]);
+  // A URL names a site, which search() resolves through the domain lookup, not an Arkiv column.
+  assert.deepEqual(lookups("https://App.Demo.xyz/swap?x=1"), []);
+  // A dotted word may be a domain or an app name; the app-name lookup is still asked.
+  assert.deepEqual(lookups("swap.v2"), [{ schema: "hydra.app", field: "app", value: "swap.v2", via: "app name" }]);
   assert.deepEqual(lookups("demo-dex"), [{ schema: "hydra.app", field: "app", value: "demo-dex", via: "app name" }]);
   // Typed case and lower case are both asked, since app ids are usually lower case.
   assert.deepEqual(lookups("Demo-Dex"), [
@@ -40,11 +36,35 @@ test("each input kind becomes the right lookups", () => {
   ]);
 });
 
-test("all 4 kinds find the same app", async () => {
-  for (const q of ["app.demo.xyz", "demo-dex", "Demo-Dex", `sha256-${HEX}`, SWARM]) {
-    const hits = await search(q, find);
+test("all 5 kinds find the same app", async () => {
+  const extra = { appForDomain: async (host) => (host === "app.demo.xyz" ? "demo-dex" : null) };
+  for (const q of ["app.demo.xyz", "https://App.Demo.xyz/swap?x=1", "demo-dex", "Demo-Dex", `sha256-${HEX}`, SWARM]) {
+    const hits = await search(q, find, extra);
     assert.deepEqual(hits.map((h) => h.app), ["demo-dex"], q);
   }
+  const byDomain = await search("app.demo.xyz", find, extra);
+  assert.equal(byDomain[0].via, "domain");
+});
+
+test("hostOf names the site in a URL or a dotted word, and nothing else", () => {
+  assert.equal(hostOf("https://App.Demo.xyz/swap?x=1"), "app.demo.xyz");
+  assert.equal(hostOf("swap.v2"), "swap.v2");
+  assert.equal(hostOf("demo-dex"), null);
+  assert.equal(hostOf(HEX), null);
+  assert.equal(hostOf(`sha256-${HEX}`), null);
+  assert.equal(hostOf("  "), null);
+});
+
+test("a site nobody published but the indexer watches is a site hit, not a miss", async () => {
+  const extra = { appForDomain: async () => null, observed: async (host) => host === "app.uniswap.org" };
+  assert.deepEqual(await search("app.uniswap.org", find, extra), [{ site: "app.uniswap.org", via: "domain", observed: true }]);
+  assert.deepEqual(await search("nobody.example", find, extra), []);
+});
+
+test("a failing domain lookup does not hide the other results", async () => {
+  const extra = { appForDomain: async () => { throw new Error("api down"); }, observed: async () => { throw new Error("rpc"); } };
+  assert.deepEqual((await search("demo-dex", find, extra)).map((h) => h.app), ["demo-dex"]);
+  assert.deepEqual(await search("app.demo.xyz", find, extra), []);
 });
 
 test("no match is an empty list, not an error", async () => {

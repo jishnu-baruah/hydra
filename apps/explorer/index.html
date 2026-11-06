@@ -16,8 +16,9 @@
     <header class="bar">
       <a class="mark" href="./">Hydra</a>
       <nav aria-label="Main">
-        <a href="releases/">Releases</a>
-        <a href="events/">Events</a>
+        <a href="releases/">Builds</a>
+        <a href="observed/">Sites</a>
+        <a href="events/">Activity</a>
         <a href="search/">Search</a>
         <a href="publish/">Publish</a>
       </nav>
@@ -29,7 +30,7 @@
       <section class="l-hero">
         <div class="l-copy">
           <h1 class="l-head" data-flap>Know what you sign on</h1>
-          <p class="l-sub">Every script your browser loads, checked against the published build.</p>
+          <p class="l-sub">The scripts your browser loads, checked against the build the team published.</p>
           <div class="l-cta">
             <a class="btn" href="#check">Check a site
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
@@ -59,12 +60,13 @@
           <span><b>2021</b> BadgerDAO <em>$120M</em></span>
           <span><b>2022</b> Curve <em>$570K</em></span>
           <span><b>2025</b> Bybit <em>$1.5B</em></span>
-          <span class="t-note">The code changed. Nobody could tell.</span>
+          <span class="t-note">The code changed. Users could not check.</span>
           <span aria-hidden="true"><b>2021</b> BadgerDAO <em>$120M</em></span>
           <span aria-hidden="true"><b>2022</b> Curve <em>$570K</em></span>
           <span aria-hidden="true"><b>2025</b> Bybit <em>$1.5B</em></span>
-          <span class="t-note" aria-hidden="true">The code changed. Nobody could tell.</span>
+          <span class="t-note" aria-hidden="true">The code changed. Users could not check.</span>
         </div>
+        <p class="muted">Past front-end incidents, losses as reported; sources being verified.</p>
       </section>
 
       <!-- Built on Arkiv: their white wordmark on their blue, as their brand rules ask. -->
@@ -74,7 +76,7 @@
           <a class="arkiv-logo" href="https://arkiv.network/" rel="noopener noreferrer" target="_blank">
             <img src="assets/arkiv-logo-white.svg" alt="Arkiv" width="278" height="64" />
           </a>
-          <p class="arkiv-line">Every release and every check is a public record on Arkiv.</p>
+          <p class="arkiv-line">Every release, and what our indexer sees on live sites, is a public record on Arkiv.</p>
         </div>
       </section>
 
@@ -105,7 +107,7 @@
             <li class="hs-panel">
               <span class="num">03</span>
               <h3>Check</h3>
-              <p>The extension re-hashes every script you load.</p>
+              <p>The extension re-hashes the scripts a page loads and compares them with the release.</p>
               <div class="hs-vis hs-badge ok" aria-hidden="true"><span>OK</span>Every script matches the release</div>
             </li>
             <li class="hs-panel">
@@ -122,9 +124,10 @@
       <section class="l-section" id="measured">
         <p class="eyebrow reveal">Measured</p>
         <dl class="stats">
-          <div class="stat reveal"><dt>Scripts hashed on 5 live dApps</dt><dd>1,081<span>/1,081</span></dd></div>
-          <div class="stat reveal"><dt>Slowest record read, 9 runs</dt><dd>1.1<span>s</span></dd></div>
+          <div class="stat reveal"><dt>Sites the indexer watches</dt><dd>250</dd></div>
+          <div class="stat reveal"><dt>Full pass over 247 sites</dt><dd>7.7<span> min</span></dd></div>
         </dl>
+        <p class="muted">Measured 6 Nov 2026 on the live indexer. Limits: inline scripts and anything past 60 scripts per site are not checked, and only a team that publishes with Hydra can show a match.</p>
       </section>
 
       <!-- Check -->
@@ -139,7 +142,7 @@
             </button>
           </div>
         </form>
-        <a class="ghost reveal" href="releases/">Or browse every release</a>
+        <a class="ghost reveal" href="releases/">Or browse every build</a>
       </section>
 
       <footer class="colophon label">

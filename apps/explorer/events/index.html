@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Events, Hydra explorer</title>
+    <title>Activity, Hydra explorer</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
@@ -15,20 +15,21 @@
     <header class="bar">
       <a class="mark" href="../">Hydra</a>
       <nav aria-label="Main">
-        <a href="../releases/">Releases</a>
-        <a href="./" aria-current="page">Events</a>
+        <a href="../releases/">Builds</a>
+        <a href="../observed/">Sites</a>
+        <a href="./" aria-current="page">Activity</a>
         <a href="../search/">Search</a>
         <a href="../publish/">Publish</a>
       </nav>
       <span class="tag">Arkiv Rabdi / 7794095</span>
     </header>
-    <span class="rail label" aria-hidden="true">Events</span>
+    <span class="rail label" aria-hidden="true">Activity</span>
 
     <main id="main">
       <section class="hero">
-        <p class="eyebrow">Registry <span>/ Events</span></p>
-        <h1 class="compact" data-flap>Events</h1>
-        <p class="lede">Releases from CI, and what the indexer saw on live sites every 15 minutes. Newest first.</p>
+        <p class="eyebrow">Registry <span>/ Activity</span></p>
+        <h1 class="compact" data-flap>Activity</h1>
+        <p class="lede">Releases from CI, and what the indexer saw on live sites, about every 30 minutes. It writes a new observation when something changes, plus one a day. Newest first.</p>
       </section>
 
       <section class="section">
@@ -44,7 +45,7 @@
 
       <footer class="colophon label">
         <span>Read only</span>
-        <span>No backend</span>
+        <span>Arkiv, plus the Hydra API for domains</span>
         <span>Arkiv SDK 1.0.1</span>
       </footer>
     </main>
