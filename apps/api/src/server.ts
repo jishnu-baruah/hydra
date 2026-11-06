@@ -64,12 +64,18 @@ export function indexerRunner(run: () => Promise<RunSummary>, now: () => number 
     running = true
     const t0 = now()
     startedAt = t0
-    run()
+    // A run that never settles (a socket that never errors) must not hold the busy flag forever.
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const cap = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('the run took over 40 minutes and was abandoned')), 40 * 60_000)
+    })
+    Promise.race([run(), cap])
       .then((s) => { last = s })
       .catch((err) => {
         last = { sites: 0, written: 0, txs: [], errors: [`indexer run failed: ${rootCause(err)}. Check the API logs and rerun`], lines: [], ms: now() - t0 }
       })
       .finally(() => {
+        clearTimeout(timer)
         finishedAt = now()
         running = false
       })

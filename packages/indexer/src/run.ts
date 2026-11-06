@@ -139,7 +139,8 @@ async function scan(t: Target, prev: Prev | undefined, now: number) {
   } catch (err) {
     problems.push(`UNREACHABLE ${rootCause(err)}`)
   }
-  const changed = !!prev && prev.scripts_hash !== hash
+  // Only a run that read scripts can differ from one that did: an outage is not a change.
+  const changed = !!prev && seen.length > 0 && prev.scripts_hash !== EMPTY && prev.scripts_hash !== hash
   return { t, status, seen, problems, hash, changed, via, runtime }
 }
 
@@ -168,6 +169,7 @@ export interface RunSummary {
 
 const PREV_WINDOW = 3 * DAY
 const LLAMA = 'https://api.llama.fi/protocols'
+const EMPTY = scriptsHash([]) // the hash of a run that read no scripts
 
 // Newest earlier observation per domain from the indexer wallet's own records.
 async function previous(reader: unknown, addr: Hex, now: number): Promise<Map<string, Prev>> {

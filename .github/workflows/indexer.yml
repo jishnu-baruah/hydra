@@ -40,10 +40,11 @@ jobs:
             curl -fsS --max-time 60 $api/v1/indexer/status -o st.json && report
             exit 0
           fi
-          # Poll every 30 s for up to 28 minutes.
-          for i in $(seq 1 56); do
+          # Poll every 30 s until a 28-minute deadline (a clock, so slow polls cannot outlast the job).
+          end=$(( $(date +%s) + 1680 ))
+          while [ "$(date +%s)" -lt "$end" ]; do
             sleep 30
-            curl -fsS --max-time 60 $api/v1/indexer/status -o st.json || { echo "status not reachable yet, retrying"; continue; }
+            curl -fsS --max-time 20 $api/v1/indexer/status -o st.json || { echo "status not reachable yet, retrying"; continue; }
             done=$(node -e "const j=JSON.parse(require('fs').readFileSync('st.json','utf8'));console.log(!j.running&&j.finishedAt!=null&&j.finishedAt>=$since?'yes':'no')")
             if [ "$done" = yes ]; then report; exit 0; fi
           done
