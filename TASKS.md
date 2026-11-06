@@ -323,7 +323,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: the publisher wallet holds 5 tGLM and has sent 0 transactions, so the blocker is a first publish, not funding; every Hydra record comes from that 1 wallet, so the explorer now trusts only entities created by it
 
 ### T-B03, Explorer search
-- Status: blocked, see OP-8 | Branch: feature/t-b03-explorer-search
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/110 | Branch: feature/t-b03-explorer-search
 - Suggested: Mouli
 - Depends-on: T-B01
 - Touches: apps/explorer/search/, apps/explorer/src/arkiv.js, apps/explorer/index.html
@@ -770,6 +770,18 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Scope: one small renderer that counts calls and failures and names the reason (no key, HTTP status such as 402 credit out, timeout), and after 3 failures in a row stops calling for the rest of the run; the run summary gains a `jina` field and, when the view failed, 1 error line that says what broke, how many sites it affected and what to do. The 30-minute workflow and /v1/indexer/status already print errors
 - Acceptance: unit tests written failing first (renderer: ok, no key, 402 then stop after 3, network error, a page with no scripts is not a failure; indexer 30 or more tests pass); a dry run with an invalid key prints 1 error line naming HTTP 401 or 402 and makes at most 3 calls
 - Evidence: <PR link>
+
+### T-C06, Extension flags a hostname on a public phishing list
+- Status: in-review | Branch: feature/t-c06-known-bad
+- Suggested: Jishnu
+- Depends-on: T-A22
+- Touches: apps/extension/src/compare/blocklist.js, apps/extension/src/compare/blocklist.test.mjs, apps/extension/src/background.js, apps/extension/src/verdict.js, apps/extension/src/ui/present.js, apps/extension/src/ui/present.test.mjs, apps/extension/src/ui/banner.js, apps/extension/README.md
+- Serves: Practicality (judged)
+- Known: for sites with no Hydra release the extension shows grey and says nothing; the 6 Nov re-score (hack-idea-score) decided not to build a full layer for unregistered sites, only an honest known-bad flag from public data. MetaMask's eth-phishing-detect list was checked on GitHub on 6 Nov: 115,807 blocked domains in one 3.4 MB config.json, "Don't Be A Dick" public licence, pushed the same day; ScamSniffer's is GPL-3.0 so it is not used. The extension is Mouli's code; this adds one verdict and one module
+- Scope: a daily-refreshed local copy of the list in storage.local, checked in memory against the visited hostname and its parent domains (the allowlist wins), with no browsing data sent anywhere; a hit shows a distinct "BAD" badge and banner saying the hostname is on MetaMask's public phishing list and that lists can be wrong; a miss says nothing, never "safe"; the README says the list is fetched from GitHub and credits MetaMask
+- Acceptance: unit tests written failing first for the matching and the cache (blocklist 8 or more pass, extension 26 or more pass); in real Chrome a hostname taken from the live list shows BAD and app.uniswap.org and hydra-demo-dapp.vercel.app do not
+- Evidence: PR (this one); in real Chrome 156 (extension loaded over the DevTools pipe) with the live MetaMask list downloaded by the extension itself, poly-mark.xyz (a real entry mapped to a local page) shows BAD with the list wording, hydra-demo-dapp.vercel.app shows OK, app.uniswap.org is not flagged; blocklist 10 tests pass, extension 28 pass
+- Finding: MetaMask eth-phishing-detect is the only crypto list that is both permissively licensed and one small file (115,807 domains, 3.4 MB, pushed daily); ScamSniffer scam-database is GPL-3.0 and CryptoScamDB stopped in 2023, so neither is used; GLM review found that a stale copy was trusted forever and that entries were not checked to be hostnames, both fixed with tests first; the list hit replaces the script comparison for that page, so a false positive hides script evidence, which the banner words as "lists can be wrong"
 
 
 ### T-A25, Live checker: watch one bound site every 5 seconds, switched on from a page
