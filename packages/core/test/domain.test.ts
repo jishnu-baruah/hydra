@@ -14,7 +14,8 @@ test('normalizeDomain refuses anything that is not a public hostname', () => {
 
 test('isPrivateAddress flags loopback, private, link-local and mapped addresses', () => {
   for (const ip of ['0.0.0.0', '10.1.2.3', '127.0.0.1', '169.254.169.254', '172.16.0.1', '172.31.255.255', '192.168.1.1',
-    '100.64.0.1', '::1', '::', 'fc00::1', 'fd12::1', 'fe80::1', '::ffff:127.0.0.1', '::ffff:10.0.0.1'])
+    '100.64.0.1', '::1', '::', 'fc00::1', 'fd12::1', 'fe80::1', '::ffff:127.0.0.1', '::ffff:10.0.0.1',
+    '0:0:0:0:0:0:0:1', '::127.0.0.1', '::ffff:7f00:1', '64:ff9b::a00:1', '2002:a00:1::1', '2001:db8::1', 'not-an-ip'])
     assert.equal(isPrivateAddress(ip), true, ip)
   for (const ip of ['8.8.8.8', '1.1.1.1', '172.32.0.1', '100.128.0.1', '2606:4700:4700::1111', '::ffff:8.8.8.8'])
     assert.equal(isPrivateAddress(ip), false, ip)
@@ -30,25 +31,24 @@ test('proofNames needs an exact hydra-app=<app> line', () => {
 })
 
 const pub = async () => [{ address: '93.184.216.34', family: 4 }]
-const text = (body: string, status = 200) => async () => new Response(body, { status })
+const text = (body: string, status = 200) => async () => ({ status, body })
 
 test('checkProof passes when the file names the app', async () => {
-  let asked = ''
-  let init: RequestInit | undefined
+  let asked: unknown[] = []
   const r = await checkProof('app.example.com', 'demo', {
     lookup: pub,
-    fetch: async (url, i) => ((asked = String(url)), (init = i), new Response('hydra-app=demo\n')),
+    get: async (...a) => ((asked = a), { status: 200, body: 'hydra-app=demo\n' }),
   })
   assert.deepEqual(r, { ok: true })
-  assert.equal(asked, `https://app.example.com${PROOF_PATH}`)
-  assert.equal(init?.redirect, 'error') // a redirect could point the check at another host
+  // Connects to the address that was checked, so a second DNS answer cannot redirect it.
+  assert.deepEqual(asked, ['app.example.com', { address: '93.184.216.34', family: 4 }, PROOF_PATH])
 })
 
 test('checkProof refuses a domain that resolves to a private address, without fetching', async () => {
   let fetched = false
   const r = await checkProof('evil.example.com', 'demo', {
     lookup: async () => [{ address: '93.184.216.34', family: 4 }, { address: '127.0.0.1', family: 4 }],
-    fetch: async () => ((fetched = true), new Response('hydra-app=demo')),
+    get: async () => ((fetched = true), { status: 200, body: 'hydra-app=demo' }),
   })
   assert.equal(r.ok, false)
   assert.match((r as { reason: string }).reason, /private address/)
@@ -56,15 +56,24 @@ test('checkProof refuses a domain that resolves to a private address, without fe
 })
 
 test('checkProof reports a missing file, a wrong app and a bad domain with the fix', async () => {
-  const missing = await checkProof('app.example.com', 'demo', { lookup: pub, fetch: text('nope', 404) })
+  const missing = await checkProof('app.example.com', 'demo', { lookup: pub, get: text('nope', 404) })
   assert.match((missing as { reason: string }).reason, /HTTP 404.*hydra-app=demo/)
-  const wrong = await checkProof('app.example.com', 'demo', { lookup: pub, fetch: text('hydra-app=other') })
+  assert.equal((missing as { transient?: boolean }).transient, undefined)
+  const wrong = await checkProof('app.example.com', 'demo', { lookup: pub, get: text('hydra-app=other') })
   assert.match((wrong as { reason: string }).reason, /does not contain the line hydra-app=demo/)
-  const bad = await checkProof('localhost', 'demo', { lookup: pub, fetch: text('hydra-app=demo') })
+  const bad = await checkProof('localhost', 'demo', { lookup: pub, get: text('hydra-app=demo') })
   assert.match((bad as { reason: string }).reason, /not a public hostname/)
 })
 
+test('checkProof marks server errors and network failures as transient, not lost', async () => {
+  const down = await checkProof('app.example.com', 'demo', { lookup: pub, get: text('oops', 503) })
+  assert.equal((down as { transient?: boolean }).transient, true)
+  const reset = await checkProof('app.example.com', 'demo', { lookup: pub, get: async () => { throw new Error('ECONNRESET') } })
+  assert.equal((reset as { transient?: boolean }).transient, true)
+  assert.match((reset as { reason: string }).reason, /ECONNRESET/)
+})
+
 test('checkProof ignores a file over 4 KiB', async () => {
-  const r = await checkProof('app.example.com', 'demo', { lookup: pub, fetch: text('hydra-app=demo\n' + 'x'.repeat(5000)) })
+  const r = await checkProof('app.example.com', 'demo', { lookup: pub, get: async () => ({ status: 200, body: null }) })
   assert.match((r as { reason: string }).reason, /over 4096 bytes/)
 })

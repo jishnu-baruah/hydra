@@ -130,6 +130,9 @@ export function bindTargets(
 }
 
 // A bound domain whose hydra.txt proof no longer holds: a hijacker could have removed the file.
-export function proofProblem(bound: boolean, result: { ok: true } | { ok: false; reason: string }): string | null {
-  return bound && !result.ok ? `DOMAIN_PROOF_LOST ${result.reason}` : null
+// LOST means the site answered without the proof (or resolves privately): a mismatch on its own.
+// UNREACHABLE means the file could not be read at all, so the script compare decides.
+export function proofProblem(bound: boolean, result: { ok: true } | { ok: false; reason: string; transient?: true }): string | null {
+  if (!bound || result.ok) return null
+  return `${result.transient ? 'DOMAIN_PROOF_UNREACHABLE' : 'DOMAIN_PROOF_LOST'} ${result.reason}`
 }

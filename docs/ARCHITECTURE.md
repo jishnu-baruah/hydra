@@ -112,7 +112,9 @@ The API keeps a domain in `domains` only if `https://<domain>/.well-known/hydra.
 unproven domain does not fail the publish: the response lists it in `domainsUnverified` with the
 reason and the fix, and the Action prints it. The indexer rechecks the file on every run. A bound
 domain that loses the file is flagged `DOMAIN_PROOF_LOST` and marked `mismatch`, because a hijacker
-could delete the file to dodge the check. A copied file does not help, since the scripts must still
+could delete the file to dodge the check. A file that cannot be read at all (network error, timeout, 5xx) is only
+`DOMAIN_PROOF_UNREACHABLE`, and the script compare decides. The check connects to the address it
+validated (no second DNS answer) and reads at most 4 KiB. A copied file does not help, since the scripts must still
 match the release. No token is needed: the app owner lists the domain with the API key, and the
 domain serves the file.
 

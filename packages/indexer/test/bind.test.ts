@@ -31,3 +31,7 @@ test('proofProblem: only a bound target with a failed proof is a problem, and it
   assert.equal(proofProblem(false, { ok: false, reason: 'HTTP 404' }), null)
   assert.equal(proofProblem(true, { ok: false, reason: 'HTTP 404' }), 'DOMAIN_PROOF_LOST HTTP 404')
 })
+
+test('proofProblem: an unreadable file is UNREACHABLE, not LOST, so a network blip is no hijack alarm', () => {
+  assert.equal(proofProblem(true, { ok: false, transient: true, reason: 'timed out' }), 'DOMAIN_PROOF_UNREACHABLE timed out')
+})

@@ -60,12 +60,17 @@ async function manifestFor(api: string, app: string): Promise<Manifest | null> {
   }
 }
 
+// /v1/activity returns the newest 100 releases, so apps with only older ones are missed (T-A20).
+const ACTIVITY_LIMIT = 100
+
 // Every app with a release on the API, with its latest manifest. Throws with the cause on failure.
-async function discover(api: string): Promise<{ app: string; manifest: Manifest }[]> {
+async function discover(api: string, warn: string[]): Promise<{ app: string; manifest: Manifest }[]> {
   const res = await fetch(`${api}/v1/activity`, { signal: AbortSignal.timeout(60_000) })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const { events } = (await res.json()) as { events?: { kind?: string; app?: string }[] }
-  const apps = [...new Set((events ?? []).filter((e) => e.kind === 'release' && typeof e.app === 'string').map((e) => e.app as string))]
+  const rel = (events ?? []).filter((e) => e.kind === 'release' && typeof e.app === 'string')
+  if (rel.length >= ACTIVITY_LIMIT) warn.push(`release discovery saw ${rel.length} releases, the activity limit; apps with only older releases may be unbound`)
+  const apps = [...new Set(rel.map((e) => e.app as string))]
   const found = await Promise.all(apps.map(async (app) => ({ app, manifest: await manifestFor(api, app) })))
   return found.filter((f): f is { app: string; manifest: Manifest } => !!f.manifest)
 }
@@ -83,12 +88,12 @@ async function scan(t: Target) {
   let via: 'direct' | 'renderer' = 'direct'
   let runtime: string[] = []
   // A bound domain is rechecked first. One that lost its proof, or now resolves to a private
-  // address, is not fetched at all: it is a mismatch on the proof alone.
-  const lost = t.bound && t.app ? proofProblem(true, await checkProof(t.domain, t.app)) : null
-  if (lost) {
-    problems.push(lost)
-    status = 'mismatch'
-  }
+  // address, is not fetched at all: it is a mismatch on the proof alone. An unreadable proof is
+  // noted and the scan goes on.
+  const proof = t.bound && t.app ? proofProblem(true, await checkProof(t.domain, t.app)) : null
+  if (proof) problems.push(proof)
+  const lost = proof?.startsWith('DOMAIN_PROOF_LOST')
+  if (lost) status = 'mismatch'
   const renderedP = lost ? Promise.resolve(null) : rendered(pageUrl) // in parallel with the direct fetch
   const manifest = t.manifest
   if (!lost) try {
@@ -157,7 +162,7 @@ export async function runOnce(o: { api: string; clients: ReturnType<typeof arkiv
   const discoveryErrors: string[] = []
   let releases: { app: string; manifest: Manifest }[] = []
   try {
-    releases = await discover(o.api)
+    releases = await discover(o.api, discoveryErrors)
   } catch (err) {
     discoveryErrors.push(`release discovery failed, all targets unbound: ${rootCause(err)}. Check the API at ${o.api} and rerun`)
   }
