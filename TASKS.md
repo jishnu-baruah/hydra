@@ -711,3 +711,15 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Known: docs/prior-learnings.md lists 4 Arkiv doc issues from the spike; recheck each on Rabdi before filing
 - Acceptance: every submission field filled; 1 section each for Arkiv and Swarm with at least 2 tx hashes and 1 Swarm reference; FEEDBACK.md lists at least 3 builder issues
 - Evidence: <submission link>
+
+### T-J04, Prize-required files: license, /arkiv judge files, README query
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-j04-prize-files
+- Suggested: Jishnu
+- Depends-on: none
+- Touches: LICENSE, README.md, arkiv/schema.md, arkiv/friction.md, arkiv/reach.md, arkiv/why-arkiv.md, arkiv/how-you-use-arkiv.md, scripts/query-releases.mjs
+- Serves: Arkiv track (prize)
+- Known: the Build on Arkiv (from scratch) rules (docs/prizes.md, read again 6 Nov from the Arkiv MCP) need an open-source license, 5 files under /arkiv (schema, friction, reach, why-arkiv, how-you-use-arkiv), the wallet addresses that wrote entities and one query in the README, and an AI-use statement; only arkiv/swarm.md existed (T-D11)
+- Scope: draft all of them from what the repo and the live system actually show, with the one runnable query tested against live Arkiv. Manish keeps T-J03 (submission text, docs/FEEDBACK.md) and can reuse arkiv/friction.md. The public repo itself is OP-6 and stays a human decision
+- Acceptance: `node scripts/query-releases.mjs demo-dapp` prints release demo-1 with its Swarm reference and entity key; the 5 files exist, answer each question on the prize page, and contain no dash characters
+- Evidence: <PR link>
+
