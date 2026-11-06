@@ -386,3 +386,25 @@ test('watch route: 503 when no token is configured, 404 when there is no watcher
   after(() => bare.close())
   assert.equal((await fetch(`http://127.0.0.1:${(bare.address() as AddressInfo).port}/v1/watch`)).status, 404)
 })
+
+test('demo hack and fix routes: token required, 503 without Vercel, 202 with it', async () => {
+  const calls: string[] = []
+  const mk = (deploy?: (k: 'hack' | 'fix') => Promise<unknown>) => {
+    const s = createApi({ secret: SECRET, watch: { watcher: { status: () => ({}) } as never, token: 'w'.repeat(20) }, demo: { deploy } }).listen(0)
+    after(() => s.close())
+    return `http://127.0.0.1:${(s.address() as AddressInfo).port}`
+  }
+  const on = mk(async (k) => (calls.push(k), { id: 'dpl', url: 'u', state: 'QUEUED' }))
+  const post = (base: string, kind: string, token?: string) =>
+    fetch(`${base}/v1/demo/${kind}`, { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  assert.equal((await post(on, 'hack')).status, 401)
+  assert.equal((await post(on, 'hack', 'nope')).status, 401)
+  const ok = await post(on, 'hack', 'w'.repeat(20))
+  assert.equal(ok.status, 202)
+  assert.equal((await ok.json()).kind, 'hack')
+  assert.equal((await post(on, 'fix', 'w'.repeat(20))).status, 202)
+  assert.deepEqual(calls, ['hack', 'fix'])
+  assert.equal((await post(on, 'other', 'w'.repeat(20))).status, 404)
+  assert.equal((await post(mk(undefined), 'hack', 'w'.repeat(20))).status, 503)
+})
+

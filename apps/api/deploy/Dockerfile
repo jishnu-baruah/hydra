@@ -22,6 +22,8 @@ COPY packages/action packages/action
 COPY packages/indexer/src packages/indexer/src
 COPY packages/indexer/targets.json packages/indexer/
 COPY apps/api/src apps/api/src
+COPY demo/index.html demo/app.js demo/vercel.json demo/
+COPY demo/.well-known demo/.well-known
 
 USER node
 WORKDIR /app/apps/api

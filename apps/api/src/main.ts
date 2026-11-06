@@ -12,6 +12,7 @@ import { activity, appForDomainFrom, claimOf, filesByHash, releasesFor } from '.
 import { createApi, indexerRunner, type ApiDeps } from './server.ts'
 import { swarmUploader } from './swarm.ts'
 import { createWatcher, runOk } from './watch.ts'
+import { deployDemo, readDemoFiles } from './demo.ts'
 
 const env = process.env
 const secret = env.HYDRA_KEY_SECRET ?? ''
@@ -131,6 +132,16 @@ const deps: ApiDeps = {
   appForDomain: writer ? cached(30_000, (d: string) => appForDomainFrom(publicClient, writer, d)) : undefined,
   indexer,
   watch: watcher ? { watcher, token: watchToken } : undefined,
+  demo: {
+    deploy: env.VERCEL_TOKEN
+      ? async (kind) =>
+          deployDemo(kind, {
+            token: env.VERCEL_TOKEN!,
+            project: { name: 'hydra-demo-dapp', projectId: env.VERCEL_DEMO_PROJECT ?? 'prj_H6fU06xNrnyBAcUL3HmEfCSKhaPW', teamId: env.VERCEL_TEAM ?? 'team_rnIa7yXZrd6PhH4sJINfwVuI' },
+            files: await readDemoFiles(fileURLToPath(new URL('../../../demo/', import.meta.url))),
+          })
+      : undefined,
+  },
   observations: sites,
   activity: async () => (writer ? activity(publicClient, writer) : { head: null, events: [] }),
   health: { watch: Boolean(watcher && watchToken), publisherWallet: walletClient?.account.address ?? null, accessKey: Boolean(env.ARKIV_ACCESS_KEY), indexer: Boolean(indexer) },
