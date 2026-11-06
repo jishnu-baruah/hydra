@@ -551,7 +551,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Scope: the bonus page lists 7 items for `/arkiv/swarm.md`; answer each for the gateway we actually use (`api.gateway.ethswarm.org`, OP-11), with links a judge can open, and keep README "How we used Swarm" and docs/swarm.md consistent with it. Replaces the earlier testnet-switch scope, cut with OP-11
 - Acceptance: 6 of 7 bonus items answered with links that return 200; the 7th (demo-video timestamp) filled when the video exists
 - Evidence: <PR link>
-### T-D12, CROPS section in the README for the EF "Best CROPS App" prize
+### T-D13, CROPS section in the README for the EF "Best CROPS App" prize
 - Status: open
 - Suggested: Manish
 - Depends-on: none
