@@ -39,6 +39,8 @@ export interface ApiDeps {
   indexer?: { secret: string; run: () => Promise<RunSummary>; runner?: IndexerRunner } // trigger; spends indexer gas
   // The demo watcher: GET is public status, POST switches it, guarded by a bearer token.
   watch?: { watcher: ReturnType<typeof createWatcher>; token?: string }
+  // Hack and Fix buttons (T-A27): redeploys the demo site; guarded by the watch token. Absent without VERCEL_TOKEN.
+  demo?: { deploy?: (kind: 'hack' | 'fix') => Promise<unknown> }
   health?: Record<string, unknown>
 }
 
@@ -221,6 +223,14 @@ export function createApi(deps: ApiDeps) {
         if (!triggerOk(req.headers.authorization)) return send(res, 401, { error: 'missing or wrong indexer trigger secret' })
         const out = runner!.start()
         return out.ok ? send(res, 202, { started: true, startedAt: out.startedAt }) : send(res, out.status, { error: out.error })
+      }
+
+      const demoRoute = /^\/v1\/demo\/(hack|fix)$/.exec(path)
+      if (req.method === 'POST' && demoRoute && deps.demo) {
+        if (!watchOk(req.headers.authorization)) return send(res, 401, { error: 'missing or wrong demo token' })
+        if (!deps.demo.deploy) return send(res, 503, { error: 'Hack and Fix are not configured on this server: set VERCEL_TOKEN on the host' })
+        const kind = demoRoute[1] as 'hack' | 'fix'
+        return send(res, 202, { kind, deployment: await deps.demo.deploy(kind) })
       }
 
       if (path === '/v1/watch' && deps.watch) {

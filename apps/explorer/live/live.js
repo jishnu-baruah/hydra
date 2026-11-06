@@ -87,6 +87,35 @@ $("controls").addEventListener("submit", async (e) => {
   }
 });
 
+// Hack and Fix (T-A27): the API redeploys the demo site, tampered or as published; the watcher then
+// sees the flip. Same demo token as the switch.
+for (const kind of ["hack", "fix"]) {
+  $(kind).addEventListener("click", async () => {
+    const token = $("token").value.trim();
+    const msg = $("message");
+    if (!token) {
+      msg.className = "error";
+      msg.textContent = "Enter the demo token first.";
+      return;
+    }
+    $("hack").disabled = $("fix").disabled = true;
+    try {
+      await api(`/v1/demo/${kind}`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+      msg.className = "";
+      msg.textContent = kind === "hack"
+        ? "Deploying a tampered app.js to the demo site. The watcher should turn red within about 30 s."
+        : "Deploying the published demo site again. The watcher should turn green within about 30 s.";
+      msg.dataset.sticky = "1";
+      setTimeout(() => delete msg.dataset.sticky, 20000);
+    } catch (err) {
+      msg.className = "error";
+      msg.textContent = err.status === 401 ? "That demo token is wrong." : err.message;
+    } finally {
+      $("hack").disabled = $("fix").disabled = false;
+    }
+  });
+}
+
 await poll();
 setInterval(() => {
   if (!document.hidden) poll();
