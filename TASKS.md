@@ -530,7 +530,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 # P2, 6 Nov afternoon and night
 
 ### T-D11, Swarm requirements and integration fit (research plus validation)
-- Status: open
+- Status: claimed 2026-11-06 | Owner: Manish | Branch: feature/t-d11-swarm-fit
 - Suggested: Manish
 - Depends-on: T-F02
 - Touches: docs/research/swarm-fit.md
