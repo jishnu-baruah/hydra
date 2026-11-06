@@ -1,86 +1,85 @@
-# Arkiv + Swarm bonus — Hydra
+# Hydra on Arkiv + Swarm
 
-Required by the Arkiv + Swarm bonus prize (ETHGlobal Mumbai 2026-11; qualification text in `docs/prizes.md`). Authoritative design doc: [`docs/swarm.md`](../docs/swarm.md). This file is the judge-facing summary.
+Hydra keeps a public, tamper-evident record of every dApp frontend build. The build files and their manifest live on **Swarm**; the release records that point at them live on **Arkiv** (Rabdi testnet). The explorer and the Chrome extension read the record from Arkiv, fetch the manifest from Swarm, and compare it with the scripts the live site serves.
 
-## 1. What lives on Swarm vs. what lives on Arkiv
+Each heading below answers one line of the Arkiv + Swarm bonus requirements. Design notes: [`docs/swarm.md`](../docs/swarm.md). Measured tests and costs: [`docs/research/swarm-fit.md`](../docs/research/swarm-fit.md).
 
-| Lives on Swarm | Lives on Arkiv |
+## 1. What we keep on Swarm, what we keep on Arkiv, and the field that holds the reference
+
+| On Swarm (one collection per release) | On Arkiv |
 | --- | --- |
-| The built site files (every `/index.html`, `/assets/*.js`, etc.), uploaded as one Swarm collection per release | `hydra.release` entity (one per publish) |
-| The release manifest JSON at path **`hydra-manifest.json`** inside the same collection | `hydra.file` entities (indexed by `app`+`sha256`+`release` key, up to 200 per release) |
-| | `hydra.app` entity (one per registered app) |
-| | `hydra.observation` entities (indexer, per-site-per-poll) |
-| | The full manifest JSON also rides in `release.body` when ≤ 100 KB (`apps/api/src/publish.ts:123`) |
+| Every file of the build (`index.html`, `assets/*.js`, CSS, images) | `hydra.release`: one entity per publish, with app, version, commit, CI run link and `swarm_ref` |
+| `hydra-manifest.json`: app, version, commit, and the sha256 of every file and every external script the HTML loads | `hydra.file`: one entity per code file (app, sha256, release), so a file hash can be looked up |
+| | `hydra.app`: who owns an app name; `hydra.observation`: what the indexer saw a live site serve |
 
-Arkiv is the queryable index; Swarm is the immutable blob. Enforced by `packages/core/src/records.ts:68` (the Arkiv body cap throws with "trim it or store it on Swarm").
+**The field:** `hydra.release.swarm_ref`, an indexed string holding the plain 64-hex Swarm reference of the release's collection ([`packages/core/src/records.ts:24`](../packages/core/src/records.ts)). We write no feeds and no encrypted references.
 
-## 2. Entity field holding the Swarm reference
+Arkiv is the index you can query (by app, by file hash, by owner); Swarm holds the bytes. A manifest over 100 KB does not fit an Arkiv payload ([`records.ts:72`](../packages/core/src/records.ts) throws "trim it or store it on Swarm"), so Swarm is where the full manifest always lives.
 
-**`hydra.release.swarm_ref`** — an indexed `str` column (≤ 128 B). Defined at `packages/core/src/records.ts:23`. Set by the API at `apps/api/src/publish.ts:131` from the string returned by `swarmUploader` at `apps/api/src/swarm.ts:21`. References are plain content-addressed roots (64 hex chars). No encrypted or feed references are written — see § 7.
+## 2. One Arkiv entity and the Swarm reference it points to
 
-## 3. One entity with a Swarm reference, linked for verification
+Release `hygra-demo2` version `2026-11-05.4`, published from a GitHub Actions run through the live API:
 
-Release `hygra-demo2` version `2026-11-05.4`, published through the live API on 2026-11-06:
+- Arkiv entity: [`0xda3a4c82685b8f7c1ff3ea77eb53e928decbc98fcb6e33ce253bfa5af40ab289`](https://rabdi.explorer.arkiv.network/entity/0xda3a4c82685b8f7c1ff3ea77eb53e928decbc98fcb6e33ce253bfa5af40ab289) (Rabdi explorer)
+- Its `swarm_ref`: `c98c1935aa29b10a088779266dfddcb521985741175182ef1b9e11d5a42c04ad`
+- Open on Swarm: [`https://api.gateway.ethswarm.org/bzz/c98c1935aa29b10a088779266dfddcb521985741175182ef1b9e11d5a42c04ad/hydra-manifest.json`](https://api.gateway.ethswarm.org/bzz/c98c1935aa29b10a088779266dfddcb521985741175182ef1b9e11d5a42c04ad/hydra-manifest.json)
 
-- Entity key on Rabdi: [`0xda3a4c82685b8f7c1ff3ea77eb53e928decbc98fcb6e33ce253bfa5af40ab289`](https://rabdi.explorer.arkiv.network/entity/0xda3a4c82685b8f7c1ff3ea77eb53e928decbc98fcb6e33ce253bfa5af40ab289)
-- `swarm_ref`: `c98c1935aa29b10a088779266dfddcb521985741175182ef1b9e11d5a42c04ad`
-- Gateway read: [`https://api.gateway.ethswarm.org/bzz/c98c1935aa29b10a088779266dfddcb521985741175182ef1b9e11d5a42c04ad/hydra-manifest.json`](https://api.gateway.ethswarm.org/bzz/c98c1935aa29b10a088779266dfddcb521985741175182ef1b9e11d5a42c04ad/hydra-manifest.json) returns the manifest JSON (HTTP 200). The JS file it lists reads back with a matching sha256; `index.html` gets the gateway's HTML block (see section 9 and T-F02).
+You should see the manifest JSON with `"app": "hygra-demo2"`. The script it lists, `/assets/index-9kLZXjpr.js`, opens at the same reference and its sha256 matches the manifest.
 
-## 4. Postage batch ID and purchasing wallet
+## 3. Postage batch, who gave it, and the service we upload through
 
-**We do not hold a postage batch.** Uploads go to the Ethereum Foundation's public Swarm gateway at `https://api.gateway.ethswarm.org`, which envelope-stamps on our behalf. Confirmed 2026-11-05 that the gateway accepts and ignores the `Swarm-Postage-Batch-Id` header entirely (see `spikes/F2/result.json` and the "batch-id header is ignored" test in `docs/swarm.md` § Path B). So:
+- **Batch ID and buying wallet:** not ours. We hold no batch and no wallet with BZZ. The gateway stamps each upload with its own batch and does not expose it (`/stamps` returns 404).
+- **Who gave us the batch:** the public Swarm gateway `https://api.gateway.ethswarm.org`, which runs Ethersphere's [swarm-gateway](https://github.com/ethersphere/swarm-gateway) and "manages postage stamps for uploads".
+- **Service we upload through:** that same gateway. No Bee node of our own. The API sends a `Swarm-Postage-Batch-Id` header only when `SWARM_POSTAGE_BATCH_ID` is set, so an own Bee node with its own batch also works ([`apps/api/src/swarm.ts`](../apps/api/src/swarm.ts)).
 
-- **Batch ID:** none (gateway-managed).
-- **Purchasing wallet:** none (the EF gateway owns its batch).
+## 4. Files that upload to Swarm and read from it
 
-This is the Arkiv + Swarm bonus's expected answer for teams using the public gateway. If we later switch to a self-hosted Bee, the batch ID and wallet address go here.
+| Role | File |
+| --- | --- |
+| Upload a build as one collection (`POST /bzz`, tar, 120 s timeout) | [`apps/api/src/swarm.ts`](../apps/api/src/swarm.ts) |
+| Add `hydra-manifest.json` to the upload and store the reference in `swarm_ref` | [`apps/api/src/publish.ts:148`](../apps/api/src/publish.ts) |
+| Build the tar | [`apps/api/src/tar.ts`](../apps/api/src/tar.ts) |
+| Turn Swarm on from `BEE_API_URL` | [`apps/api/src/main.ts:26`](../apps/api/src/main.ts) |
+| Explorer: link each release to its manifest on Swarm | [`apps/explorer/app/releases.js:16`](../apps/explorer/app/releases.js), shown by [`apps/explorer/app/page.js`](../apps/explorer/app/page.js) |
+| Extension: fetch the newest release's manifest from Swarm to check the live page | [`apps/extension/src/compare/lookup.js:56`](../apps/extension/src/compare/lookup.js) |
+| Teams publish with this script, served by the API | [`packages/action/publish.mjs`](../packages/action/publish.mjs) |
 
-## 5. Bee node or hosted service used for uploads
+## 5. Run one upload and one read yourself
 
-**EF public gateway** `https://api.gateway.ethswarm.org`. No local Bee node. Spike `T-F02` ran a 5-file folder upload and read every file back, see `spikes/F2/result.json`.
-
-## 6. Files in this repo that upload to and read from Swarm
-
-| Role | File | Notes |
-| --- | --- | --- |
-| Upload | [`apps/api/src/swarm.ts`](../apps/api/src/swarm.ts) | `POST /bzz` with `Swarm-Collection: true`, `Swarm-Index-Document: index.html`, 120 s abort |
-| Upload caller | [`apps/api/src/publish.ts`](../apps/api/src/publish.ts) (lines 107-112) | Appends `hydra-manifest.json` to the tar, stores the returned ref into `release.swarm_ref` |
-| Tar builder | [`apps/api/src/tar.ts`](../apps/api/src/tar.ts) | Minimal ustar writer for the Bee collection upload |
-| Config wiring | [`apps/api/src/main.ts`](../apps/api/src/main.ts) (line 23) | Reads `BEE_API_URL` and the optional `SWARM_POSTAGE_BATCH_ID` from env |
-| Arkiv column | [`packages/core/src/records.ts`](../packages/core/src/records.ts) (line 23) | `swarm_ref: str().indexed()` on `ReleaseSchema` |
-| Explorer read | [`apps/explorer/src/main.js`](../apps/explorer/src/main.js) (line 58) | Renders `swarm_ref` on the home list; app page (T-B02) will link out |
-| Extension read | `apps/extension/` (T-C02) | Will fetch `<gateway>/bzz/<swarm_ref>/hydra-manifest.json` to verify |
-
-## 7. Reproducible upload and read
-
-Smallest possible end-to-end against the public gateway. Prerequisites: `curl`.
+Needs only `curl` and `tar`. No key, no wallet, no batch.
 
 ```bash
-# 1. Upload (a tiny tar of one file, Swarm collection)
-cd /tmp && mkdir -p demo && echo '{"hi":"hydra"}' > demo/hydra-manifest.json
+mkdir -p demo && echo '{"hi":"hydra"}' > demo/hydra-manifest.json
 tar -cf demo.tar -C demo .
-curl -sS -X POST \
-  -H "Content-Type: application/x-tar" \
-  -H "Swarm-Collection: true" \
-  --data-binary @demo.tar \
-  "https://api.gateway.ethswarm.org/bzz"
-# -> {"reference":"<64-hex>"}
-
-# 2. Read back
-REF=<paste reference>
-curl -sS "https://api.gateway.ethswarm.org/bzz/$REF/hydra-manifest.json"
-# -> {"hi":"hydra"}
+curl -sS -X POST -H "Content-Type: application/x-tar" -H "Swarm-Collection: true" \
+  --data-binary @demo.tar https://api.gateway.ethswarm.org/bzz
 ```
 
-Full 5-file spike with sha256 byte-compare: `spikes/F2/result.json`.
+You should see `{"reference":"<64 hex characters>"}`. Then read it back:
 
-## 8. Demo-video timestamp where Swarm is used
+```bash
+curl -sS https://api.gateway.ethswarm.org/bzz/<reference>/hydra-manifest.json
+```
 
-**TBD at submission time.** Manish records the video in Phase 3 (7 Nov). The Swarm moment: the publish-step UI prints `swarmRef`, and the explorer opens it in the EF gateway to show the manifest byte-identical.
+You should see `{"hi":"hydra"}`. We ran exactly these steps on 2026-11-06 and got reference `a86be79f0083c312484c31ea5bbaf8602ddb2d58ab7578e2b24b767a5fb7f953`.
 
-## 9. Friction encountered
+To publish a whole build the way a team does, with an API key from the Hydra site:
 
-- **EF gateway blocks HTML reads** (302 → `bzz.link/forbidden`). JSON/JS/CSS/plain text work. We serve the manifest from Swarm and the site from the dApp's origin, so this does not block our critical path — but a "render the site from Swarm" link in the explorer would need a different gateway.
-- **No postage batch needed.** The API turns Swarm on from `BEE_API_URL` alone and sends `Swarm-Postage-Batch-Id` only when `SWARM_POSTAGE_BATCH_ID` is set, so the EF gateway path runs with the batch id empty.
-- **No encrypted Swarm references on-chain.** The bonus rules forbid encrypted refs in public Arkiv entities; our refs are plain 64-hex, so this is a note not a blocker.
-- **Pre-event spike T7** (Tiramisu): `0.8.1` SDK, since replaced by `1.0.1` on Rabdi; `docs/prior-learnings.md` records the lowercase-attribute and i32-number issues we hit then, which are now encoded in `packages/core/src/records.ts` so publishers can't re-step on them. More Arkiv builder feedback goes in `docs/FEEDBACK.md` before submission.
+```bash
+curl -sO https://hydra-api-5xmn.onrender.com/publish.mjs
+HYDRA_API_URL=https://hydra-api-5xmn.onrender.com HYDRA_API_KEY=<your key> node publish.mjs <build folder>
+```
+
+You should see `release ... recorded on Arkiv`, the entity key, the transaction link and a `swarm` reference whose `hydra-manifest.json` opens on the gateway.
+
+## 6. Where Swarm appears in the demo video
+
+**To fill when the video is cut.** The Swarm moment: the publish prints its `swarm` reference, then the explorer's Manifest link opens `hydra-manifest.json` on the gateway.
+
+## 7. What got in our way
+
+- **Public gateways refuse HTML.** Every `index.html` read gets a 302 to a "forbidden" page, on both the mainnet and testnet gateways. The gateway sniffs the content for `<!doctype html`, so uploading a page as raw bytes or as `application/octet-stream` does not help. It costs Hydra nothing, since we only read the JSON manifest from Swarm, but a release cannot be served back as a working site. Gzipping the HTML first gets it through and reads back byte-identical after unzipping ([research, section 5](../docs/research/swarm-fit.md)).
+- **Which network a gateway serves is not written down.** We found by test that `api.gateway.ethswarm.org` and `api.gateway.testnet.ethswarm.org` are separate networks (a reference from one returns 404 on the other). We upload through the first; it is free, so no funds are spent (DECISIONS.md, 6 Nov). Arkiv stays on Rabdi testnet.
+- **The batch you upload with is invisible on a public gateway.** We cannot quote a batch ID, only the gateway that gave it (section 3).
+- **Feeds lag.** A feed update written on the testnet gateway took about 60 s before a direct read found it; reading through its feed manifest worked ([research, section 6](../docs/research/swarm-fit.md)).
+- **No encrypted references on Arkiv.** Our references are plain, so nothing secret sits in a public entity.
