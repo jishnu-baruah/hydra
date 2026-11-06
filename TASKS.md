@@ -323,7 +323,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: the publisher wallet holds 5 tGLM and has sent 0 transactions, so the blocker is a first publish, not funding; every Hydra record comes from that 1 wallet, so the explorer now trusts only entities created by it
 
 ### T-B03, Explorer search
-- Status: blocked, see OP-8 | Branch: feature/t-b03-explorer-search
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/110 | Branch: feature/t-b03-explorer-search
 - Suggested: Mouli
 - Depends-on: T-B01
 - Touches: apps/explorer/search/, apps/explorer/src/arkiv.js, apps/explorer/index.html
@@ -771,3 +771,38 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: unit tests written failing first (renderer: ok, no key, 402 then stop after 3, network error, a page with no scripts is not a failure; indexer 30 or more tests pass); a dry run with an invalid key prints 1 error line naming HTTP 401 or 402 and makes at most 3 calls plus those already in flight (the pool scans 8 sites at once)
 - Evidence: PR (this one); indexer tests 38 pass (7 new), API 25 pass; dry run with a bad key: "failed 4 of 4 renders (HTTP 401: JINA_KEY is wrong or revoked), 2 more were not tried"; dry run with the real key: "failed 3 of 3 renders (HTTP 402: Jina credit is out), 4 more were not tried", which confirms the account is out of credit
 - Finding: the 8-way pool means up to 8 renders are in flight when the breaker opens, so the call count after opening is a few over 3; a failed render reuses the previous runtime origins, which is why 0 errors hid a dead second view; a 402 on the key in the research kit proved it before the code did
+
+### T-C06, Extension flags a hostname on a public phishing list
+- Status: in-review | Branch: feature/t-c06-known-bad
+- Suggested: Jishnu
+- Depends-on: T-A22
+- Touches: apps/extension/src/compare/blocklist.js, apps/extension/src/compare/blocklist.test.mjs, apps/extension/src/background.js, apps/extension/src/verdict.js, apps/extension/src/ui/present.js, apps/extension/src/ui/present.test.mjs, apps/extension/src/ui/banner.js, apps/extension/README.md
+- Serves: Practicality (judged)
+- Known: for sites with no Hydra release the extension shows grey and says nothing; the 6 Nov re-score (hack-idea-score) decided not to build a full layer for unregistered sites, only an honest known-bad flag from public data. MetaMask's eth-phishing-detect list was checked on GitHub on 6 Nov: 115,807 blocked domains in one 3.4 MB config.json, "Don't Be A Dick" public licence, pushed the same day; ScamSniffer's is GPL-3.0 so it is not used. The extension is Mouli's code; this adds one verdict and one module
+- Scope: a daily-refreshed local copy of the list in storage.local, checked in memory against the visited hostname and its parent domains (the allowlist wins), with no browsing data sent anywhere; a hit shows a distinct "BAD" badge and banner saying the hostname is on MetaMask's public phishing list and that lists can be wrong; a miss says nothing, never "safe"; the README says the list is fetched from GitHub and credits MetaMask
+- Acceptance: unit tests written failing first for the matching and the cache (blocklist 8 or more pass, extension 26 or more pass); in real Chrome a hostname taken from the live list shows BAD and app.uniswap.org and hydra-demo-dapp.vercel.app do not
+- Evidence: PR (this one); in real Chrome 156 (extension loaded over the DevTools pipe) with the live MetaMask list downloaded by the extension itself, poly-mark.xyz (a real entry mapped to a local page) shows BAD with the list wording, hydra-demo-dapp.vercel.app shows OK, app.uniswap.org is not flagged; blocklist 10 tests pass, extension 28 pass
+- Finding: MetaMask eth-phishing-detect is the only crypto list that is both permissively licensed and one small file (115,807 domains, 3.4 MB, pushed daily); ScamSniffer scam-database is GPL-3.0 and CryptoScamDB stopped in 2023, so neither is used; GLM review found that a stale copy was trusted forever and that entries were not checked to be hostnames, both fixed with tests first; the list hit replaces the script comparison for that page, so a false positive hides script evidence, which the banner words as "lists can be wrong"
+
+
+### T-A25, Live checker: watch one bound site every 5 seconds, switched on from a page
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a25-live-checker
+- Suggested: Jishnu
+- Depends-on: T-A23
+- Touches: apps/api/src/watch.ts, apps/api/src/server.ts, apps/api/src/main.ts, apps/api/test/, packages/indexer/src/check.ts, packages/indexer/src/run.ts, packages/indexer/package.json, packages/indexer/test/, apps/explorer/live/, apps/explorer/vercel.json, apps/explorer/README.md, apps/explorer nav links
+- Serves: WOW factor (judged)
+- Known: a normal indexer run reads and writes Arkiv and takes about 14 s for one site (T-A23) and 5 min for all, so the demo cannot show a tamper within seconds without a laptop that holds the wallet key; the demo needs a switch on a page that watches the demo site every 5 s on Render
+- Scope: `POST /v1/watch {domain, on}` (bearer DEMO_WATCH_TOKEN, timing-safe) starts or stops one in-memory watcher for a domain that a release has bound; every 5 s it fetches the page and its scripts through safeGet, rechecks hydra.txt and compares with the release, with no Arkiv reads or writes per tick; when the verdict flips (match to mismatch or back) it runs the normal one-site observation write and Telegram alert once; it switches itself off after 15 minutes; `GET /v1/watch` is public and returns the state, the last 30 ticks and the flips; the explorer gets a Live page with the switch, the status and the tick strip
+- Acceptance: unit tests written failing first (watcher: baseline, flip once, flip back, unreachable is not a flip, overlap skipped, auto-off, stop; routes: 401, 503, 400, 200, 404); on the live demo, switching on and then changing app.js shows mismatch on the page within 12 s and 1 Telegram alert, and API tests 30 or more pass
+- Evidence: <PR link>
+
+### T-D12, Demo kit: hack, restore and status scripts plus a runbook
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-d12-demo-kit
+- Suggested: Jishnu
+- Depends-on: T-D04, T-A23
+- Touches: demo/hack.mjs, demo/restore.mjs, demo/status.mjs, demo/lib.mjs, demo/RUNBOOK.md, demo/README.md, demo/.vercelignore
+- Serves: WOW factor (judged)
+- Known: on 6 Nov a tamper left in a shared checkout made the repo's demo/app.js differ from the release while the live site was clean, and the latest observation stayed mismatch until a one-site run recorded match again; the stage needs one command to break the site, one to heal it, and one to say what every screen will show
+- Scope: `node demo/hack.mjs` deploys a tampered copy of the demo from a temp folder (the repo stays clean), waits until the live site serves it, then lets the live watcher (T-A25) catch it or runs the one-site check (T-A23) itself and prints the time to alert; `node demo/restore.mjs` deploys the clean demo, waits until the live script hash equals the release, and records match the same way; `node demo/status.mjs` prints the live hash against the release, the latest observation and the watcher state; RUNBOOK.md has the stage order and the fallbacks
+- Acceptance: hack then restore run for real once each; hack reaches a mismatch observation and 1 Telegram alert in under 60 s without the watcher; restore returns to match; status reports both states correctly; the repo stays clean (git status shows 0 changes in demo/ after both)
+- Evidence: <PR link>

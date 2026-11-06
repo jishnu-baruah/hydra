@@ -70,3 +70,34 @@ test("a failing domain lookup does not hide the other results", async () => {
 test("no match is an empty list, not an error", async () => {
   assert.deepEqual(await search("nobody.example", find), []);
 });
+
+// The verdict card a domain search opens with, from the API's domain lookup and the indexer's newest
+// observation. It must never call a site safe without a match, and never stay quiet on a mismatch.
+import { siteVerdict } from "./search.js";
+const obs = (status, app, observedAt) => [{ $attributes: { status: { value: status }, app: { value: app }, observed_at: { value: observedAt } } }];
+const NOW = 1_800_000_000_000;
+
+test("a matching site is good to go, a mismatching one is a warning", () => {
+  const ok = siteVerdict({ host: "app.demo.xyz", app: "demo-dex", rows: obs("match", "demo-dex", NOW - 5 * 60_000), now: NOW });
+  assert.equal(ok.kind, "safe");
+  assert.match(ok.title, /good to go/i);
+  assert.match(ok.text, /demo-dex/);
+  assert.match(ok.when, /5 min ago/);
+  const bad = siteVerdict({ host: "app.demo.xyz", app: "demo-dex", rows: obs("mismatch", "demo-dex", NOW - 2 * 3_600_000), now: NOW });
+  assert.equal(bad.kind, "danger");
+  assert.match(bad.title, /do not/i);
+  assert.match(bad.text, /wallet/);
+  assert.match(bad.when, /2 h ago/);
+});
+
+test("no match means no green: published but unchecked, watched but unpublished, unknown", () => {
+  const pending = siteVerdict({ host: "a.xyz", app: "demo-dex", rows: [], now: NOW });
+  assert.equal(pending.kind, "pending");
+  // An observation recorded for another app belongs to that app: the domain was re-bound.
+  assert.equal(siteVerdict({ host: "a.xyz", app: "demo-dex", rows: obs("match", "other", NOW), now: NOW }).kind, "pending");
+  assert.equal(siteVerdict({ host: "a.xyz", app: null, rows: obs("unknown", "", NOW), now: NOW }).kind, "unverified");
+  // The API unreachable: the indexer's own observation names the app, so its match still counts.
+  assert.equal(siteVerdict({ host: "a.xyz", app: null, rows: obs("match", "demo-dex", NOW), now: NOW }).kind, "safe");
+  assert.equal(siteVerdict({ host: "a.xyz", app: null, rows: [], now: NOW }).kind, "unverified");
+  for (const v of [pending, siteVerdict({ host: "a.xyz", app: null, rows: [], now: NOW })]) assert.doesNotMatch(v.title, /good to go/i);
+});

@@ -1,6 +1,6 @@
 // The query lives in ?q=, so a search is a link. Results are Arkiv data: textContent only.
 import { api } from "../src/api.js";
-import { search } from "./search.js";
+import { hostOf, search, siteVerdict } from "./search.js";
 
 const $ = (id) => document.getElementById(id);
 const status = (text, error = false) => {
@@ -18,11 +18,18 @@ if (q.trim()) {
     arkiv = await import("../src/arkiv.js");
     // A site is resolved through the Hydra API (which app proved this domain) and the indexer's
     // observations (a site nobody published). Either failing just means no answer from it.
-    const extra = {
-      appForDomain: async (host) => (await api(`/v1/domains/${encodeURIComponent(host)}`)).app,
-      observed: async (host) => (await arkiv.observationsFor(host, 1)).length > 0,
-    };
-    const hits = await search(q, arkiv.find, extra);
+    // Each is asked once: search() uses them to find results, the verdict card to judge the site.
+    const once = (f) => { const memo = new Map(); return (host) => (memo.has(host) || memo.set(host, f(host)), memo.get(host)); };
+    const appOf = once(async (host) => (await api(`/v1/domains/${encodeURIComponent(host)}`)).app ?? null);
+    const seen = once((host) => arkiv.observationsFor(host, 1));
+    const extra = { appForDomain: appOf, observed: async (host) => (await seen(host)).length > 0 };
+    const host = hostOf(q);
+    const [hits, app, rows] = await Promise.all([
+      search(q, arkiv.find, extra),
+      host ? appOf(host).catch(() => null) : null,
+      host ? seen(host).catch(() => []) : [],
+    ]);
+    if (host) showVerdict(siteVerdict({ host, app, rows, now: Date.now() }), host);
     if (hits.length === 0) {
       status(`Nothing on record matches "${q.trim()}". Hydra knows a site only if a team published it or the indexer watches it. Check the spelling, or try an app name, a file sha256 or a Swarm reference.`);
     } else {
@@ -48,4 +55,17 @@ if (q.trim()) {
     );
   }
 }
+// The answer first: one card, green only for a match and red only for a mismatch.
+function showVerdict(v, host) {
+  const box = $("verdict");
+  box.dataset.kind = v.kind;
+  $("v-mark").textContent = { safe: "OK", danger: "!", pending: "..", unverified: "?" }[v.kind];
+  $("v-title").textContent = v.title;
+  $("v-text").textContent = v.text;
+  $("v-when").textContent = v.when;
+  $("v-when").hidden = !v.when;
+  $("v-more").href = `../observed/?domain=${encodeURIComponent(host)}`;
+  box.hidden = false;
+}
+
 document.body.dataset.done = "1";

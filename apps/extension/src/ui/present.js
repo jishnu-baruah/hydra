@@ -19,9 +19,16 @@ function shown(url, origin) {
 export function present(result, { explorer, origin }) {
   const base = explorer.replace(/\/+$/, "");
   const link = result?.app ? { href: `${base}/app/?name=${encodeURIComponent(result.app)}`, text: `Open ${result.app} on Hydra` } : null;
-  const view = { state: result?.verdict ?? "checking", label: "", message: "", items: [], more: 0, link, note: "" };
+  // "listed" is a hostname on a public phishing list: shown as red, but as its own kind of warning.
+  const listed = result?.verdict === "listed";
+  const view = { state: listed ? "red" : (result?.verdict ?? "checking"), kind: listed ? "listed" : "", label: "", message: "", items: [], more: 0, link, note: "" };
 
-  switch (view.state) {
+  switch (listed ? "listed" : view.state) {
+    case "listed":
+      view.label = "On a phishing list";
+      view.message =
+        `${result.host} is on MetaMask's public phishing list (${result.entry}). Do not connect a wallet or sign anything unless you are sure this is the site you meant. Lists can be wrong, and a site that is not on a list is not thereby safe.`;
+      break;
     case "red": {
       const n = result.mismatches.length;
       view.label = "Changed";
