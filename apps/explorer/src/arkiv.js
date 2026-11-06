@@ -12,6 +12,10 @@ const [{ createPublicClient }, { rabdi }, { and, eq, desc }, { http }] = await P
 
 export const EXPLORER = "https://rabdi.explorer.arkiv.network";
 
+// Arkiv is Hydra's public record. Every release, file hash, app-name claim and indexer check is an
+// Arkiv entity on Rabdi: the Hydra API writes them, and this client reads them straight from the
+// visitor's browser, with no Hydra server in between. Each release also carries the Swarm reference
+// of its build manifest, so anyone can rebuild the check from Arkiv and Swarm alone.
 const client = createPublicClient({ chain: rabdi({ accessKey: "" }), transport: http() });
 
 // Anyone can write an entity tagged hydra.*, so every read keeps only what the Hydra API wrote:
