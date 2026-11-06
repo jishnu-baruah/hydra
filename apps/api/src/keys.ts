@@ -8,6 +8,7 @@ export interface KeyClaims {
   app: string
   iat: number // ms
   exp: number // ms; keys stop working after this
+  v?: number // key version (T-A32); absent means 0. A key older than the app's current version is refused.
 }
 
 export const KEY_TTL_MS = 30 * 24 * 60 * 60 * 1000
@@ -30,7 +31,8 @@ export function verifyKey(secret: string, key: string | undefined, now = Date.no
     const c = JSON.parse(Buffer.from(m[1], 'base64url').toString('utf8'))
     if (typeof c.address !== 'string' || typeof c.app !== 'string' || typeof c.iat !== 'number') return null
     if (typeof c.exp !== 'number' || c.exp <= now) return null
-    return { address: c.address, app: c.app, iat: c.iat, exp: c.exp }
+    const v = Number.isSafeInteger(c.v) && c.v > 0 ? { v: c.v as number } : {}
+    return { address: c.address, app: c.app, iat: c.iat, exp: c.exp, ...v }
   } catch {
     return null
   }

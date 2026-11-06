@@ -88,6 +88,7 @@ because Arkiv no longer returns them. Next uses: observations with a 3 day TTL a
 self-clearing incident flags kept alive by renewal.
 | `hydra.observation` | Indexer | `domain`, `status` (`match`, `mismatch`, `unknown`), `observed_at` (u64), `scripts_hash` | `app` (optional) | `{ scripts: [{url, sha256}] }` | 3 days |
 | `hydra.alert_sub` | API, when a team adds an alert channel (T-A30); deleted by the API on request | `app`, `kind` (`webhook`, `slack`, `discord`, `telegram`), `created_at` (u64) | | sealed bytes, not JSON: AES-256-GCM under the API's `ALERT_KEY`, `iv(12) \| tag(16) \| ciphertext` of `{ app, target, secret? }`; the target and webhook secret are never on chain in the clear | long |
+| `hydra.key_epoch` | API, when a team rotates an app's API key in the console (T-A32) | `app`, `version` (u64), `created_at` (u64) | | `{ by }` (the owner address) | long |
 
 ## Manifest (stored on Swarm, referenced by `release.swarm_ref`)
 

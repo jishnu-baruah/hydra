@@ -32,6 +32,7 @@ export async function keyFromSignature(
   secret: string,
   body: { address?: unknown; app?: unknown; issuedAt?: unknown; signature?: unknown },
   now = Date.now(),
+  versionOf?: (app: string) => Promise<number>, // the app's current key version, stamped into the key
 ): Promise<Result<{ apiKey: string; address: string; app: string }>> {
   const input = checkInput(body.address, body.app)
   if (!input.ok) return input
@@ -46,5 +47,6 @@ export async function keyFromSignature(
   const message = signInMessage(address, app, body.issuedAt as string)
   const valid = await verifyMessage({ address, message, signature: body.signature }).catch(() => false)
   if (!valid) return { ok: false, status: 401, error: 'signature does not match this address and message' }
-  return { ok: true, value: { apiKey: issueKey(secret, { address, app, iat: now, exp: now + KEY_TTL_MS }), address, app } }
+  const v = versionOf ? await versionOf(app) : 0
+  return { ok: true, value: { apiKey: issueKey(secret, { address, app, iat: now, exp: now + KEY_TTL_MS, ...(v > 0 ? { v } : {}) }), address, app } }
 }
