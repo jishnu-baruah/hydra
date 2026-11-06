@@ -498,6 +498,18 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: write on change silently wrote every site (scan result field `hash` vs `scripts_hash`), caught only by a dry run that skipped 0; 1inch answers its script URL with a per-request HTML page, so HTML at a script URL now counts as unreadable; GitHub fired the 30-minute schedule once in 6 hours, so an in-process timer was added
 - Kill criterion: over 30 minutes per run on the free instance, so cut to the top 100
 
+### T-A23, One-site indexer run for the demo
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a23-one-site-run
+- Suggested: Jishnu
+- Depends-on: T-A20
+- Touches: packages/indexer/
+- Serves: WOW factor (judged) ; Practicality (judged)
+- Known: a full pass over 248 sites takes about 5 minutes, far over the 90 second demo slot (T-D10); the demo needs a check of one site that is still a real run
+- Scope: `INDEXER_ONLY=<domain,...>` restricts a run to the named domains (bound domains included) and skips the DefiLlama fetch; everything else is the normal run: real fetch, hash, compare, Arkiv write and Telegram alert
+- Acceptance: a unit test for the domain filter written first; a real one-site run on the demo domain writes 1 observation and sends the alert in under 20 s (measured: 13.3 to 15.4 s, tamper to alert 28 s with a 10 s redeploy)
+- Evidence: <PR link, tx hashes>
+- Kill criterion: none, it is a small filter
+
 ### T-C05, Extension shows indexer alerts
 - Status: open
 - Suggested: Mouli
