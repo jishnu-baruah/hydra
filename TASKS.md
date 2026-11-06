@@ -782,3 +782,15 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: unit tests written failing first for the matching and the cache (blocklist 8 or more pass, extension 26 or more pass); in real Chrome a hostname taken from the live list shows BAD and app.uniswap.org and hydra-demo-dapp.vercel.app do not
 - Evidence: PR (this one); in real Chrome 156 (extension loaded over the DevTools pipe) with the live MetaMask list downloaded by the extension itself, poly-mark.xyz (a real entry mapped to a local page) shows BAD with the list wording, hydra-demo-dapp.vercel.app shows OK, app.uniswap.org is not flagged; blocklist 10 tests pass, extension 28 pass
 - Finding: MetaMask eth-phishing-detect is the only crypto list that is both permissively licensed and one small file (115,807 domains, 3.4 MB, pushed daily); ScamSniffer scam-database is GPL-3.0 and CryptoScamDB stopped in 2023, so neither is used; GLM review found that a stale copy was trusted forever and that entries were not checked to be hostnames, both fixed with tests first; the list hit replaces the script comparison for that page, so a false positive hides script evidence, which the banner words as "lists can be wrong"
+
+
+### T-A25, Live checker: watch one bound site every 5 seconds, switched on from a page
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a25-live-checker
+- Suggested: Jishnu
+- Depends-on: T-A23
+- Touches: apps/api/src/watch.ts, apps/api/src/server.ts, apps/api/src/main.ts, apps/api/test/, packages/indexer/src/check.ts, packages/indexer/src/run.ts, packages/indexer/package.json, packages/indexer/test/, apps/explorer/live/, apps/explorer/vercel.json, apps/explorer/README.md, apps/explorer nav links
+- Serves: WOW factor (judged)
+- Known: a normal indexer run reads and writes Arkiv and takes about 14 s for one site (T-A23) and 5 min for all, so the demo cannot show a tamper within seconds without a laptop that holds the wallet key; the demo needs a switch on a page that watches the demo site every 5 s on Render
+- Scope: `POST /v1/watch {domain, on}` (bearer DEMO_WATCH_TOKEN, timing-safe) starts or stops one in-memory watcher for a domain that a release has bound; every 5 s it fetches the page and its scripts through safeGet, rechecks hydra.txt and compares with the release, with no Arkiv reads or writes per tick; when the verdict flips (match to mismatch or back) it runs the normal one-site observation write and Telegram alert once; it switches itself off after 15 minutes; `GET /v1/watch` is public and returns the state, the last 30 ticks and the flips; the explorer gets a Live page with the switch, the status and the tick strip
+- Acceptance: unit tests written failing first (watcher: baseline, flip once, flip back, unreachable is not a flip, overlap skipped, auto-off, stop; routes: 401, 503, 400, 200, 404); on the live demo, switching on and then changing app.js shows mismatch on the page within 12 s and 1 Telegram alert, and API tests 30 or more pass
+- Evidence: <PR link>
