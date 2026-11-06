@@ -32,6 +32,15 @@ A live release to check, `hygra-demo2` version `2026-11-05.4`:
 
 More detail for judges: [`arkiv/swarm.md`](arkiv/swarm.md). Design notes: [`docs/swarm.md`](docs/swarm.md).
 
+## CROPS
+
+Lead property: **Secure**. Hydra exists to catch a dApp frontend that no longer matches what the team released.
+
+- **C, censorship resistant.** We run the Hydra API (Render) and host the explorer and site (Vercel). The records do not depend on us: releases live on Arkiv and builds on Swarm, the explorer reads Arkiv straight from your browser, and `node scripts/query-releases.mjs <app>` checks a release with no Hydra server at all. If our API goes away or refuses you, the extension shows grey ("could not reach the Hydra API, the page is unverified"), never a false green, and publishing stops until it is back.
+- **O, open source.** MIT ([LICENSE](LICENSE)). Explorer, extension, API, indexer and publish script all build and run from this repo; the API needs your own Arkiv testnet wallet in `.env` (see `.env.example`).
+- **P, private.** No analytics or trackers anywhere. What third parties learn: the **Hydra API** gets the hostname of each site you open with the extension, plus the hashes of its scripts and your IP (no path, no cookies, no wallet data), because looking a site up on Arkiv needs our rate-limited server today; the **Arkiv RPC** and the **Swarm gateway** see your IP and which records or manifests you read; **Google Fonts, jsDelivr and esm.sh** see your IP when the explorer loads; GitHub sees your IP when the extension downloads MetaMask's public phishing list, and learns nothing else.
+- **S, secure.** Only the API holds keys: the Arkiv wallet key and the API-key signing secret, in host secrets, never in git. Team API keys are signed, expire, and work for one app name; a domain counts only after it serves `/.well-known/hydra.txt`. The extension holds no keys and never signs; it hashes the scripts a page loads and never runs them. Trust assumptions: readers trust only records written by the 2 Hydra wallets listed below, and a green badge means "this is the build the team released", not "this build is safe".
+
 ## Arkiv: who wrote the entities, and a query you can run
 
 Every Hydra entity on Arkiv Rabdi (chain 7794095) is created by one of two wallets, and readers only
