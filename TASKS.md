@@ -688,7 +688,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: the template look needs none of its about 60 packages: 1 CSS file, a 20-line split-flap and Lenis reproduce it, and IntersectionObserver replaces GSAP in about 15 lines.
 
 ### T-B08, Publish page in the explorer, from the T-A09 onboarding flow
-- Status: in-review https://github.com/jishnu-baruah/hydra/pull/74 | Branch: feature/t-b08-publish-page
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/101 | Branch: feature/t-b08-publish-page
 - Suggested: Mouli
 - Depends-on: T-A09, T-B07
 - Touches: apps/explorer/publish/, apps/explorer/assets/, apps/explorer/src/api.js, apps/explorer/events/, apps/explorer/vercel.json, apps/explorer/index.html, apps/explorer/releases/index.html, apps/explorer/search/index.html, apps/explorer/app/index.html, apps/explorer/observed/index.html
