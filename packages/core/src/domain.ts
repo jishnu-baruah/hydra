@@ -92,6 +92,7 @@ export async function checkProof(domain: string, app: string, deps: ProofDeps = 
     }
     const { status, body } = await (deps.get ?? pinnedGet)(host, addrs[0], PROOF_PATH)
     if (status >= 500) return { ok: false, transient: true, reason: `HTTP ${status} for ${PROOF_PATH}, the site may be down; ${fix}` }
+    if (status >= 300 && status < 400) return { ok: false, reason: `HTTP ${status} for ${PROOF_PATH}: redirects are not followed; ${fix} directly` }
     if (status !== 200) return { ok: false, reason: `HTTP ${status} for ${PROOF_PATH}; ${fix}` }
     if (body === null) return { ok: false, reason: `${PROOF_PATH} is over ${MAX_PROOF} bytes; ${fix}` }
     return proofNames(body, app) ? { ok: true } : { ok: false, reason: `${PROOF_PATH} does not contain the line hydra-app=${app}; ${fix}` }
