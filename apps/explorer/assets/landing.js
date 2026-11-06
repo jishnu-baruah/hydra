@@ -103,17 +103,54 @@ if (hs) {
   update();
 }
 
-// Get the extension. Once the Chrome Web Store listing is live (OP-12), set its URL here: the button
-// becomes Add to Chrome and the zip install steps go away. Until then, the zip and Load unpacked.
+// Get the extension. Every Chromium browser installs from the Chrome Web Store, as on MetaMask's
+// download page. Once the listing is live (OP-12), set its URL here: the button becomes
+// Add to <browser> and the zip steps go away. Until then, the zip and Load unpacked.
 const CHROME_STORE = "";
+const BROWSERS = {
+  chrome: { name: "Chrome", page: "chrome://extensions" },
+  brave: { name: "Brave", page: "brave://extensions" },
+  edge: { name: "Edge", page: "edge://extensions", store: "Edge asks to allow extensions from other stores. Allow it, then Add to Chrome." },
+  opera: { name: "Opera", page: "opera://extensions", store: "Opera needs its Install Chrome Extensions add-on first." },
+};
+const UNSUPPORTED = {
+  firefox: "Firefox is not supported yet. Open this page in Chrome, Brave, Edge or Opera.",
+  mobile: "Phones cannot run browser extensions. Open this page on a computer.",
+  other: "This browser is not supported. Open this page in Chrome, Brave, Edge or Opera.",
+};
+function detect() {
+  const ua = navigator.userAgent;
+  if (/Android|iPhone|iPad|Mobile/.test(ua)) return "mobile";
+  if (/Firefox\//.test(ua)) return "firefox";
+  if (/Edg\//.test(ua)) return "edge";
+  if (/OPR\//.test(ua)) return "opera";
+  if (navigator.brave) return "brave";
+  return /Chrome\//.test(ua) ? "chrome" : "other";
+}
 const get = document.getElementById("ext-get");
-if (CHROME_STORE && get) {
-  get.href = CHROME_STORE;
-  get.target = "_blank";
-  get.rel = "noopener noreferrer";
-  get.querySelector("span").textContent = "Add to Chrome";
-  get.querySelector("svg path").setAttribute("d", "M5 12h14M13 6l6 6-6 6");
-  for (const el of document.querySelectorAll(".ext-steps, .ext-meta")) el.hidden = true;
+if (get) {
+  const note = document.getElementById("ext-note");
+  const page = document.getElementById("ext-page");
+  const copy = document.querySelector("[data-copy]");
+  const found = detect();
+  if (CHROME_STORE) {
+    get.href = CHROME_STORE;
+    get.target = "_blank";
+    get.rel = "noopener noreferrer";
+    get.querySelector("svg path").setAttribute("d", "M5 12h14M13 6l6 6-6 6");
+    for (const el of document.querySelectorAll(".ext-steps, .ext-meta")) el.hidden = true;
+  }
+  const pick = (id) => {
+    const b = BROWSERS[id];
+    for (const r of document.querySelectorAll("[data-browser]")) r.setAttribute("aria-checked", String(r.dataset.browser === id));
+    get.querySelector("span").textContent = CHROME_STORE ? `Add to ${b.name}` : `Download zip for ${b.name}`;
+    page.textContent = copy.dataset.copy = b.page;
+    const text = BROWSERS[found] ? (CHROME_STORE && b.store) || "" : UNSUPPORTED[found];
+    note.textContent = text;
+    note.hidden = !text;
+  };
+  for (const r of document.querySelectorAll("[data-browser]")) r.addEventListener("click", () => pick(r.dataset.browser));
+  pick(BROWSERS[found] ? found : "chrome");
 }
 
 // Chrome blocks links to chrome:// pages, so the install step copies the address instead.

@@ -6,7 +6,7 @@ import { API, DOCS, SKILL, api } from "../src/api.js";
 import { appError, dirError, workflow, handoff } from "./flow.js";
 
 const $ = (id) => document.getElementById(id);
-const state = { address: null, app: null, key: null, watching: null };
+const state = { address: null, app: null, key: null, watching: null, checking: false };
 const POLL_MS = 15_000;
 const WATCH_FOR_MS = 30 * 60_000;
 
@@ -97,6 +97,7 @@ $("sign").onclick = async () => {
     renderRepo();
     step(4, "current");
     for (const el of $("p4").querySelectorAll("button")) el.disabled = false;
+    $("s4").textContent = "Watching for your first release.";
     watch();
   } catch (e) {
     show("e2", `Could not get a key: ${e.message ?? e}. ${e.status === 403 ? "That name belongs to another wallet: pick another." : "Check the name and try again."}`);
@@ -144,12 +145,28 @@ for (const t of tabs) {
   };
 }
 
-// Watch for the first release while the page is open and visible, for up to 30 minutes.
-async function checkReleases() {
+// Watch for the first release while the page is open and visible, for up to 30 minutes. A press of
+// Check now shows that it is working (the button reads Checking...), and every check says what it
+// found: the release, no release yet with the time, or why it failed and what to do.
+async function checkReleases(manual = false) {
+  if (state.checking) return false;
+  state.checking = true;
+  const btn = $("check");
+  if (manual) {
+    btn.disabled = true;
+    btn.setAttribute("aria-busy", "true");
+    btn.textContent = "Checking...";
+    $("s4").textContent = `Asking Hydra for ${state.app}'s releases...`;
+  }
   show("e4");
   try {
     const { releases } = await api(`/v1/apps/${encodeURIComponent(state.app)}/releases`);
-    if (!releases?.length) return false;
+    const at = new Date().toLocaleTimeString();
+    if (!releases?.length) {
+      $("s4").textContent = `No release for ${state.app} yet (checked at ${at}). Push to main, wait for the workflow to finish, then check again.`;
+      return false;
+    }
+    $("s4").textContent = "";
     const r = releases[0];
     const box = $("release");
     box.replaceChildren();
@@ -165,8 +182,16 @@ async function checkReleases() {
     clearInterval(state.watching);
     return true;
   } catch (e) {
-    show("e4", `Could not check for releases: ${e.message ?? e}.`);
+    $("s4").textContent = "";
+    show("e4", `Could not check for releases: ${e.message ?? e}. The API's free host may be waking up: wait 30 seconds, then press Check now again.`);
     return false;
+  } finally {
+    state.checking = false;
+    if (manual) {
+      btn.disabled = false;
+      btn.removeAttribute("aria-busy");
+      btn.textContent = "Check now";
+    }
   }
 }
 function watch() {
@@ -179,7 +204,7 @@ function watch() {
     } else if (!document.hidden) checkReleases();
   }, POLL_MS);
 }
-$("check").onclick = checkReleases;
+$("check").onclick = () => checkReleases(true);
 
 for (const b of document.querySelectorAll("[data-copy]")) {
   b.onclick = async () => {
