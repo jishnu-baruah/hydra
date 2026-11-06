@@ -543,7 +543,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <recording>
 
 ### T-A21, /arkiv/swarm.md answers every Arkiv + Swarm bonus line
-- Status: claimed 2026-11-06 | Owner: Manish | Branch: feature/t-a21-swarm-bonus
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/99 | Branch: feature/t-a21-swarm-bonus
 - Suggested: Manish
 - Depends-on: T-A12, T-D11
 - Touches: arkiv/swarm.md, README.md, docs/swarm.md, .env.example
