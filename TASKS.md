@@ -928,6 +928,17 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: unit tests written failing first for the reply logic (4 or more cases: replies once per message, ignores old messages and other text, names the app); API tests 78 or more pass; live: "/hydra demo-dapp" in a group gets the id back within 10 s
 - Evidence: <PR link>
 
+### T-B17, Explorer: one navbar everywhere, readable Activity table
+- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-b17-nav-activity
+- Suggested: Mouli
+- Depends-on: T-B14
+- Touches: apps/explorer/
+- Serves: Usability (judged)
+- Known: requested on 7 Nov: the Live page had its own menu and pages had different header tags; Activity cells were clipped, touched the edges, and releases had a blank site cell
+- Scope: the same nav links and header tag on every page; Activity columns size to content with 16 px cell padding, unclipped badges, only the detail wraps, and non-site rows say "not a site check"
+- Acceptance: 9 pages share one nav; in a browser on live data, no clipped badge or blank cell in the first 10 Activity rows
+- Evidence: <PR link>
+
 ### T-B16, Publish: key without the agent, then set up alerts
 - Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-b16-publish-alerts
 - Suggested: Mouli
