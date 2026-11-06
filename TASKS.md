@@ -852,3 +852,13 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: after deploy, Fix flips the watcher back to match in under 60 s and Hack to mismatch in under 60 s, 1 run each
 - Evidence: PR (this one); the demo site now answers Cache-Control no-store with X-Vercel-Cache MISS; Hack and Fix timings after the API deploy are in the PR conversation
 
+### T-A29, Watcher: a flip write that hangs times out and retries
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a29-flip-timeout
+- Suggested: Jishnu
+- Depends-on: T-A25
+- Touches: apps/api/src/watch.ts, apps/api/test/watch.test.ts
+- Serves: WOW factor (judged)
+- Known: on 6 Nov a Fix pressed from the Live page left its flip at "alert pending" for over 90 s: the observation write and Telegram alert behind a flip read Arkiv through the public RPC (the Render API had no ARKIV_ACCESS_KEY, now set), and `fire` awaits `onFlip` with no limit, so a slow or hung write neither fails nor retries and the watcher's checks stop while it waits
+- Scope: `fire` gives `onFlip` 45 s; past that the flip is marked failed with the cause "the write did not finish in 45 s" and the existing retry (3 attempts in all) takes over
+- Acceptance: unit tests written failing first (a hanging onFlip fails the attempt after the limit, then a retry succeeds and ends done; a fast onFlip is unchanged); API tests 48 or more pass
+- Evidence: <PR link>
