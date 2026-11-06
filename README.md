@@ -32,6 +32,43 @@ A live release to check, `hygra-demo2` version `2026-11-05.4`:
 
 More detail for judges: [`arkiv/swarm.md`](arkiv/swarm.md). Design notes: [`docs/swarm.md`](docs/swarm.md).
 
+## Arkiv: who wrote the entities, and a query you can run
+
+Every Hydra entity on Arkiv Rabdi (chain 7794095) is created by one of two wallets, and readers only
+trust entities created by them:
+
+| Wallet | Address | Writes |
+|---|---|---|
+| Hydra API | `0xdD0d4167959291A2eb930Fe82Fed58070134348b` | `hydra.app`, `hydra.release`, `hydra.file` |
+| Hydra indexer | `0xc4e52D70880a83331E1cCd0AD745059D12565ea9` | `hydra.observation` |
+
+Run this to read the newest releases of the demo app straight from Arkiv (public RPC, no key, no
+wallet; needs Node 24 and one `pnpm install`):
+
+```bash
+node scripts/query-releases.mjs demo-dapp
+```
+
+Expected: a line per release with its version, `swarm_ref` and entity key, and an explorer link
+for each. For example, release `demo-1` (entity `0xc815...4919c`) points to Swarm reference
+`311afb3f...09a4`. The query is `select(...).from(ReleaseSchema).where(eq('app', 'demo-dapp')).createdBy(<API wallet>)`.
+
+Judge files: [`arkiv/schema.md`](arkiv/schema.md), [`arkiv/friction.md`](arkiv/friction.md),
+[`arkiv/reach.md`](arkiv/reach.md), [`arkiv/why-arkiv.md`](arkiv/why-arkiv.md),
+[`arkiv/how-you-use-arkiv.md`](arkiv/how-you-use-arkiv.md), and for the Swarm bonus
+[`arkiv/swarm.md`](arkiv/swarm.md).
+
+## License and AI use
+
+MIT, see [LICENSE](LICENSE).
+
+AI was used heavily and openly. Team members drove Claude Code (Anthropic) agents and subagents to
+write code, tests and docs, plus GLM (Z.ai) for generated modules and a second-opinion code
+review, and Groq models inside our research kit. People set the goals, reviewed every pull
+request, ran the live deploys and merged. The process is in [CLAUDE.md](CLAUDE.md) and
+[TASKS.md](TASKS.md), which records what each pull request found, including what AI-written code
+got wrong and how it was caught. Work is credited to the person who ran the agent.
+
 ## Layout
 
 | Path | What | Owner |
