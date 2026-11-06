@@ -939,3 +939,14 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: explorer and extension tests pass with the new host; 2 published manifests (hygra-demo2, test-hydra0) open with HTTP 200 on the read host
 - Evidence: https://github.com/jishnu-baruah/hydra/pull/139, live explorer serves releases.js with download.gateway.ethswarm.org; test-hydra0 and hygra-demo2 manifests HTTP 200 there
 - Finding: api.gateway.ethswarm.org did not resolve on a Mumbai home router DNS (192.168.0.1) while download.gateway.ethswarm.org, the same server, did
+
+### T-B13, Explorer shows a release manifest in the page instead of downloading it
+- Status: claimed 2026-11-07 | Owner: Manish | Branch: feature/t-b13-manifest-view
+- Suggested: Manish
+- Depends-on: T-A34
+- Touches: apps/explorer/manifest/, apps/explorer/app/page.js, apps/explorer/vercel.json
+- Serves: Usability (judged) ; Swarm bonus
+- Known: download.gateway.ethswarm.org (T-A34) sends `Content-Disposition: attachment`, so the Manifest link downloads a JSON file; api.gateway sends `inline`
+- Scope: the Manifest link opens an explorer page that fetches hydra-manifest.json from Swarm and shows it as formatted JSON (textContent only), with the raw Swarm link next to it; CSP connect-src allows the read host
+- Acceptance: test-hydra0 and hygra-demo2 manifests render in the page in a browser with 0 CSP errors in the console; a bad ref shows an error that names the cause
+- Evidence: <PR link>
