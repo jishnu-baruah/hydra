@@ -61,3 +61,31 @@
 @media (prefers-reduced-motion: reduce) {
   .ev.new { animation: none; }
 }
+
+/* Severity. green = match / release, yellow = change not proven harmful, red = script in no release. */
+:root { --sev-yellow: #e6b450; }
+.chip.sev-green { color: var(--match); border-color: rgb(63 191 111 / 0.4); }
+.chip.sev-yellow { color: var(--sev-yellow); border-color: rgb(230 180 80 / 0.45); }
+.chip.sev-red { color: var(--bg); background: var(--mismatch); border-color: var(--mismatch); }
+.chip.sev-neutral { color: var(--muted); }
+.legend { margin: 14px 0 0; font: 400 12px/2.2 var(--mono); color: var(--muted); }
+.legend .chip { margin-right: 4px; }
+
+/* Activity table: fixed columns, one row height, scroll sideways on narrow screens. */
+.tbl-wrap { margin-top: 24px; overflow-x: auto; border-top: 1px solid var(--border); }
+.acts { width: 100%; min-width: 760px; border-collapse: collapse; table-layout: fixed; font: 400 13px var(--mono); font-variant-numeric: tabular-nums; }
+.acts th { text-align: left; font: 500 11px var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.acts td { height: 44px; padding: 0 12px; border-bottom: 1px solid var(--border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acts tr:hover td { background: #121212; }
+.acts tr.new td { animation: arrive 1200ms var(--ease); }
+.acts .c-time { width: 150px; }
+.acts .c-site { width: 210px; }
+.acts .c-app { width: 140px; }
+.acts .c-verdict { width: 150px; }
+.acts td.num, .acts th.num { text-align: right; }
+.acts td a { color: var(--fg); text-decoration: none; }
+.acts td a:hover { color: var(--accent); }
+.acts td.detail-cell { color: var(--muted); }
+.acts td.detail-cell .warn { color: var(--sev-yellow); }
+.acts td.num { text-align: right; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }

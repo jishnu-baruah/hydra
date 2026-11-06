@@ -76,3 +76,41 @@ test("app name claims join the feed, and a release links its CI run only when it
   assert.equal(t[1].ci, null);
   assert.deepEqual(only(t, "releases").map((e) => e.kind), ["release", "release", "claim"]);
 });
+
+import { verdict, integratedOnly } from "./events.js";
+const ob = (status, problems = [], extra = {}) => ({ kind: "observation", status, problems, changed: false, empty: false, ...extra });
+
+test("verdict: match and a release are green", () => {
+  assert.equal(verdict(ob("match")).level, "green");
+  assert.equal(verdict({ kind: "release" }).level, "green");
+});
+test("verdict: a mismatch with a script in no release or a changed script is red", () => {
+  assert.equal(verdict(ob("mismatch", ["EXTRA /evil.js"])).level, "red");
+  assert.equal(verdict(ob("mismatch", ["CHANGED /app.js"])).level, "red");
+  assert.equal(verdict(ob("mismatch")).level, "red");
+});
+test("verdict: a mismatch caused only by a runtime origin or unreachable site is yellow", () => {
+  assert.equal(verdict(ob("mismatch", ["NEW_RUNTIME_ORIGIN https://x.io"])).level, "yellow");
+  assert.equal(verdict(ob("mismatch", ["UNREACHABLE HTTP 429"], { empty: true })).level, "yellow");
+  assert.equal(verdict(ob("mismatch", ["TRUNCATED 110 scripts, checked 60"])).level, "yellow");
+});
+test("verdict: unknown is yellow, with a label that says why", () => {
+  assert.deepEqual(verdict(ob("unknown")), { level: "yellow", label: "Unknown" });
+  assert.equal(verdict(ob("unknown", ["UNREACHABLE HTTP 403"], { empty: true })).label, "Unreachable");
+  assert.equal(verdict(ob("unknown", [], { empty: true })).label, "Skipped");
+});
+test("verdict: a name claim is neutral", () => {
+  assert.equal(verdict({ kind: "claim" }).level, "neutral");
+});
+
+test("integratedOnly keeps releases, claims and checks of sites ever compared with a release", () => {
+  const ev = [
+    { kind: "release", key: "r" },
+    { kind: "claim", key: "c" },
+    { kind: "observation", key: "1", domain: "bound.app", status: "unknown" },
+    { kind: "observation", key: "2", domain: "bound.app", status: "match" },
+    { kind: "observation", key: "3", domain: "coverage.xyz", status: "unknown" },
+  ];
+  assert.deepEqual(integratedOnly(ev).map((e) => e.key), ["r", "c", "1", "2"]);
+  assert.deepEqual(integratedOnly([]), []);
+});

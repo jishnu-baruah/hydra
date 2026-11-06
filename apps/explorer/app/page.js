@@ -2,6 +2,7 @@
 // textContent only.
 import { api } from "../src/api.js";
 import { ownerOf, trustedReleases } from "./releases.js";
+import { barModel, headline, siteHistory } from "./checks.js";
 import { boundDomains, latestVerdict, verdictText } from "./sites.js";
 
 const $ = (id) => document.getElementById(id);
@@ -31,6 +32,7 @@ try {
     const owner = ownerOf(apps);
     if (owner) $("owner").textContent = `Owned by ${owner}, the first address to publish it`;
     if (releases.length === 0) {
+      showChecks([]);
       status(`No releases of "${name}" on record. The team publishes from CI; check the name, or search by domain or file hash.`);
     } else {
       const wrap = el("div", undefined, { className: "table-wrap" });
@@ -75,9 +77,11 @@ async function showSites(arkivModule) {
   try {
     domains = boundDomains((await api(`/v1/apps/${encodeURIComponent(name)}/releases`)).releases);
   } catch {
+    $("checks").replaceChildren(el("p", "Could not ask the Hydra API which domain this app binds. Reload to retry.", { className: "muted" }));
     box.append(el("p", "Could not ask the Hydra API which domains this app binds. Reload to retry; its free host may be waking up.", { className: "muted" }));
     return;
   }
+  showChecks(domains);
   if (!domains.length) {
     box.append(el("p", "No domain is bound to this app yet, so its site cannot show a match. To bind one: serve /.well-known/hydra.txt on the domain with the line hydra-app=" + name + ", set HYDRA_DOMAINS to the domain in the publish workflow, deploy, then publish again.", { className: "muted" }));
     return;
@@ -94,6 +98,25 @@ async function showSites(arkivModule) {
     const chip = el("span", verdict ? verdict.status : "not checked yet", { className: `chip ${verdict ? verdict.status : "unknown"}` });
     row.append(link, " ", chip, " ", el("span", verdict ? verdictText(verdict.status) : "The indexer has not seen this domain yet.", { className: "muted" }));
     box.append(row);
+  }
+}
+
+// Site status: the API's /v1/observations keeps the last 8 indexer checks per domain, newest first.
+async function showChecks(domains) {
+  const box = $("checks");
+  box.replaceChildren();
+  if (!domains.length) return void box.append(el("p", "No site bound to this app yet.", { className: "muted" }));
+  let payload = null;
+  try {
+    payload = await api("/v1/observations");
+  } catch (err) {
+    return void box.append(el("p", `Could not read the indexer checks: ${err.message}. Reload to retry.`, { className: "muted" }));
+  }
+  for (const d of domains) {
+    const history = siteHistory(payload, d);
+    const bar = el("div", undefined, { className: "checks-bar", role: "list" });
+    for (const s of barModel(history)) bar.append(el("i", undefined, { className: `check ${s.tone}`, title: s.title, role: "listitem" }));
+    box.append(el("p", d, { className: "check-domain" }), el("p", headline(history, Date.now()), { className: "check-head" }), bar);
   }
 }
 

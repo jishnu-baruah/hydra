@@ -68,6 +68,8 @@
             <button class="ghost-btn" data-copy="key-value" type="button">Copy</button>
           </div>
           <p class="warn">Shown once. Save it now as the repo secret <code>HYDRA_API_KEY</code>; you cannot see it again.</p>
+          <p class="help">Run this yourself in your repo, or add the secret on GitHub: repo Settings, Secrets and variables, Actions, New repository secret.</p>
+          <div class="code"><pre id="gh-key-cmd"></pre><button class="ghost-btn" data-copy="gh-key-cmd" type="button">Copy</button></div>
         </div>
         <p class="err" id="e2" role="alert" hidden></p>
       </section>
@@ -80,7 +82,7 @@
           <button role="tab" id="t-hand" aria-selected="false" aria-controls="v-hand" type="button" tabindex="-1">By hand</button>
         </div>
         <div role="tabpanel" id="v-agent" aria-labelledby="t-agent">
-          <p class="help">Paste this into Claude Code, Cursor or Codex, opened in your repo. It sets the secret, writes the workflow and pushes. It contains your key, so paste it only into your own agent.</p>
+          <p class="help">Paste this into Claude Code, Cursor or Codex, opened in your repo. It writes the workflow and pushes. It does not contain your key: store the key as the repo secret yourself (see step 2).</p>
           <div class="code"><pre id="handoff"></pre><button class="ghost-btn" data-copy="handoff" type="button">Copy</button></div>
           <details>
             <summary>Claude Code: install the Hydra skill instead</summary>
@@ -116,6 +118,13 @@
         <button class="ghost-btn" id="check" type="button" disabled>Check now</button>
         <p class="help" id="s4" role="status" aria-live="polite">Available once you have a key from step 2.</p>
         <p class="err" id="e4" role="alert" hidden></p>
+      </section>
+
+      <section class="panel" id="p5" data-state="locked" aria-labelledby="h5-title">
+        <h2 id="h5-title"><span class="n">NEXT</span> Set up alerts</h2>
+        <p class="why">Get a Telegram, Slack, Discord or webhook alert when your live site serves a script that is in no release.</p>
+        <a class="btn" id="alerts" href="../console/">Set up alerts</a>
+        <p class="help">Opens the Console, already signed in with this wallet.</p>
       </section>
 
       <footer class="colophon label">

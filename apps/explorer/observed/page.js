@@ -1,6 +1,6 @@
 // /observed/: every site the indexer watches. /observed/?domain=<site>: one site's history.
 // Arkiv data is shown with textContent only.
-import { timeline, decode } from "../events/events.js";
+import { timeline, decode, verdict } from "../events/events.js";
 import { sites } from "./observed.js";
 
 const $ = (id) => document.getElementById(id);
@@ -16,6 +16,10 @@ const el = (tag, cls, text) => {
 };
 const when = (ms) => new Date(ms).toISOString().replace("T", " ").slice(0, 16) + " UTC";
 const chip = (s) => el("span", `chip ${s}`, s);
+const vchip = (e) => {
+  const v = verdict(e);
+  return el("span", `chip sev-${v.level}`, v.label);
+};
 
 function table(head, rows) {
   const wrap = el("div", "table-wrap");
@@ -36,24 +40,45 @@ function table(head, rows) {
   return wrap;
 }
 
+function legend() {
+  const d = el("p", "legend");
+  for (const [cls, label, text] of [["green", "Green", "match, release published"], ["yellow", "Yellow", "change not proven harmful: unreachable, skipped, runtime origin, unknown"], ["red", "Red", "a served script in no release"]]) {
+    d.append(el("span", `chip sev-${cls}`, label), ` ${text}  `);
+  }
+  return d;
+}
+
 function scriptsLine(e) {
   if (e.empty) return e.problems.some((p) => p.startsWith("UNREACHABLE")) ? "unreachable" : "0 seen";
   return e.scripts === null ? "" : String(e.scripts);
 }
 
 async function index(arkiv) {
-  const all = sites(timeline([], await arkiv.latestObservations(100)));
-  if (!all.length) return status("The indexer has not written any observations yet. It runs about every 30 minutes. It writes a new observation when something changes, plus one a day.");
+  // Latest checks of every site plus the compared checks of bound ones, so a bound site checked less
+  // often is not lost behind the coverage list. Deduplicated by entity key.
+  const rows = [...(await arkiv.latestObservations(100)), ...(await arkiv.boundObservations(100))];
+  const seen = sites(timeline([], [...new Map(rows.map((e) => [e.$key, e])).values()]));
+  // Integrated = bound to a Hydra release: the indexer compared the site with one (match or
+  // mismatch). Coverage-list sites with no release stay unknown and are not listed here.
+  const all = seen.filter((s) => s.published);
+  if (!all.length) {
+    const none = el("p", "", "No integrated sites yet. ");
+    none.append(Object.assign(el("a", "", "Publish one on the Publish page."), { href: "../publish/" }));
+    $("status").replaceChildren(none);
+    $("status").className = "";
+    return;
+  }
   $("view").append(
     table(
-      ["Site", "Latest", "Last seen", "Runs", "Changes", "On Hydra"],
+      ["Site", "Latest", "Last seen", "Runs", "Changes"],
       all.map((s) => {
         const a = Object.assign(el("a", "", s.domain), { href: `?domain=${encodeURIComponent(s.domain)}` });
-        return [a, chip(s.status), when(s.lastSeen), String(s.runs), String(s.changes), s.published ? "published" : "observed, not published by the team"];
+        return [a, vchip(s.latest), when(s.lastSeen), { cls: "num", node: document.createTextNode(String(s.runs)) }, { cls: "num", node: document.createTextNode(String(s.changes)) }];
       }),
     ),
+    legend(),
   );
-  status(`${all.length} site(s) watched, from the last ${all.reduce((n, s) => n + s.runs, 0)} observations.`);
+  status(`${all.length} integrated site(s), from the last ${all.reduce((n, s) => n + s.runs, 0)} observations. ${seen.length - all.length} watched site(s) with no Hydra release are not listed.`);
 }
 
 async function site(arkiv, domain) {
@@ -87,7 +112,7 @@ async function site(arkiv, domain) {
       ["Observed", "Status", "Scripts", "Change", "Problems"],
       history.map((e) => [
         when(e.at),
-        chip(e.status),
+        vchip(e),
         scriptsLine(e),
         e.changed ? chip(e.status === "unknown" ? "churn" : "changed") : "",
         e.problems.slice(0, 2).join("; ") + (e.problems.length > 2 ? ` and ${e.problems.length - 2} more` : ""),

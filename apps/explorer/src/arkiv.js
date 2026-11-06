@@ -77,6 +77,21 @@ export async function latestObservations(limit = 100) {
   return page.entities;
 }
 
+// Checks of integrated sites only (compared with a release: match or mismatch). The latest 100 of all
+// checks are mostly coverage sites, so a bound site checked less often would fall out of that window.
+export async function boundObservations(limit = 100) {
+  const one = (s) =>
+    client
+      .select({ $key: true, $attributes: true })
+      .where(and(eq("arkiv.schema", "hydra.observation"), eq("status", s)))
+      .createdBy(INDEXER)
+      .orderBy(desc("observed_at", "u64"))
+      .limit(limit)
+      .fetch()
+      .then((p) => p.entities);
+  return (await Promise.all([one("match"), one("mismatch")])).flat();
+}
+
 // Hydra entities of one schema whose indexed `field` equals `value`, written by the publisher.
 export async function find(schema, field, value, limit = 100) {
   const page = await client
