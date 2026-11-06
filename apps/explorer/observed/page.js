@@ -43,7 +43,7 @@ function scriptsLine(e) {
 
 async function index(arkiv) {
   const all = sites(timeline([], await arkiv.latestObservations(100)));
-  if (!all.length) return status("The indexer has not written any observations yet. It runs every 15 minutes.");
+  if (!all.length) return status("The indexer has not written any observations yet. It runs about every 30 minutes. It writes a new observation when something changes, plus one a day.");
   $("view").append(
     table(
       ["Site", "Latest", "Last seen", "Runs", "Changes", "On Hydra"],
@@ -60,7 +60,7 @@ async function site(arkiv, domain) {
   $("title").textContent = domain;
   $("crumb").textContent = "/ Observed site";
   document.title = `${domain}, Hydra explorer`;
-  $("lede").textContent = "What Hydra's indexer saw on this site, every 15 minutes. Observations are kept 3 days.";
+  $("lede").textContent = "What Hydra's indexer saw on this site. It runs about every 30 minutes. It writes a new observation when something changes, plus one a day. Observations are kept 3 days.";
   if (!/^[a-z0-9.-]{1,253}$/i.test(domain)) return status(`"${domain}" is not a domain. Open a site from the list of observed sites.`, true);
 
   const rows = await arkiv.observationsFor(domain);

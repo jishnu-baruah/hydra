@@ -55,6 +55,6 @@ both identify which site you are on, so the API operator can learn which sites y
 the unit tests. Load `apps/extension` itself unpacked to try changes, and reload it from
 `chrome://extensions` after each edit.
 
-The explorer link in the popup and banner comes from `src/ui/links.js`. It points at
-`http://localhost:5173` (the local explorer) until T-B06 deploys the explorer; set the public URL
-there, then build the zip again.
+The explorer link in the popup and banner comes from `src/ui/links.js`. It points at the deployed
+explorer, `https://hydra-registry.vercel.app`; for local work run `apps/explorer` on
+`http://localhost:5173` and change it there. Build the zip again after changing it.
