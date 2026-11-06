@@ -102,3 +102,16 @@ if (hs) {
   });
   update();
 }
+
+// Chrome blocks links to chrome:// pages, so the install step copies the address instead.
+for (const b of document.querySelectorAll("[data-copy]")) {
+  b.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(b.dataset.copy);
+      b.textContent = "Copied";
+    } catch {
+      b.textContent = "Copy failed, type it";
+    }
+    setTimeout(() => (b.textContent = "Copy"), 1800);
+  });
+}

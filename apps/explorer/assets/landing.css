@@ -119,13 +119,33 @@
 .l-check .find { max-width: 880px; }
 .l-check .ghost { margin-top: 24px; }
 
+/* Get the extension: 3 steps on the left, the download and 2 sites to try on the right. */
+.ext-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 48px; margin-top: 48px; align-items: start; }
+.ext-steps { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); }
+.ext-steps li { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 12px; padding: 22px 0; border-bottom: 1px solid var(--border); }
+.ext-steps .num { font: 500 12px/1.9 var(--mono); letter-spacing: 0.2em; color: var(--accent); }
+.ext-steps p { margin: 0; font: 400 16px/1.7 var(--mono); color: var(--fg); }
+.ext-steps code { padding: 2px 6px; font: 400 14px var(--mono); background: var(--card); border: 1px solid var(--border); }
+.ghost-copy { min-height: 28px; margin: 0 4px; padding: 0 8px; font: 500 10px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); background: transparent; border: 1px solid var(--border); border-radius: 0; cursor: pointer; transition: color 160ms var(--ease), border-color 160ms var(--ease); }
+.ghost-copy:hover { color: var(--accent); border-color: var(--accent); }
+.ext-try { display: grid; justify-items: start; gap: 14px; }
+.ext-try .btn { text-decoration: none; }
+.ext-meta { margin: 0; color: var(--muted); }
+.ext-meta a { color: inherit; text-transform: none; letter-spacing: 0.04em; }
+.ext-meta a:hover { color: var(--fg); }
+.ext-then { margin: 18px 0 0; font: 400 14px var(--mono); color: var(--muted); }
+.ext-site { display: flex; align-items: center; gap: 14px; min-height: 44px; font: 400 14px var(--mono); color: var(--fg); text-decoration: none; overflow-wrap: anywhere; }
+.ext-site:hover { color: var(--accent); }
+.ext-site .hs-badge { display: inline-flex; }
+.hs-badge.grey span { background: var(--muted); }
+
 
 @media (max-width: 1000px) {
   .l-hero { grid-template-columns: 1fr; gap: 48px; min-height: 0; padding: 56px 0 72px; }
   .l-head { max-width: 11ch; }
 }
 @media (max-width: 760px) {
-  .how, .stats { grid-template-columns: 1fr; }
+  .how, .stats, .ext-grid { grid-template-columns: 1fr; }
   .how li, .how li + li { padding: 28px 0; border-left: 0; border-bottom: 1px solid var(--border); }
   .stat { padding-bottom: 32px; border-bottom: 1px solid var(--border); }
   .track span { font-size: 22px; padding: 16px 28px; }
