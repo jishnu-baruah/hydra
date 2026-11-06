@@ -4,7 +4,7 @@
 // No dependencies, so CI can fetch and run it directly:
 //   node publish.mjs <build-dir>
 // Env: HYDRA_API_KEY (repo secret), HYDRA_API_URL; optional HYDRA_VERSION, HYDRA_DOMAINS (comma list; the server
-// ignores it until domain ownership checks land).
+// checks each: it must serve /.well-known/hydra.txt with the line hydra-app=<app>, else it is reported and left out).
 
 import { createHash } from 'node:crypto'
 import { readdir, readFile } from 'node:fs/promises'
@@ -85,6 +85,7 @@ if (res.status === 201) {
   console.log(`hydra:   transaction     https://rabdi.explorer.arkiv.network/tx/${out.releaseTx}`)
   console.log(`hydra:   swarm           ${out.swarmRef}`)
   console.log(`hydra:   files indexed   ${out.filesIndexed}`)
+  for (const u of out.domainsUnverified ?? []) console.log(`hydra: domain not bound: ${u.domain}: ${u.reason}`)
 } else if (res.status === 502 && out.phase && out.phase !== 'preflight') {
   fail(`${out.error}\nThe release may have been recorded. Check the transaction before re-running.`)
 } else {

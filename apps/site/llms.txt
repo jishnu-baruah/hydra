@@ -24,6 +24,12 @@ Agent skill: https://hydra-site-one.vercel.app/skill/hydra-publish/SKILL.md
 4. Add the secret before the first push (or re-run the workflow after adding it). Push to main.
    The run prints the Arkiv transaction link. Check with
    `GET https://hydra-api-5xmn.onrender.com/v1/apps/<app>/releases`.
+5. Bind your domain (optional). Serve a file at `/.well-known/hydra.txt` on the live site whose
+   one line is `hydra-app=<app>` (the app name the key was issued for). Then add
+   `HYDRA_DOMAINS: app.example.com` (comma list, up to 5 domains) to the env of the Publish step,
+   and push. If the file is missing or wrong, the release still publishes; the publish output
+   lists the domain as not bound, with the reason and the fix. Only proven domains appear in the
+   release's `domains`.
 
 ## Workflow template
 

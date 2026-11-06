@@ -6,6 +6,8 @@
 import { readFile } from 'node:fs/promises'
 import {
   OBSERVATION_TTL,
+  checkProof,
+  safeGet,
   ObservationSchema,
   arkivClients,
   guardedBatch,
@@ -13,25 +15,17 @@ import {
   rootCause,
   type CreateSpec,
 } from '@hydra/core'
-import { compare, runtimeProblems, scriptUrls, scriptsHash, sha256Tag, type Manifest, type Seen } from './scan.ts'
+import { bindTargets, compare, proofProblem, runtimeProblems, scriptUrls, scriptsHash, sha256Tag, type BoundTarget, type Manifest, type Seen } from './scan.ts'
 
 const MAX_SCRIPTS = 60
 const MAX_BYTES = 5 * 1024 * 1024
 const BATCH = 10 // observations per transaction; 20 targets is 2 transactions
-const UA = 'HydraIndexer/0.1 (+https://hydra-site-one.vercel.app)'
 
-interface Target {
-  app?: string
-  domain: string
-}
+type Target = BoundTarget
 
-async function get(url: string, timeoutMs = 15_000): Promise<Uint8Array> {
-  const res = await fetch(url, { headers: { 'User-Agent': UA }, redirect: 'follow', signal: AbortSignal.timeout(timeoutMs) })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  const buf = new Uint8Array(await res.arrayBuffer())
-  if (buf.byteLength > MAX_BYTES) throw new Error(`over ${MAX_BYTES} bytes`)
-  return buf
-}
+// Pages and scripts come from domains a publisher chose, so they are fetched only from public
+// addresses, https only, pinned, with each redirect rechecked (safeGet in @hydra/core).
+const get = (url: string, timeoutMs = 15_000): Promise<Uint8Array> => safeGet(url, { maxBytes: MAX_BYTES, timeoutMs })
 
 // The page as a browser renders it, from Jina's network (needs JINA_KEY). null when there is no
 // key, the call fails, or the result has no scripts (a bot challenge page, e.g. balancer.fi).
@@ -52,8 +46,7 @@ async function rendered(pageUrl: string): Promise<string | null> {
 }
 
 // The newest release's manifest for a Hydra app, read through the API's trust-filtered route.
-async function manifestFor(api: string, app: string | undefined): Promise<Manifest | null> {
-  if (!app) return null
+async function manifestFor(api: string, app: string): Promise<Manifest | null> {
   try {
     const res = await fetch(`${api}/v1/apps/${encodeURIComponent(app)}/releases`, { signal: AbortSignal.timeout(60_000) })
     const { releases } = (await res.json()) as { releases?: { payload?: { manifest?: Manifest } }[] }
@@ -63,20 +56,43 @@ async function manifestFor(api: string, app: string | undefined): Promise<Manife
   }
 }
 
+// /v1/activity returns the newest 100 releases, so apps with only older ones are missed (T-A20).
+const ACTIVITY_LIMIT = 100
+
+// Every app with a release on the API, with its latest manifest. Throws with the cause on failure.
+async function discover(api: string, warn: string[]): Promise<{ app: string; manifest: Manifest }[]> {
+  const res = await fetch(`${api}/v1/activity`, { signal: AbortSignal.timeout(60_000) })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const { events } = (await res.json()) as { events?: { kind?: string; app?: string }[] }
+  const rel = (events ?? []).filter((e) => e.kind === 'release' && typeof e.app === 'string')
+  if (rel.length >= ACTIVITY_LIMIT) warn.push(`release discovery saw ${rel.length} releases, the activity limit; apps with only older releases may be unbound`)
+  const apps = [...new Set(rel.map((e) => e.app as string))]
+  const found = await Promise.all(apps.map(async (app) => ({ app, manifest: await manifestFor(api, app) })))
+  return found.filter((f): f is { app: string; manifest: Manifest } => !!f.manifest)
+}
+
 // Previous scripts_hash per domain, for "changed since last run". In memory: a restart (or a free
 // Render service waking up) forgets it, so the first run after one reports no changes.
 const last = new Map<string, string>()
 const lastRuntime = new Map<string, string[]>() // domain -> runtime-only origins from the previous run
 
-async function scan(api: string, t: Target) {
+async function scan(t: Target) {
   const pageUrl = `https://${t.domain}/`
   let seen: Seen[] = []
   let problems: string[] = []
   let status: 'match' | 'mismatch' | 'unknown' = 'unknown'
   let via: 'direct' | 'renderer' = 'direct'
   let runtime: string[] = []
-  const renderedP = rendered(pageUrl) // in parallel with the direct fetch
-  try {
+  // A bound domain is rechecked first. One that lost its proof, or now resolves to a private
+  // address, is not fetched at all: it is a mismatch on the proof alone. An unreadable proof is
+  // noted and the scan goes on.
+  const proof = t.bound && t.app ? proofProblem(true, await checkProof(t.domain, t.app)) : null
+  if (proof) problems.push(proof)
+  const lost = proof?.startsWith('DOMAIN_PROOF_LOST')
+  if (lost) status = 'mismatch'
+  const renderedP = lost ? Promise.resolve(null) : rendered(pageUrl) // in parallel with the direct fetch
+  const manifest = t.manifest
+  if (!lost) try {
     let html: string
     try {
       html = new TextDecoder().decode(await get(pageUrl))
@@ -93,7 +109,6 @@ async function scan(api: string, t: Target) {
     seen = await Promise.all(
       urls.slice(0, MAX_SCRIPTS).map(async (url) => ({ url, sha256: await get(url).then(sha256Tag, () => null) })),
     )
-    const manifest = await manifestFor(api, t.app)
     const r = compare(pageUrl, seen, manifest)
     status = r.status
     problems = [...problems, ...r.problems]
@@ -138,14 +153,22 @@ export interface RunSummary {
 
 // `clients` without a wallet (or null) scans and reports but writes nothing.
 export async function runOnce(o: { api: string; clients: ReturnType<typeof arkivClients> | null }): Promise<RunSummary> {
-  const { targets } = JSON.parse(await readFile(new URL('../targets.json', import.meta.url), 'utf8')) as { targets: Target[] }
+  const { targets: listed } = JSON.parse(await readFile(new URL('../targets.json', import.meta.url), 'utf8')) as { targets: { app?: string; domain: string }[] }
   const started = Date.now()
-  const results = await pool(targets, 4, (t) => scan(o.api, t)) // 4 sites at a time, each fetched politely
+  const discoveryErrors: string[] = []
+  let releases: { app: string; manifest: Manifest }[] = []
+  try {
+    releases = await discover(o.api, discoveryErrors)
+  } catch (err) {
+    discoveryErrors.push(`release discovery failed, all targets unbound: ${rootCause(err)}. Check the API at ${o.api} and rerun`)
+  }
+  const targets = bindTargets(listed, releases)
+  const results = await pool(targets, 4, (t) => scan(t)) // 4 sites at a time, each fetched politely
   const lines = results.map((r) => {
     const note = [r.changed ? 'CHANGED SINCE LAST RUN' : '', r.runtime.length ? `runtime: ${r.runtime.join(' ')}` : '', ...r.problems.slice(0, 3)].filter(Boolean).join('; ')
     return `${r.status.padEnd(8)} ${r.t.domain.padEnd(28)} ${String(r.seen.length).padStart(3)} scripts ${note}`
   })
-  const summary: RunSummary = { sites: results.length, written: 0, txs: [], errors: [], lines, ms: 0 }
+  const summary: RunSummary = { sites: results.length, written: 0, txs: [], errors: discoveryErrors, lines, ms: 0 }
   const wallet = o.clients?.walletClient
   if (o.clients && wallet) {
     const specs: CreateSpec[] = results.map((r) => ({

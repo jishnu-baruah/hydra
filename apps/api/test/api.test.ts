@@ -61,7 +61,8 @@ test('tar: system tar lists and extracts what we wrote', () => {
 })
 
 // End-to-end through HTTP with fake Arkiv and Swarm writers. App claims land in `owners`.
-const calls = { one: 0, many: 0, swarm: 0, lastMany: 0, lastExt: [] as unknown[], claimExp: undefined as unknown }
+const calls = { one: 0, many: 0, swarm: 0, proofs: 0, lastMany: 0, lastExt: [] as unknown[], claimExp: undefined as unknown }
+let lastManifest: { domains: string[] } | undefined
 const owners = new Map<string, string>()
 const server = createApi({
   secret: SECRET,
@@ -83,9 +84,13 @@ const server = createApi({
     },
     swarm: async (files) => {
       calls.swarm++
-      assert.ok(files.some((f) => f.path === 'hydra-manifest.json'))
+      const m = files.find((f) => f.path === 'hydra-manifest.json')
+      assert.ok(m)
+      lastManifest = JSON.parse(m.data.toString())
       return 'ab'.repeat(32)
     },
+    // Stub proof: only hosts starting with "good." serve the proof file.
+    proveDomain: async (d, _app) => (calls.proofs++, d.startsWith('good.') ? { ok: true } : { ok: false, reason: `${d} serves no hydra.txt` }),
     now: () => Date.parse('2026-11-06T10:00:00Z'),
   },
 })
@@ -111,22 +116,34 @@ test('publish: no key or a bad key gets 401 with 0 writes', async () => {
 })
 
 test('publish: the first publish claims the app, uploads to Swarm once, writes 1 release and 1 batch of 2 code files', async () => {
-  const { status, json } = await post('/v1/releases', { ...build, domains: ['app.uniswap.org'] }, keyFor(account.address))
+  const { status, json } = await post('/v1/releases', { ...build, domains: ['good.example.com', 'Bad.Example.com'] }, keyFor(account.address))
   assert.equal(status, 201, JSON.stringify(json))
   assert.equal(json.swarmRef, 'ab'.repeat(32))
   assert.equal(json.publisher, account.address)
   assert.equal(json.filesIndexed, 2) // index.html and app.js; logo.png is not code
-  assert.equal(json.domainsIgnored, 1) // unverified domains never reach the manifest
+  assert.deepEqual(json.domains, ['good.example.com'])
+  assert.deepEqual(json.domainsUnverified, [{ domain: 'bad.example.com', reason: 'bad.example.com serves no hydra.txt' }])
+  assert.deepEqual(lastManifest?.domains, ['good.example.com']) // only the proven domain reaches the manifest
   assert.ok(json.appClaimTx)
   assert.equal(owners.get('demo'), account.address.toLowerCase())
   // 2 single writes (app claim, release), 1 batch
   assert.deepEqual([calls.one, calls.many, calls.swarm, calls.lastMany], [2, 1, 1, 2])
 })
 
+test('publish: a bad domain or more than 5 domains is a 400 with 0 writes and 0 proof fetches', async () => {
+  const before = { ...calls }
+  const key = keyFor(account.address)
+  assert.equal((await post('/v1/releases', { ...build, domains: ['good.example.com', 'localhost'] }, key)).status, 400)
+  assert.equal((await post('/v1/releases', { ...build, domains: Array.from({ length: 6 }, (_, i) => `good${i}.example.com`) }, key)).status, 400)
+  assert.equal((await post('/v1/releases', { ...build, domains: 'good.example.com' }, key)).status, 400)
+  assert.deepEqual(calls, before)
+})
+
 test('ownership: another address cannot get a key for, or publish to, an owned app (0 writes)', async () => {
   const before = { ...calls }
-  const pub = await post('/v1/releases', build, keyFor(intruder.address))
+  const pub = await post('/v1/releases', { ...build, domains: ['good.example.com'] }, keyFor(intruder.address))
   assert.equal(pub.status, 403)
+  assert.equal(calls.proofs, before.proofs) // a rival's publish triggers no proof fetch
   const msg = await (await fetch(`${base()}/v1/auth/message?address=${intruder.address}&app=demo`)).json() as { message: string; issuedAt: string }
   const signature = await intruder.signMessage({ message: msg.message })
   const key = await post('/v1/auth/key', { address: intruder.address, app: 'demo', issuedAt: msg.issuedAt, signature })

@@ -75,3 +75,12 @@ If it fails, read the message:
 - 400: fix what it names (no index.html, wrong folder, over 2000 files or 20 MB).
 - 502 `submitted` or `submission_unknown`: do not re-run; check the releases route first.
 - Timeout on the first call: the free API was asleep. Re-run once.
+
+## 5. Bind your domain (optional)
+
+Only if the user wants their live domain checked against releases. Serve a file at
+`/.well-known/hydra.txt` on that domain whose one line is `hydra-app=<app>` (the app name the key
+was issued for). Then add `HYDRA_DOMAINS: app.example.com` (comma list, up to 5 domains) to the
+`env:` of the Publish step, and commit and push (ask before pushing). If the file is missing or
+wrong, the release still publishes; the publish output lists the domain as not bound, with the
+reason and the fix.

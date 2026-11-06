@@ -12,6 +12,7 @@ export interface Seen {
 export interface Manifest {
   files: Record<string, string> // "/path" -> "sha256-<hex>"
   scripts?: Record<string, string> // external https URL -> "sha256-<hex>"
+  domains?: string[] // domains the API verified (hydra.txt) at publish time
 }
 
 const TAG = /<(script|link)\b([^>]*)>/gi
@@ -98,4 +99,40 @@ export function runtimeProblems(o: {
     problems = origins.filter((x) => !before.has(x)).map((x) => `NEW_RUNTIME_ORIGIN ${x}`)
   }
   return { origins, problems }
+}
+
+export interface BoundTarget {
+  domain: string
+  app?: string
+  manifest: Manifest | null
+  bound: boolean
+}
+
+// A site is compared with a release only when that app's latest manifest lists the domain (the API
+// only lists it after the hydra.txt proof passed). A targets.json app label alone binds nothing, so
+// claiming a famous app name cannot produce a false mismatch. Two apps naming one domain: bind none.
+export function bindTargets(
+  listed: { app?: string; domain: string }[],
+  releases: { app: string; manifest: Manifest }[],
+): BoundTarget[] {
+  const claims = new Map<string, { app: string; manifest: Manifest }[]>()
+  for (const r of releases)
+    for (const d of new Set((r.manifest.domains ?? []).map((x) => x.toLowerCase())))
+      claims.set(d, [...(claims.get(d) ?? []), r])
+  const out = new Map<string, BoundTarget>()
+  for (const t of listed) {
+    const domain = t.domain.toLowerCase()
+    const c = claims.get(domain)
+    out.set(domain, c?.length === 1 ? { domain, app: c[0].app, manifest: c[0].manifest, bound: true } : { domain, app: t.app, manifest: null, bound: false })
+  }
+  for (const [domain, c] of claims) if (!out.has(domain)) out.set(domain, c.length === 1 ? { domain, app: c[0].app, manifest: c[0].manifest, bound: true } : { domain, app: undefined, manifest: null, bound: false })
+  return [...out.values()]
+}
+
+// A bound domain whose hydra.txt proof no longer holds: a hijacker could have removed the file.
+// LOST means the site answered without the proof (or resolves privately): a mismatch on its own.
+// UNREACHABLE means the file could not be read at all, so the script compare decides.
+export function proofProblem(bound: boolean, result: { ok: true } | { ok: false; reason: string; transient?: true }): string | null {
+  if (!bound || result.ok) return null
+  return `${result.transient ? 'DOMAIN_PROOF_UNREACHABLE' : 'DOMAIN_PROOF_LOST'} ${result.reason}`
 }
