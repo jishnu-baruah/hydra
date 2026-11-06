@@ -4,8 +4,9 @@
 // only records created by our publisher wallet (`writer`). An app name belongs to the address in
 // its earliest `hydra.app` record; releases and files from any other address are dropped.
 
-import { AppSchema, FileSchema, ReleaseSchema, eq, readWithRetry } from '@hydra/core'
+import { AppSchema, FileSchema, ReleaseSchema, eq, readAll, readWithRetry } from '@hydra/core'
 import { hexToString, type Hex } from 'viem'
+import { appForDomain as pickApp, type DomainRelease } from './domains.ts'
 
 type Query = {
   from: (s: unknown) => Query
@@ -109,4 +110,40 @@ export async function filesByHash(reader: unknown, writer: Hex, sha256: string) 
     trusted.set(app, new Set((await releasesFor(reader, writer, app)).map((r) => r.$key)))
   }
   return rows.filter((r) => trusted.get(String(r.app))?.has(r.release))
+}
+
+// The app that proved `domain` (see domains.ts), from the publisher wallet's releases. Pages through
+// all of them (100 per Arkiv query); each candidate app's owner comes from its live name claim.
+export async function appForDomainFrom(reader: unknown, writer: Hex, domain: string): Promise<string | null> {
+  const cols = { $key: true, app: true, publisher: true, published_at: true, body: true } as never
+  const rows = await readAll(
+    (offset) =>
+      (reader as { select: (c: never) => { from: (s: unknown) => { createdBy: (a: Hex) => { limit: (n: number) => { offset: (n: number) => { fetch: () => Promise<{ entities: Record<string, unknown>[]; skipped: number }> } } } } } })
+        .select(cols)
+        .from(ReleaseSchema)
+        .createdBy(writer)
+        .limit(100)
+        .offset(offset)
+        .fetch(),
+    1000,
+  )
+  const host = domain.toLowerCase()
+  const listed: DomainRelease[] = []
+  for (const e of rows) {
+    const r = row(e)
+    let domains: string[] = []
+    try {
+      const m = JSON.parse(hexToString(r.body as Hex))?.manifest?.domains
+      domains = Array.isArray(m) ? m.filter((d): d is string => typeof d === 'string') : []
+    } catch {
+      // an unreadable body lists no domain
+    }
+    if (domains.some((d) => d.toLowerCase() === host)) listed.push({ app: String(r.app), publisher: String(r.publisher), published_at: r.published_at, domains })
+  }
+  const owners: Record<string, string> = {}
+  for (const app of new Set(listed.map((l) => l.app))) {
+    const owner = (await claimOf(reader, writer, app))?.owner
+    if (owner) owners[app] = owner
+  }
+  return pickApp(listed, owners, host)
 }

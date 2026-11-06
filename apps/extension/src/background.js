@@ -1,6 +1,6 @@
 import { STATES, isWeb } from "./verdict.js";
 import { compare } from "./compare/compare.js";
-import { appForHashes, latestManifest } from "./compare/lookup.js";
+import { appForDomain, appForHashes, latestManifest } from "./compare/lookup.js";
 import { present } from "./ui/present.js";
 import { showBanner } from "./ui/banner.js";
 import { EXPLORER } from "./ui/links.js";
@@ -110,7 +110,7 @@ async function check(tabId) {
     // compared (red) instead of looking unknown (grey).
     const known = (await chrome.storage.local.get(`app:${origin}`))[`app:${origin}`];
     const own = scripts.filter((s) => s.sha256 && new URL(s.url).origin === origin).map((s) => s.sha256);
-    const app = known ?? (await appForHashes(own));
+    const app = known ?? (await appForDomain(new URL(tab.url).hostname)) ?? (await appForHashes(own));
     if (!app) {
       result = { verdict: "grey", reason: "No release on record matches this site's scripts." };
     } else {
