@@ -906,6 +906,17 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: unit tests written failing first (session sign-in, stale or wrong signature refused, owner-only apps, rotation makes the older key 401 and the new key work, channel routes through the session); API tests 66 or more pass; live: a wallet session lists demo-dapp and a rotation makes the old key fail
 - Evidence: <PR link>
 
+### T-A33, Telegram bot replies with the chat id
+- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-a33-tg-chat-id
+- Suggested: Jishnu
+- Depends-on: T-A30
+- Touches: apps/api/, apps/explorer/console/
+- Serves: Usability (judged)
+- Known: requested on 7 Nov: a team must find its group's chat id before adding a Telegram channel; Find my chat works, but there is no way to see the id in Telegram itself
+- Scope: while the API runs, the bot answers "/hydra <app>" (and "/chatid") in a chat with that chat's id and the next step, once per message; the console hint says to paste that id; the membership proof (the same "/hydra <app>" within 15 minutes) is unchanged
+- Acceptance: unit tests written failing first for the reply logic (4 or more cases: replies once per message, ignores old messages and other text, names the app); API tests 78 or more pass; live: "/hydra demo-dapp" in a group gets the id back within 10 s
+- Evidence: <PR link>
+
 ### T-B12, Console: sign in with a wallet, every app, keys and channels
 - Status: in-review | Branch: feature/t-b12-console-wallet
 - Suggested: Mouli
