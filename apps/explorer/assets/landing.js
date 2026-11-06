@@ -102,3 +102,29 @@ if (hs) {
   });
   update();
 }
+
+// Get the extension. Once the Chrome Web Store listing is live (OP-12), set its URL here: the button
+// becomes Add to Chrome and the zip install steps go away. Until then, the zip and Load unpacked.
+const CHROME_STORE = "";
+const get = document.getElementById("ext-get");
+if (CHROME_STORE && get) {
+  get.href = CHROME_STORE;
+  get.target = "_blank";
+  get.rel = "noopener noreferrer";
+  get.querySelector("span").textContent = "Add to Chrome";
+  get.querySelector("svg path").setAttribute("d", "M5 12h14M13 6l6 6-6 6");
+  for (const el of document.querySelectorAll(".ext-steps, .ext-meta")) el.hidden = true;
+}
+
+// Chrome blocks links to chrome:// pages, so the install step copies the address instead.
+for (const b of document.querySelectorAll("[data-copy]")) {
+  b.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(b.dataset.copy);
+      b.textContent = "Copied";
+    } catch {
+      b.textContent = "Copy failed, type it";
+    }
+    setTimeout(() => (b.textContent = "Copy"), 1800);
+  });
+}

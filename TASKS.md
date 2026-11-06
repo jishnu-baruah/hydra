@@ -663,7 +663,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Known: before packaging, set EXPLORER in apps/extension/src/ui/links.js to the T-B06 explorer URL (it is localhost:5173 until then), and rewrite apps/extension/README.md, which still describes the T-C01 hard-coded verdict
 - Serves: Usability (judged)
 - Acceptance: a zip plus load-unpacked steps that work on 1 clean Chrome profile in under 2 minutes
-- Evidence: https://github.com/jishnu-baruah/hydra/releases/tag/extension-v0.4.0 (merged in #44); hydra-extension-0.4.0.zip, sha256 89b408b98fc8fe5dfdf1bec335e0ea31ca20ae0625525b539e0aa61e70a3c9fa on 2 builds; unzipped into a clean Chromium profile it gave a first real verdict in 9.6 s (stake.lido.fi, grey, deployed API); the hand-timed run in branded Chrome is still to do
+- Evidence: https://github.com/jishnu-baruah/hydra/releases/tag/extension-v0.4.1, rebuilt after T-A22 so the zip asks the API about the domain first; hydra-extension-0.4.1.zip, sha256 000b1bbc3efee7f6ae4f0b666237eae9ff74bf0e4f2f15f8457456bb8844472f on 2 builds; unzipped into a clean Chromium profile: green on hydra-demo-dapp.vercel.app in 4.4 s, grey on example.com in 3.5 s, 9.1 s from launch to the last verdict (live API); 0.4.0 before it (#44): sha256 89b408b98fc8fe5dfdf1bec335e0ea31ca20ae0625525b539e0aa61e70a3c9fa on 2 builds; unzipped into a clean Chromium profile it gave a first real verdict in 9.6 s (stake.lido.fi, grey, deployed API); the hand-timed run in branded Chrome is still to do
 - Finding: Windows' 260-character path limit broke the first unzip inside a deep folder, though the zip's longest path is 22 characters, so users should unzip to a short path; each page sends up to 5 script hashes to the API, so its operator can see which checked sites a user visits, and the README says so
 
 ### T-B06, Deploy the explorer
@@ -688,7 +688,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: the template look needs none of its about 60 packages: 1 CSS file, a 20-line split-flap and Lenis reproduce it, and IntersectionObserver replaces GSAP in about 15 lines.
 
 ### T-B08, Publish page in the explorer, from the T-A09 onboarding flow
-- Status: in-review https://github.com/jishnu-baruah/hydra/pull/74 | Branch: feature/t-b08-publish-page
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/101 | Branch: feature/t-b08-publish-page
 - Suggested: Mouli
 - Depends-on: T-A09, T-B07
 - Touches: apps/explorer/publish/, apps/explorer/assets/, apps/explorer/src/api.js, apps/explorer/events/, apps/explorer/vercel.json, apps/explorer/index.html, apps/explorer/releases/index.html, apps/explorer/search/index.html, apps/explorer/app/index.html, apps/explorer/observed/index.html
@@ -747,3 +747,14 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: unit tests written failing first for the route and the extension lookup (API 25 or more pass, extension 17 or more pass); in real Chrome, with no remembered state, 1 first visit to the tampered demo site is red `!`, the published site is green, and app.uniswap.org stays grey
 - Evidence: PR (this one); in real Chrome 156 (extension loaded over the DevTools pipe, fresh profile, no remembered state) a first visit to the tampered demo site is red `!` naming /app.js, the published site is green "All 2 scripts match demo-dapp demo-1", app.uniswap.org stays grey; API tests 25 pass, extension tests 17 pass
 - Finding: Chrome 156 branded builds ignore --load-extension, so the extension is loaded with Extensions.loadUnpacked over --remote-debugging-pipe; the extension now sends the page hostname to the API, which the README says; earliest-proof-wins means a domain cannot move to another app until the first one lapses, by design; /security-review found nothing at 80 percent, GLM found a malformed %-escape returning 500 and a looser hostname check in the extension, both fixed with tests first
+
+### T-B09, Explorer fixes from the 6 Nov walkthrough: domain search, honest copy, domain step
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-b09-explorer-fixes
+- Suggested: Jishnu
+- Depends-on: T-A22
+- Touches: apps/explorer/, apps/extension/src/ui/links.js, apps/extension/README.md, apps/site/index.html
+- Serves: Practicality (judged) ; WOW factor (judged)
+- Known: walked every explorer page on 6 Nov (local run against live Arkiv). Searching any domain returns nothing, including the demo site, because search reads a `domain` column our API fills with "none"; the app page shows no bound domain or live verdict; the publish page has no domain-binding step, so a team that follows it stays "unknown"; copy says "every 15 minutes" (it is about 30), "every check is a public record on Arkiv" (extension checks are not), and "1,081/1,081 scripts on 5 live dApps" (an old spike figure shown as current); the explorer is not hosted (OP-10) so the extension links to localhost. The explorer is Mouli's code; his last push was 08:20 IST and these are scoped fixes
+- Scope: search resolves a hostname through the API's /v1/domains route and the indexer's observations (a site nobody published shows "observed, not published"); the app page lists its bound domains with the latest observation verdict, or tells the team how to bind; the publish page and its agent handoff get the domain step; copy corrected; nav labels Releases, Events become Builds, Activity and Sites is added; the explorer is deployed (OP-10) and the extension links point at it
+- Acceptance: unit tests (failing first) for domain search and the app page's site rows (explorer tests 20 or more pass); in a browser, searching hydra-demo-dapp.vercel.app finds demo-dapp, searching app.uniswap.org finds "observed, not published", and the app page of demo-dapp shows its domain with a match; 0 copy lines left saying "15 minutes"
+- Evidence: <PR link>
