@@ -13,6 +13,7 @@
     "viem": "^2.57.16"
   },
   "exports": {
-    "./run": "./src/run.ts"
+    "./run": "./src/run.ts",
+    "./check": "./src/check.ts"
   }
 }

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Live check, Hydra explorer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
+    <link rel="stylesheet" href="../assets/hydra.css" />
+    <link rel="stylesheet" href="live.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="bar">
+      <a class="mark" href="../">Hydra</a>
+      <nav aria-label="Main">
+        <a href="../releases/">Builds</a>
+        <a href="../observed/">Sites</a>
+        <a href="../events/">Activity</a>
+        <a href="./" aria-current="page">Live</a>
+        <a href="../search/">Search</a>
+        <a href="../publish/">Publish</a>
+      </nav>
+      <span class="tag">Arkiv Rabdi / 7794095</span>
+    </header>
+    <span class="rail label" aria-hidden="true">Live</span>
+
+    <main id="main">
+      <section class="hero">
+        <p class="eyebrow">Registry <span>/ Live check</span></p>
+        <h1 class="compact" data-flap>Live check</h1>
+        <p class="lede">Watch one published site every 5 seconds. If one of its scripts changes, this page turns red and a Telegram alert goes out. For the demo: it only watches sites that a release has bound, and it switches itself off after 15 minutes.</p>
+      </section>
+
+      <section class="section">
+        <form id="controls" class="controls" autocomplete="off">
+          <label>Site
+            <input id="domain" name="domain" type="text" inputmode="url" spellcheck="false" value="hydra-demo-dapp.vercel.app" />
+          </label>
+          <label>Demo token
+            <input id="token" name="token" type="password" placeholder="Only needed to switch on or off" />
+          </label>
+          <button id="toggle" type="submit" class="btn">Switch on</button>
+        </form>
+        <p id="message" role="status"></p>
+
+        <div id="card" class="card off" aria-live="polite">
+          <p id="headline" class="headline">Not watching</p>
+          <p id="detail" class="detail">Loading...</p>
+          <ul id="problems" class="problems"></ul>
+          <p class="meta"><span id="checked"></span> <span id="remaining"></span></p>
+        </div>
+
+        <div class="section-head">
+          <h2>Last checks</h2>
+          <span class="label muted">Every 5 seconds, newest on the right</span>
+        </div>
+        <div id="strip" class="strip" aria-label="Last checks"></div>
+
+        <div class="section-head">
+          <h2>What changed</h2>
+          <span class="label muted">Newest first</span>
+        </div>
+        <ol id="events" class="events"></ol>
+        <p class="muted" id="none">Nothing has changed since it was switched on.</p>
+      </section>
+
+      <footer class="colophon label">
+        <span>Checks run on the Hydra API</span>
+        <span>A change is also recorded on Arkiv</span>
+        <span>API: <span id="api"></span></span>
+      </footer>
+    </main>
+    <script type="module" src="../assets/flap.js"></script>
+    <script type="module" src="live.js"></script>
+    <script type="module" src="../assets/motion.js"></script>
+  </body>
+</html>

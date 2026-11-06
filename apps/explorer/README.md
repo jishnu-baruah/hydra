@@ -23,6 +23,7 @@ cd apps/explorer && python -m http.server 5173
 - `/app/?name=<app>`: one app's release history, plus "Where it runs": the domains its newest release binds, each with the indexer's latest verdict.
 - `/observed/` (nav: Sites) and `/observed/?domain=<site>`: every site the indexer watches, and one site's history.
 - `/events/` (nav: Activity): releases, app claims and indexer observations, newest first.
+- `/live/` (nav: Live): the demo's live checker. Shows the Hydra API's watch state for one bound site (a check every 5 s, the last 30 checks, what changed and whether the alert went out) and switches it on or off with the demo token. Reads `GET /v1/watch`; the switch is `POST /v1/watch`.
 - `/publish/`: sign in with a wallet, get an API key, add the workflow, bind the domain.
 
 Everything read from Arkiv is shown with `textContent`, never as HTML.

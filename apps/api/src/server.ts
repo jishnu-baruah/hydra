@@ -19,6 +19,7 @@ import { normalizeDomain, rootCause, WriteNotVerifiedError } from '@hydra/core'
 import { APP_NAME, checkInput, keyFromSignature, signInMessage } from './auth.ts'
 import { verifyKey } from './keys.ts'
 import { claimApp, ownedError, publish, type PublishDeps } from './publish.ts'
+import type { createWatcher } from './watch.ts'
 
 export interface ApiDeps {
   secret: string
@@ -36,6 +37,8 @@ export interface ApiDeps {
   activity?: () => Promise<unknown>
   observations?: () => Promise<unknown>
   indexer?: { secret: string; run: () => Promise<RunSummary>; runner?: IndexerRunner } // trigger; spends indexer gas
+  // The demo watcher: GET is public status, POST switches it, guarded by a bearer token.
+  watch?: { watcher: ReturnType<typeof createWatcher>; token?: string }
   health?: Record<string, unknown>
 }
 
@@ -141,6 +144,12 @@ export function createApi(deps: ApiDeps) {
     return Boolean(deps.indexer?.secret) && got.length === want.length && timingSafeEqual(got, want)
   }
 
+  const watchOk = (auth: string | undefined) => {
+    const want = Buffer.from(`Bearer ${deps.watch?.token ?? ''}`)
+    const got = Buffer.from(auth ?? '')
+    return Boolean(deps.watch?.token) && got.length === want.length && timingSafeEqual(got, want)
+  }
+
   const send = (res: ServerResponse, status: number, body: unknown, type = 'application/json') => {
     res.writeHead(status, {
       'Content-Type': type,
@@ -212,6 +221,24 @@ export function createApi(deps: ApiDeps) {
         if (!triggerOk(req.headers.authorization)) return send(res, 401, { error: 'missing or wrong indexer trigger secret' })
         const out = runner!.start()
         return out.ok ? send(res, 202, { started: true, startedAt: out.startedAt }) : send(res, out.status, { error: out.error })
+      }
+
+      if (path === '/v1/watch' && deps.watch) {
+        if (req.method === 'GET') return send(res, 200, deps.watch.watcher.status())
+        if (req.method === 'POST') {
+          if (!deps.watch.token) return send(res, 503, { error: 'the demo watch switch is not configured on this server: set DEMO_WATCH_TOKEN (at least 16 characters) on the host' })
+          if (!watchOk(req.headers.authorization)) return send(res, 401, { error: 'missing or wrong demo token' })
+          const body = (await readJson(req, 4096)) as { domain?: unknown; on?: unknown }
+          if (typeof body.on !== 'boolean') return send(res, 400, { error: '"on" must be true or false' })
+          if (!body.on) {
+            deps.watch.watcher.stop()
+            return send(res, 200, deps.watch.watcher.status())
+          }
+          const domain = typeof body.domain === 'string' ? normalizeDomain(body.domain) : null
+          if (!domain) return send(res, 400, { error: '"domain" must be a public hostname such as app.example.com' })
+          const out = await deps.watch.watcher.start(domain)
+          return out.ok ? send(res, 200, deps.watch.watcher.status()) : send(res, out.status, { error: out.error })
+        }
       }
 
       if (req.method === 'GET' && path === '/v1/indexer/status' && runner) return send(res, 200, runner.status())

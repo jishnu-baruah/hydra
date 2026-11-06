@@ -184,7 +184,8 @@ async function previous(reader: unknown, addr: Hex, now: number): Promise<Map<st
 
 // `clients` without a wallet (or null) scans and reports but writes nothing. `indexerAddress` is for
 // a dry run: with no wallet it names whose earlier observations to read (read-only).
-export async function runOnce(o: { api: string; clients: ReturnType<typeof arkivClients> | null; indexerAddress?: Hex }): Promise<RunSummary> {
+export async function runOnce(o: { api: string; clients: ReturnType<typeof arkivClients> | null; indexerAddress?: Hex; only?: string }): Promise<RunSummary> {
+  const only = o.only ?? process.env.INDEXER_ONLY // a comma list of domains: a one-site run (T-A23), or the live watcher's flip (T-A25)
   const { targets: listed } = JSON.parse(await readFile(new URL('../targets.json', import.meta.url), 'utf8')) as { targets: { app?: string; domain: string; category: string }[] }
   const started = Date.now()
   const errors: string[] = []
@@ -197,16 +198,16 @@ export async function runOnce(o: { api: string; clients: ReturnType<typeof arkiv
   // Discovery: targets.json first, then the top N protocols by TVL from DefiLlama.
   let merged: { app?: string; domain: string; category: string }[] = listed
   try {
-    if (process.env.INDEXER_ONLY) throw new Error('one-site run')
+    if (only) throw new Error('one-site run')
     const res = await fetch(LLAMA, { signal: AbortSignal.timeout(60_000) })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const apps = new Map(listed.map((e) => [e.domain.toLowerCase(), e.app]))
     merged = topTargets(await res.json(), Number(process.env.INDEXER_TOP ?? 227), listed).map((e) => ({ ...e, app: apps.get(e.domain.toLowerCase()) }))
   } catch (err) {
-    if (!process.env.INDEXER_ONLY) errors.push(`DefiLlama discovery failed, scanning targets.json only: ${rootCause(err)}. Check ${LLAMA} and rerun`)
+    if (!only) errors.push(`DefiLlama discovery failed, scanning targets.json only: ${rootCause(err)}. Check ${LLAMA} and rerun`)
   }
   const category = new Map(merged.map((e) => [e.domain.toLowerCase(), e.category]))
-  const targets = onlyTargets(bindTargets(merged, releases), process.env.INDEXER_ONLY)
+  const targets = onlyTargets(bindTargets(merged, releases), only)
 
   // Earlier observations come from Arkiv, not memory.
   const wallet = o.clients?.walletClient

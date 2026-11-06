@@ -1,0 +1,28 @@
+.controls { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; margin-bottom: 8px; }
+.controls label { display: grid; gap: 6px; font: 500 11px/1 var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+.controls input { font: 400 16px/1.2 var(--sans); letter-spacing: 0; text-transform: none; color: var(--fg); background: var(--card); border: 1px solid var(--border); padding: 12px; min-width: 0; }
+.controls button { padding: 12px 20px; }
+#message { min-height: 1.4em; margin: 4px 0 16px; color: var(--muted); }
+#message.error { color: var(--mismatch); }
+
+.card { border: 1px solid var(--border); background: var(--card); padding: 28px clamp(16px, 3vw, 32px); margin-bottom: 40px; }
+.card.match { border-color: rgb(63 191 111 / 0.5); }
+.card.mismatch { border-color: var(--mismatch); background: rgb(255 90 78 / 0.08); }
+.headline { font: 400 clamp(36px, 7vw, 72px)/1 var(--display); letter-spacing: 0.02em; text-transform: uppercase; margin: 0 0 12px; }
+.card.match .headline { color: var(--match); }
+.card.mismatch .headline { color: var(--mismatch); }
+.card.off .headline, .card.unknown .headline { color: var(--unknown); }
+.detail { max-width: 62ch; margin: 0 0 12px; color: var(--fg); }
+.problems { margin: 0 0 12px; padding: 0; list-style: none; font: 500 13px/1.6 var(--mono); color: var(--mismatch); }
+.meta { margin: 0; font: 500 12px/1 var(--mono); letter-spacing: 0.1em; color: var(--muted); display: flex; gap: 18px; flex-wrap: wrap; }
+
+.strip { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 40px; min-height: 22px; }
+.tick { width: 16px; height: 22px; background: var(--faint); display: block; }
+.tick.match { background: var(--match); }
+.tick.mismatch { background: var(--mismatch); }
+.tick.unreachable { background: var(--faint); opacity: 0.6; }
+
+.events { margin: 0 0 12px; padding: 0; list-style: none; display: grid; gap: 8px; font: 500 13px/1.5 var(--mono); }
+.events li { border: 1px solid var(--border); padding: 10px 12px; }
+
+@media (max-width: 720px) { .controls { grid-template-columns: 1fr; } }

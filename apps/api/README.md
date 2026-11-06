@@ -33,3 +33,18 @@ A release: the server hashes every file itself, uploads the build plus `hydra-ma
 Swarm when `BEE_API_URL` is set (else `swarm_ref` is `pending`),
 writes 1 `hydra.release` record, then `hydra.file` records for up to 200 code files in batches
 of 20. All writes go through core's guarded path: one transaction each, never resent.
+
+## Demo live checker (T-A25)
+
+An in-memory watcher that checks one bound site every 5 seconds, for the demo. A check fetches the page
+and its scripts (through `safeGet`), rechecks the site's `hydra.txt` and compares with the release; it
+reads and writes nothing on Arkiv. When the verdict flips (match to mismatch or back) it runs the normal
+one-site observation write and the Telegram alert, once. It switches itself off after 15 minutes, and a
+restart or sleep of the host clears it.
+
+- `GET /v1/watch`: public state: on or off, the domain, the last check, the last 30 checks and the flips.
+- `POST /v1/watch` with `{ "domain": "app.example.com", "on": true }` or `{ "on": false }`, header
+  `Authorization: Bearer <DEMO_WATCH_TOKEN>`. 401 for a wrong token, 503 when `DEMO_WATCH_TOKEN` is
+  unset or shorter than 16 characters, 404 when no release binds the domain.
+- The explorer's `/live/` page is the front end.
+
