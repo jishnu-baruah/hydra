@@ -797,7 +797,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: <PR link>
 
 ### T-D12, Demo kit: hack, restore and status scripts plus a runbook
-- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-d12-demo-kit
+- Status: in-review | Branch: feature/t-d12-demo-kit
 - Suggested: Jishnu
 - Depends-on: T-D04, T-A23
 - Touches: demo/hack.mjs, demo/restore.mjs, demo/status.mjs, demo/lib.mjs, demo/RUNBOOK.md, demo/README.md, demo/.vercelignore
@@ -805,4 +805,5 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Known: on 6 Nov a tamper left in a shared checkout made the repo's demo/app.js differ from the release while the live site was clean, and the latest observation stayed mismatch until a one-site run recorded match again; the stage needs one command to break the site, one to heal it, and one to say what every screen will show
 - Scope: `node demo/hack.mjs` deploys a tampered copy of the demo from a temp folder (the repo stays clean), waits until the live site serves it, then lets the live watcher (T-A25) catch it or runs the one-site check (T-A23) itself and prints the time to alert; `node demo/restore.mjs` deploys the clean demo, waits until the live script hash equals the release, and records match the same way; `node demo/status.mjs` prints the live hash against the release, the latest observation and the watcher state; RUNBOOK.md has the stage order and the fallbacks
 - Acceptance: hack then restore run for real once each; hack reaches a mismatch observation and 1 Telegram alert in under 60 s without the watcher; restore returns to match; status reports both states correctly; the repo stays clean (git status shows 0 changes in demo/ after both)
-- Evidence: <PR link>
+- Evidence: PR (this one); rehearsed for real on 6 Nov without the watcher: hack.mjs tamper live after 22.7 s, mismatch recorded and Telegram alert sent after 49.1 s (tx 0x74c4ad32...2860); restore.mjs live restored after 8.7 s, match recorded and recovery alert after 27.3 s (tx 0x2586c06e...70d8); status.mjs answers in about 1 s in both states; git shows demo/app.js unchanged after both
+- Finding: the first hack failed on a 20 s timeout while the free Render API woke up, so API calls now wait 70 s; the API's /v1/observations took 87 s uncached because the API has no Arkiv access key and reads every site through the rate-limited public RPC, so status.mjs reads Arkiv directly for the one domain (1 query, about 1 s) and the runbook says to warm that route before stage
