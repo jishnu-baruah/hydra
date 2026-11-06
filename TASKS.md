@@ -821,7 +821,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Evidence: PR (this one); the new test failed first, API tests 42 pass; the live rehearsal after deploy is in the PR conversation
 
 ### T-A27, Hack and Fix buttons on the Live page
-- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a27-hack-fix
+- Status: in-review | Branch: feature/t-a27-hack-fix
 - Suggested: Jishnu
 - Depends-on: T-A25, T-D12
 - Touches: apps/api/src/demo.ts, apps/api/src/server.ts, apps/api/src/main.ts, apps/api/test/, apps/api/deploy/Dockerfile, apps/explorer/live/
@@ -829,5 +829,5 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Known: hack.mjs and restore.mjs need a laptop with the Vercel CLI; the stage wants buttons on a page
 - Scope: POST /v1/demo/hack and /v1/demo/fix (bearer DEMO_WATCH_TOKEN, 503 without VERCEL_TOKEN) deploy the demo site to its Vercel project through Vercel's deployment API: the published files, or the same with one harmless line added to app.js; only that project and those fixed files; Hack and Fix buttons on /live/ next to the switch
 - Acceptance: unit tests written failing first (payload: clean equals the repo files, hack adds 1 line; routes 401, 503, 202); on the live site, Hack turns the watcher to mismatch and Fix back to match, 1 alert each
-- Evidence: <PR link>
+- Evidence: PR (this one); API tests 47 pass (new: payload and deploy helper 4, routes 1); live press of Hack and Fix after deploy is in the PR conversation
 
