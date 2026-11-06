@@ -862,3 +862,35 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: after deploy, Fix flips the watcher back to match in under 60 s and Hack to mismatch in under 60 s, 1 run each
 - Evidence: PR (this one); the demo site now answers Cache-Control no-store with X-Vercel-Cache MISS; Hack and Fix timings after the API deploy are in the PR conversation
 
+### T-A30, Alert channels per app: webhook, Slack, Discord and Telegram, stored on Arkiv
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-a30-alert-channels
+- Suggested: Jishnu
+- Depends-on: T-A18, T-A25
+- Touches: packages/core/src/domain.ts, packages/core/src/records.ts, packages/core/src/index.ts, packages/core/test/, apps/api/, packages/indexer/src/run.ts, packages/indexer/test/, docs/ARCHITECTURE.md, .env.example
+- Serves: Practicality (judged) ; Arkiv track (prize)
+- Known: alerts today go to one Telegram chat set by env (T-A18), so a team cannot receive its own; T-A17 (subscriptions) was cut for time and the console now needs it. Requested by Mouli on 6 Nov
+- Scope: a team signs with its Hydra API key and adds up to 5 channels for its app: a generic webhook (Standard Webhooks signed, secret shown once), a Slack or Discord incoming webhook, or a Telegram chat with the Hydra bot added. Each channel is a `hydra.alert_sub` entity on Arkiv whose body is AES-256-GCM encrypted with a server key (ALERT_KEY), owned by the API wallet; routes to list, add (sends a test first), test and delete; every indexer or watcher alert for an app is also delivered to its channels through a pinned public-address POST (no SSRF), 3 attempts
+- Acceptance: unit tests written failing first (encrypt round trip, payload formats, Standard Webhooks signature, safe POST refuses private and non-https, routes 401/403/400/201); live: add a Telegram and a webhook channel for demo-dapp, then a Hack reaches both
+- Evidence: <PR link>
+
+### T-A31, Monitored sites are dApps only, and a status address
+- Status: in-review | Branch: feature/t-a31-dapps-only
+- Suggested: Jishnu
+- Depends-on: T-A20
+- Touches: packages/indexer/src/coverage.ts, packages/indexer/test/coverage.test.ts, packages/indexer/README.md, apps/explorer/vercel.json
+- Serves: Practicality (judged)
+- Known: of 250 monitored sites, 34 are centralized exchanges, 2 CeDeFi and 3 chain sites from DefiLlama's list: not dApp frontends a user signs on
+- Scope: DefiLlama entries in the categories CEX, CeDeFi and Chain are skipped (the list is refilled from the next protocols by TVL); the explorer answers on a second name, hydra-status.vercel.app, whose root shows the Monitor page
+- Acceptance: a unit test written failing first for the category filter; a dry run lists 0 sites in those categories; https://hydra-status.vercel.app/ serves the Monitor page
+- Evidence: PR (this one); the category test failed first, indexer tests 46 pass; the status address is checked after deploy in the PR conversation
+
+### T-B11, Console page: a team sets up its alert channels
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-b11-console
+- Suggested: Mouli
+- Depends-on: T-A30
+- Touches: apps/explorer/console/, apps/explorer nav links, apps/explorer/README.md
+- Serves: Practicality (judged) ; WOW factor (judged)
+- Known: requested by Mouli on 6 Nov; the explorer is his code and he asked for this page
+- Scope: /console/ in the explorer: paste the app's Hydra API key (kept in the tab's session storage only), see the app's channels, add a webhook, Slack, Discord or Telegram channel (each sends a test first), test or delete one; the webhook secret is shown once; plain wording, textContent only
+- Acceptance: unit tests written first for the pure form logic (all 4 channel kinds, 8 or more cases); in a browser on the deployed explorer, adding 1 Telegram channel for demo-dapp delivers its test message
+- Evidence: <PR link>
