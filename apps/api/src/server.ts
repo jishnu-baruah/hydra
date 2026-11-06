@@ -12,6 +12,11 @@
 //   GET  /v1/indexer/status           { running, startedAt, finishedAt, last }; public
 //   GET  /v1/observations             every indexed site with its latest observation and recent history
 //   GET  /v1/activity                 everything our wallet wrote, newest block first
+//   GET  /v1/alerts                   Authorization: Bearer <apiKey>; the key's app's alert channels (T-A30)
+//   POST /v1/alerts                   { kind, target }; tests the target, then stores it sealed
+//   POST /v1/alerts/:id/test          sends a test message
+//   DELETE /v1/alerts/:id
+//   GET  /v1/alerts/telegram-bot      { username } of the bot to add to a Telegram chat; public
 
 import { timingSafeEqual } from 'node:crypto'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
@@ -20,6 +25,24 @@ import { APP_NAME, checkInput, keyFromSignature, signInMessage } from './auth.ts
 import { verifyKey } from './keys.ts'
 import { claimApp, ownedError, publish, type PublishDeps } from './publish.ts'
 import type { createWatcher } from './watch.ts'
+import { checkTarget, label, newSecret, openChannel, seal, testVerdict, type Channel, type Sent, type StoredSub, type Verdict } from './alerts.ts'
+
+// Alert channels (T-A30). `key` is ALERT_KEY (64 hex); `store` is the Arkiv side, absent without a
+// funded writer wallet. Either missing: the routes answer 503 and say which.
+export interface AlertRoutes {
+  key?: string
+  store?: {
+    list: (app: string) => Promise<StoredSub[]> // our wallet's hydra.alert_sub rows for this app
+    create: (app: string, kind: string, sealed: Uint8Array, createdAt: number) => Promise<{ id: string }>
+    remove: (id: string) => Promise<void>
+  }
+  deliver: (ch: Channel, v: Verdict) => Promise<Sent>
+  bot?: () => string | null // the Telegram bot's username, from getMe at startup
+  telegramChats?: (app: string) => Promise<{ id: string; title: string }[]> // chats that sent "/hydra <app>" recently
+  teamChatId?: string // the Hydra team chat (TELEGRAM_CHAT_ID): never a team's channel
+  writesPerHour?: number // per app; default 20
+  maxChannels?: number // per app; default 5
+}
 
 export interface ApiDeps {
   secret: string
@@ -41,6 +64,7 @@ export interface ApiDeps {
   watch?: { watcher: ReturnType<typeof createWatcher>; token?: string }
   // Hack and Fix buttons (T-A27): redeploys the demo site; guarded by the watch token. Absent without VERCEL_TOKEN.
   demo?: { deploy?: (kind: 'hack' | 'fix') => Promise<unknown> }
+  alerts?: AlertRoutes
   health?: Record<string, unknown>
 }
 
@@ -137,6 +161,7 @@ export function createApi(deps: ApiDeps) {
   }
   const takeSlot = limiter(deps.publishesPerHour ?? 30)
   const takeClaim = limiter(deps.claimsPerHour ?? 5)
+  const takeAlertWrite = limiter(deps.alerts?.writesPerHour ?? 20)
 
   // The indexer trigger spends gas, so it needs its own secret and the shared runner guard.
   const runner = deps.indexer ? (deps.indexer.runner ?? indexerRunner(deps.indexer.run)) : undefined
@@ -157,7 +182,7 @@ export function createApi(deps: ApiDeps) {
       'Content-Type': type,
       'Access-Control-Allow-Origin': deps.corsOrigin ?? '*',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
     })
     res.end(typeof body === 'string' ? body : JSON.stringify(body))
   }
@@ -210,6 +235,84 @@ export function createApi(deps: ApiDeps) {
         if (!takeSlot(claims.address)) return send(res, 429, { error: 'publish limit reached for this address; try again within the hour' })
         const out = await publish(claims, body, { ...deps.publish, claimOf: deps.claimOf })
         return out.ok ? send(res, 201, out.value) : send(res, out.status, { error: out.error })
+      }
+
+      if (req.method === 'GET' && path === '/v1/alerts/telegram-bot') {
+        return send(res, 200, { username: deps.alerts?.bot?.() ?? null })
+      }
+
+      // The chats a team can add: where someone sent "/hydra <app>" to the bot in the last 15 minutes.
+      if (req.method === 'GET' && path === '/v1/alerts/telegram-chats') {
+        const auth = req.headers.authorization ?? ''
+        const claims = verifyKey(deps.secret, auth.startsWith('Bearer ') ? auth.slice(7) : undefined)
+        if (!claims) return send(res, 401, { error: 'missing or invalid API key; get one for your app from the Hydra site' })
+        const a = deps.alerts
+        const chats = a?.telegramChats ? (await a.telegramChats(claims.app)).filter((c) => c.id !== a.teamChatId) : []
+        return send(res, 200, { app: claims.app, chats })
+      }
+
+      const alertRoute = /^\/v1\/alerts(?:\/(0x[0-9a-fA-F]{64})(\/test)?)?$/.exec(path)
+      if (alertRoute) {
+        const [, id, isTest] = alertRoute
+        const method = req.method ?? ''
+        const known = id ? (isTest ? method === 'POST' : method === 'DELETE') : method === 'GET' || method === 'POST'
+        if (!known) return send(res, 405, { error: `${method} is not supported on ${path}` })
+        const auth = req.headers.authorization ?? ''
+        const claims = verifyKey(deps.secret, auth.startsWith('Bearer ') ? auth.slice(7) : undefined)
+        if (!claims) return send(res, 401, { error: 'missing or invalid API key; get one for your app from the Hydra site' })
+        if (!allowed(claims.address)) return send(res, 403, { error: 'this address is no longer allowlisted' })
+        const a = deps.alerts
+        if (!a?.key) return send(res, 503, { error: 'alert channels are off on this server: the operator must set ALERT_KEY (64 hex characters)' })
+        if (!a.store) return send(res, 503, { error: 'alert channels are off on this server: no funded Arkiv writer wallet (ARKIV_PRIVATE_KEY) is configured' })
+        const { app } = claims
+        // A key outlives a lapsed name claim; if someone else holds the name now, this key is stale.
+        const owner = deps.claimOf ? (await deps.claimOf(app))?.owner ?? null : null
+        if (owner && owner !== claims.address.toLowerCase()) return send(res, 403, { error: ownedError(app, owner) })
+        if (method !== 'GET' && !takeAlertWrite(app)) return send(res, 429, { error: 'alert channel change limit reached for this app; try again within the hour' })
+        const subs = await a.store.list(app)
+
+        if (!id && method === 'GET') {
+          const channels = subs
+            .map((s) => {
+              const ch = openChannel(s, app, a.key!)
+              return { id: s.id, kind: s.kind, label: ch ? label(ch.kind, ch.target) : 'unreadable (ALERT_KEY changed?); delete it and add it again', created_at: s.created_at }
+            })
+            .sort((x, y) => x.created_at - y.created_at)
+          return send(res, 200, { app, channels })
+        }
+
+        if (!id) {
+          const body = await readJson(req, SMALL)
+          const t = checkTarget(body.kind, body.target)
+          if (!t.ok) return send(res, 400, { error: t.error })
+          if (t.value.kind === 'telegram') {
+            if (a.teamChatId && t.value.target === a.teamChatId) return send(res, 400, { error: 'that is the Hydra team chat; add a group of your own' })
+            const linked = a.telegramChats ? await a.telegramChats(app) : []
+            const bot = a.bot?.() ? `@${a.bot()}` : 'the Hydra bot'
+            if (!linked.some((c) => c.id === t.value.target)) return send(res, 400, { error: `prove the chat is yours: in that chat send "/hydra ${app}" to ${bot}, then add it again within 15 minutes` })
+          }
+          const max = a.maxChannels ?? 5
+          if (subs.length >= max) return send(res, 409, { error: `this app already has ${max} alert channels; delete one first` })
+          const ch: Channel = { ...t.value, ...(t.value.kind === 'webhook' ? { secret: newSecret() } : {}) }
+          // A target that cannot take a message is not stored.
+          const r = await a.deliver(ch, testVerdict(app))
+          if (!r.ok) return send(res, 502, { error: `the test message failed: ${r.error}. Nothing was saved` })
+          const sealed = seal(JSON.stringify({ app, target: ch.target, ...(ch.secret ? { secret: ch.secret } : {}) }), a.key)
+          const out = await a.store.create(app, ch.kind, sealed, Date.now())
+          // The webhook secret is shown here once and never again.
+          return send(res, 201, { id: out.id, kind: ch.kind, label: label(ch.kind, ch.target), ...(ch.secret ? { secret: ch.secret } : {}) })
+        }
+
+        const sub = subs.find((s) => s.id.toLowerCase() === id.toLowerCase())
+        if (!sub) return send(res, 404, { error: `no alert channel ${id} for app ${app}; list them with GET /v1/alerts` })
+        if (isTest) {
+          const ch = openChannel(sub, app, a.key)
+          if (!ch) return send(res, 409, { error: 'this channel did not open (ALERT_KEY changed?); delete it and add it again' })
+          const r = await a.deliver(ch, testVerdict(app))
+          return r.ok ? send(res, 200, { sent: true }) : send(res, 502, { error: r.error })
+        }
+        await a.store.remove(sub.id)
+        return send(res, 200, { deleted: sub.id })
       }
 
       const appRoute = /^\/v1\/apps\/([^/]+)\/releases$/.exec(path)

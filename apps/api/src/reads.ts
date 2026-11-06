@@ -4,8 +4,9 @@
 // only records created by our publisher wallet (`writer`). An app name belongs to the address in
 // its earliest `hydra.app` record; releases and files from any other address are dropped.
 
-import { AppSchema, FileSchema, ReleaseSchema, eq, readAll, readWithRetry } from '@hydra/core'
-import { hexToString, type Hex } from 'viem'
+import { AlertSubSchema, AppSchema, FileSchema, ReleaseSchema, eq, readAll, readWithRetry } from '@hydra/core'
+import { hexToBytes, hexToString, type Hex } from 'viem'
+import type { StoredSub } from './alerts.ts'
 import { appForDomain as pickApp, type DomainRelease } from './domains.ts'
 
 type Query = {
@@ -146,4 +147,12 @@ export async function appForDomainFrom(reader: unknown, writer: Hex, domain: str
     if (owner) owners[app] = owner
   }
   return pickApp(listed, owners, host)
+}
+
+// The app's alert channels (T-A30): our wallet's hydra.alert_sub rows, still sealed.
+export async function alertSubs(reader: unknown, writer: Hex, app: string): Promise<StoredSub[]> {
+  const rows = await fetchRows(reader, writer, AlertSubSchema, { $key: true, app: true, kind: true, created_at: true, body: true }, eq('app', app))
+  return rows
+    .filter((r) => r.app === app && typeof r.body === 'string' && typeof r.$key === 'string')
+    .map((r) => ({ id: r.$key as string, kind: String(r.kind), created_at: Number(r.created_at ?? 0), sealed: hexToBytes(r.body as Hex) }))
 }

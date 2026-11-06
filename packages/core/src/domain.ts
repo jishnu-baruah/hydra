@@ -55,13 +55,27 @@ export type ProofResult = { ok: true } | { ok: false; reason: string; transient?
 export type RawGet = (host: string, addr: Addr, path: string, maxBytes: number, timeoutMs: number) =>
   Promise<{ status: number; location?: string; body: Buffer | null }>
 
+export interface RawRequestInit {
+  method: string
+  path: string
+  headers: Record<string, string>
+  body?: string
+  maxBytes: number
+  timeoutMs: number
+}
+export type RawRequest = (host: string, addr: Addr, r: RawRequestInit) =>
+  Promise<{ status: number; location?: string; body: Buffer | null }>
+
+const UA = 'HydraIndexer/0.1 (+https://hydra-site-one.vercel.app)'
+
 // The connection goes to the address we checked (no second DNS answer), never follows a redirect,
 // and stops reading past maxBytes (body null). No Accept-Encoding, so the bytes are the file itself.
-const pinnedGet: RawGet = (host, addr, path, maxBytes, timeoutMs) =>
+const pinnedRequest: RawRequest = (host, addr, r) =>
   new Promise((resolve, reject) => {
     const req = request(
       {
-        host, path, servername: host, agent: false, timeout: timeoutMs, headers: { 'User-Agent': 'HydraIndexer/0.1 (+https://hydra-site-one.vercel.app)' },
+        host, path: r.path, method: r.method, servername: host, agent: false, timeout: r.timeoutMs,
+        headers: { 'User-Agent': UA, ...r.headers, ...(r.body !== undefined ? { 'Content-Length': String(Buffer.byteLength(r.body)) } : {}) },
         lookup: (_h: string, o: { all?: boolean }, cb: (...a: unknown[]) => void) =>
           o?.all ? cb(null, [addr]) : cb(null, addr.address, addr.family),
       } as never,
@@ -72,21 +86,46 @@ const pinnedGet: RawGet = (host, addr, path, maxBytes, timeoutMs) =>
         const chunks: Buffer[] = []
         res.on('data', (c: Buffer) => {
           size += c.length
-          if (size > maxBytes) return res.destroy(), resolve({ status, location, body: null })
+          if (size > r.maxBytes) return res.destroy(), resolve({ status, location, body: null })
           chunks.push(c)
         })
         res.on('end', () => resolve({ status, location, body: Buffer.concat(chunks) }))
         res.on('error', reject)
       },
     )
-    const timer = setTimeout(() => req.destroy(new Error(`timed out after ${timeoutMs / 1000} s`)), timeoutMs)
+    const timer = setTimeout(() => req.destroy(new Error(`timed out after ${r.timeoutMs / 1000} s`)), r.timeoutMs)
     req.on('close', () => clearTimeout(timer))
-    req.on('timeout', () => req.destroy(new Error(`timed out after ${timeoutMs / 1000} s`)))
+    req.on('timeout', () => req.destroy(new Error(`timed out after ${r.timeoutMs / 1000} s`)))
     req.on('error', reject)
-    req.end()
+    req.end(r.body)
   })
 
+const pinnedGet: RawGet = (host, addr, path, maxBytes, timeoutMs) => pinnedRequest(host, addr, { method: 'GET', path, headers: {}, maxBytes, timeoutMs })
+
 const defaultLookup = (h: string) => dnsLookup(h, { all: true })
+
+// https on the default port, no credentials, hostname not an IP literal, every resolved address
+// public. Returns the address to pin the connection to. `shown` is what errors may name: safePost
+// passes null, because its URLs carry secrets.
+async function publicTarget(url: string, lookup: ProofDeps['lookup'], shown: string | null): Promise<{ u: URL; host: string; addr: Addr }> {
+  let u: URL | null = null
+  try {
+    u = new URL(url)
+  } catch {
+    // not a URL at all
+  }
+  const host = u && u.protocol === 'https:' && !u.port && !u.username && !u.password ? normalizeDomain(u.hostname) : null
+  if (!u || !host) throw new Error(`${shown === null ? 'the target' : shown} is not a public https URL on the default port`)
+  const addrs = await (lookup ?? defaultLookup)(host).catch((err) => {
+    if (shown !== null) throw err
+    const code = (err as { code?: unknown })?.code
+    throw new Error(`the target host did not resolve (${typeof code === 'string' && /^[A-Z_0-9]+$/.test(code) ? code : 'DNS error'})`)
+  })
+  if (!addrs.length || addrs.some((a) => isPrivateAddress(a.address))) {
+    throw new Error(`${shown === null ? 'the target host' : host} resolves to a private address or none`)
+  }
+  return { u, host, addr: addrs[0] }
+}
 
 // GET a URL that a publisher's site chose (its page, its scripts). https on the default port only,
 // hostname not an IP literal, every resolved address public, the connection pinned to it, each
@@ -98,12 +137,8 @@ export async function safeGet(
 ): Promise<Uint8Array> {
   let next = url
   for (let hop = 0; hop <= 3; hop++) {
-    const u = new URL(next)
-    const host = u.protocol === 'https:' && !u.port && !u.username && !u.password ? normalizeDomain(u.hostname) : null
-    if (!host) throw new Error(`${next.slice(0, 120)} is not a public https URL on the default port`)
-    const addrs = await (deps.lookup ?? defaultLookup)(host)
-    if (!addrs.length || addrs.some((a) => isPrivateAddress(a.address))) throw new Error(`${host} resolves to a private address or none`)
-    const r = await (deps.get ?? pinnedGet)(host, addrs[0], `${u.pathname}${u.search}`, o.maxBytes, o.timeoutMs ?? 15_000)
+    const { u, host, addr } = await publicTarget(next, deps.lookup, next.slice(0, 120))
+    const r = await (deps.get ?? pinnedGet)(host, addr, `${u.pathname}${u.search}`, o.maxBytes, o.timeoutMs ?? 15_000)
     if (r.status >= 300 && r.status < 400 && r.location) {
       next = new URL(r.location, u).href
       continue
@@ -113,6 +148,28 @@ export async function safeGet(
     return new Uint8Array(r.body)
   }
   throw new Error('more than 3 redirects')
+}
+
+// POST to a URL a team chose (an alert webhook). The same address rules as safeGet, but a redirect
+// is never followed (the caller sees the 3xx), at most maxBytes of the answer are read, and errors
+// never name the URL, host or address, since webhook URLs are secrets. Throws an Error naming the cause.
+export async function safePost(
+  url: string,
+  body: string,
+  headers: Record<string, string>,
+  o: { timeoutMs?: number; maxBytes?: number; lookup?: ProofDeps['lookup']; request?: RawRequest } = {},
+): Promise<{ status: number }> {
+  const { u, host, addr } = await publicTarget(url, o.lookup, null)
+  const timeoutMs = o.timeoutMs ?? 10_000
+  try {
+    const r = await (o.request ?? pinnedRequest)(host, addr, { method: 'POST', path: `${u.pathname}${u.search}`, headers, body, maxBytes: o.maxBytes ?? 64 * 1024, timeoutMs })
+    return { status: r.status }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : ''
+    if (/^timed out/.test(msg)) throw new Error(`the request timed out after ${timeoutMs / 1000} s`)
+    const code = (err as { code?: unknown })?.code
+    throw new Error(`the request failed (${typeof code === 'string' && /^[A-Z_0-9]+$/.test(code) ? code : 'network error'})`)
+  }
 }
 
 // Never throws: every failure comes back as a reason that names the fix.

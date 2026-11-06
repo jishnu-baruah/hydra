@@ -44,7 +44,16 @@ export const ObservationSchema = defineSchema('hydra.observation', {
   body: bytes(),
 })
 
-export const SCHEMAS = [AppSchema, ReleaseSchema, FileSchema, ObservationSchema] as const
+// One alert channel of an app (T-A30). `body` is the channel's target and secret, sealed with the
+// API's ALERT_KEY (AES-256-GCM), so the chain never holds a webhook URL or chat id in the clear.
+export const AlertSubSchema = defineSchema('hydra.alert_sub', {
+  app: str().indexed(),
+  kind: str().indexed(),
+  created_at: u64().indexed(),
+  body: bytes(),
+})
+
+export const SCHEMAS = [AppSchema, ReleaseSchema, FileSchema, ObservationSchema, AlertSubSchema] as const
 
 // "long" in ARCHITECTURE.md is the network maximum, about 182.5 days.
 export const LONG = (): ExpirationTime => ExpirationTime.max()
@@ -117,6 +126,17 @@ export const fileValues = (f: { app: string; sha256: string; path: string; relea
   path: fitStr(f.path),
   release: key(f.release),
 })
+
+// Expiration: LONG.
+export const alertSubValues = (a: { app: string; kind: string; createdAt: number; sealed: Uint8Array }) => {
+  if (a.sealed.length > MAX_BODY) throw new Error(`sealed channel is ${a.sealed.length} bytes, over Arkiv's ${MAX_BODY}; shorten the target`)
+  return {
+    app: fitStr(a.app),
+    kind: fitStr(a.kind),
+    created_at: ms(a.createdAt),
+    body: bytes(a.sealed),
+  }
+}
 
 export const observationValues = (o: {
   domain: string

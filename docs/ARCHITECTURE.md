@@ -87,6 +87,7 @@ earlier, so renewals only ever extend to long (which counts from now). Reads ign
 because Arkiv no longer returns them. Next uses: observations with a 3 day TTL as freshness, and
 self-clearing incident flags kept alive by renewal.
 | `hydra.observation` | Indexer | `domain`, `status` (`match`, `mismatch`, `unknown`), `observed_at` (u64), `scripts_hash` | `app` (optional) | `{ scripts: [{url, sha256}] }` | 3 days |
+| `hydra.alert_sub` | API, when a team adds an alert channel (T-A30); deleted by the API on request | `app`, `kind` (`webhook`, `slack`, `discord`, `telegram`), `created_at` (u64) | | sealed bytes, not JSON: AES-256-GCM under the API's `ALERT_KEY`, `iv(12) \| tag(16) \| ciphertext` of `{ app, target, secret? }`; the target and webhook secret are never on chain in the clear | long |
 
 ## Manifest (stored on Swarm, referenced by `release.swarm_ref`)
 

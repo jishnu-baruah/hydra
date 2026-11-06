@@ -48,3 +48,32 @@ restart or sleep of the host clears it.
   unset or shorter than 16 characters, 404 when no release binds the domain.
 - The explorer's `/live/` page is the front end.
 
+## Alert channels (T-A30)
+
+A team adds up to 5 channels per app; every verdict alert the indexer sends for that app (a site
+turning mismatch, a new loud problem, a recovery) also goes to each channel. All routes take the
+app's API key (`Authorization: Bearer hyd_...`) and touch only that key's app.
+
+- `GET /v1/alerts`: `{ app, channels: [{ id, kind, label, created_at }] }`. A label never holds the
+  target: `Webhook to <host>`, `Slack incoming webhook`, `Discord webhook`, `Telegram chat ...1234`.
+- `POST /v1/alerts` with `{ kind, target }`: `kind` is `webhook` (any public https URL), `slack`
+  (`https://hooks.slack.com/services/...`), `discord` (`https://discord.com/api/webhooks/...`) or
+  `telegram` (a chat id; add the bot named by `GET /v1/alerts/telegram-bot` to the chat). A test
+  message goes out first; only if it lands is the channel stored. `201 { id, kind, label, secret? }`,
+  where `secret` (`whsec_...`) is for webhooks and is shown only in this response.
+- `POST /v1/alerts/<id>/test`: `200 { sent: true }` or `502 { error }`.
+- `DELETE /v1/alerts/<id>`: `200 { deleted: id }`, 404 when the id is not one of this app's channels.
+- `GET /v1/alerts/telegram-bot`: `{ username }` or `{ username: null }`; public.
+
+Errors: 400 bad kind or target, 401 missing or bad key, 409 a 6th channel, 429 over 20 changes
+(adds, tests, deletes) per app per hour, 502 the target did not take the message, 503 `ALERT_KEY`
+or the Arkiv writer wallet is not configured.
+
+Webhooks get `{ type: "hydra.verdict" | "hydra.test", app, domain, from, to, problems[], observed_at
+(ms), explorer }`, signed per Standard Webhooks: headers `webhook-id`, `webhook-timestamp` (seconds)
+and `webhook-signature: v1,<base64 HMAC-SHA256 of "id.timestamp.body">` keyed with the base64 part of
+the secret. Slack gets `{ text }`, Discord `{ content }` with mentions off, Telegram plain text.
+Every call to a team's URL goes through `safePost`: https on the default port, a public address
+pinned for the connection, no redirects followed, 10 s timeout, 64 KiB of answer read. Network errors
+and 5xx get 3 attempts; a 3xx or 4xx stops. Targets are stored on Arkiv (`hydra.alert_sub`) sealed
+with AES-256-GCM under `ALERT_KEY`, and are never logged or returned.
