@@ -972,6 +972,17 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: unit tests first for the bar model (4 or more cases); in a browser: demo-dapp shows the bar with at least 5 checks
 - Evidence: <PR link>
 
+### T-B18, ENS status page: heading fits on one line
+- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-b18-status-heading
+- Suggested: Mouli
+- Depends-on: T-A35
+- Touches: apps/explorer/status/
+- Serves: Usability (judged)
+- Known: reported on 7 Nov from a Mac: the name status.demodapp.eth breaks as "STATUS.DEMODAPP.E / TH" at the home-size heading
+- Scope: the status page heading uses the compact size the app page already uses, so a normal ENS name stays on one line at laptop widths
+- Acceptance: in a browser at 1280 px and 1512 px wide the heading stays on 1 line; at 400 px it wraps without scrolling sideways
+- Evidence: <PR link>
+
 ### T-B12, Console: sign in with a wallet, every app, keys and channels
 - Status: in-review | Branch: feature/t-b12-console-wallet
 - Suggested: Mouli
