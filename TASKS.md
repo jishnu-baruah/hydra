@@ -160,7 +160,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 **Arkiv + Swarm bonus**
 - [ ] Every release's build and manifest is on Swarm, with `swarm_ref` on its Arkiv record (T-A02)
 - [ ] A Swarm gateway link a judge can open from the explorer (T-B02)
-- [ ] README section "How we used Swarm" with at least 1 reference
+- [x] README section "How we used Swarm" with at least 1 reference (T-D08, #77)
 
 **ETHGlobal submission**
 - [ ] Code a judge can open: the repo is private today (OP-6)
@@ -394,14 +394,15 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: the `BEE_API_URL && SWARM_POSTAGE_BATCH_ID` gate in main.ts kept Swarm off on the gateway path, which is why all 5 live releases are `swarm_ref = pending`; OP-8 now needs only `BEE_API_URL` on the host
 
 ### T-D08, README section "How we used Swarm"
-- Status: in-review https://github.com/jishnu-baruah/hydra/pull/77 | Branch: feature/t-d08-readme-swarm
+- Status: done
 - Suggested: Manish
 - Depends-on: T-A12, OP-8
 - Touches: README.md, arkiv/swarm.md
 - Serves: Swarm bonus
 - Scope: what lives on Swarm (build plus `hydra-manifest.json`) and what on Arkiv (`swarm_ref`), the gateway and stamping choice (OP-2), the HTML-blocked finding, and links a judge can open
 - Acceptance: the section links at least 1 live release whose `swarm_ref` opens `hydra-manifest.json` through the gateway, plus its Arkiv entity in the explorer
-- Evidence: <PR link>
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/77 (merged as b374908); README links the manifest of hygra-demo2 2026-11-05.4 on Swarm (HTTP 200) and its Arkiv entity
+- Finding: only releases published after OP-8 land on Swarm; the 5 earlier ones stay swarm_ref pending until republished
 
 ### T-A13, Indexer hosted in the API on Render, triggered by GitHub Actions
 - Status: in-review | Branch: feature/t-a13-indexer-hosting
