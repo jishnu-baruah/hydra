@@ -394,7 +394,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Finding: the `BEE_API_URL && SWARM_POSTAGE_BATCH_ID` gate in main.ts kept Swarm off on the gateway path, which is why all 5 live releases are `swarm_ref = pending`; OP-8 now needs only `BEE_API_URL` on the host
 
 ### T-D08, README section "How we used Swarm"
-- Status: claimed 2026-11-06 | Owner: Manish | Branch: feature/t-d08-readme-swarm
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/77 | Branch: feature/t-d08-readme-swarm
 - Suggested: Manish
 - Depends-on: T-A12, OP-8
 - Touches: README.md
