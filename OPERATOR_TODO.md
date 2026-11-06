@@ -107,7 +107,7 @@ Status values: `open` | `claimed <date> | Owner: <name>` | `done <date>: <result
 - Done when: the explorer's public URL is written here and in the T-B06 row.
 
 ### OP-11, Point the deployed API at the Swarm testnet gateway, then republish
-- Status: open
+- Status: decided 2026-11-06: keep the public gateway the API already uses; Render is on the free plan, so only its owner can change the env, and the Arkiv + Swarm bonus sets no Swarm network; no funds are spent, Arkiv stays on testnet (DECISIONS.md)
 - Owner: Manish
 - Needed by: 2026-11-06 night
 - Unblocks: T-A21
