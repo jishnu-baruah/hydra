@@ -770,3 +770,14 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Scope: one small renderer that counts calls and failures and names the reason (no key, HTTP status such as 402 credit out, timeout), and after 3 failures in a row stops calling for the rest of the run; the run summary gains a `jina` field and, when the view failed, 1 error line that says what broke, how many sites it affected and what to do. The 30-minute workflow and /v1/indexer/status already print errors
 - Acceptance: unit tests written failing first (renderer: ok, no key, 402 then stop after 3, network error, a page with no scripts is not a failure; indexer 30 or more tests pass); a dry run with an invalid key prints 1 error line naming HTTP 401 or 402 and makes at most 3 calls
 - Evidence: <PR link>
+
+### T-C06, Extension flags a hostname on a public phishing list
+- Status: claimed 2026-11-06 | Owner: Jishnu | Branch: feature/t-c06-known-bad
+- Suggested: Jishnu
+- Depends-on: T-A22
+- Touches: apps/extension/src/compare/blocklist.js, apps/extension/src/compare/blocklist.test.mjs, apps/extension/src/background.js, apps/extension/src/verdict.js, apps/extension/src/ui/present.js, apps/extension/src/ui/present.test.mjs, apps/extension/src/ui/banner.js, apps/extension/README.md
+- Serves: Practicality (judged)
+- Known: for sites with no Hydra release the extension shows grey and says nothing; the 6 Nov re-score (hack-idea-score) decided not to build a full layer for unregistered sites, only an honest known-bad flag from public data. MetaMask's eth-phishing-detect list was checked on GitHub on 6 Nov: 115,807 blocked domains in one 3.4 MB config.json, "Don't Be A Dick" public licence, pushed the same day; ScamSniffer's is GPL-3.0 so it is not used. The extension is Mouli's code; this adds one verdict and one module
+- Scope: a daily-refreshed local copy of the list in storage.local, checked in memory against the visited hostname and its parent domains (the allowlist wins), with no browsing data sent anywhere; a hit shows a distinct "BAD" badge and banner saying the hostname is on MetaMask's public phishing list and that lists can be wrong; a miss says nothing, never "safe"; the README says the list is fetched from GitHub and credits MetaMask
+- Acceptance: unit tests written failing first for the matching and the cache (blocklist 8 or more pass, extension 26 or more pass); in real Chrome a hostname taken from the live list shows BAD and app.uniswap.org and hydra-demo-dapp.vercel.app do not
+- Evidence: <PR link>
