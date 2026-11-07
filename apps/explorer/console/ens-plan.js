@@ -1,3 +1,4 @@
+import { approval } from "../src/ensview.js";
 // Pure decision for the Console ENS card: what is the next step for this name and wallet?
 // Returns { step, text } where step is "register" | "allow" | "link" | "not-yours" | "taken".
 export function nextStep({ name, resolver, appTag, app, hydraCanWrite, walletCanAllow, registrable }) {
@@ -8,4 +9,12 @@ export function nextStep({ name, resolver, appTag, app, hydraCanWrite, walletCan
   if (hydraCanWrite && appTag === app) return { step: "link", text: `${name} is ready: Hydra may write hydra.status and the name is tagged with ${app}. Link it to finish.` };
   if (walletCanAllow) return { step: "allow", text: `Allow Hydra on ${name} in one transaction. It lets Hydra's monitor set hydra.status only, and tags the name with ${app}.` };
   return { step: "not-yours", text: `The connected wallet cannot change the records of ${name}. Switch to the wallet that owns it, or pick another name.` };
+}
+
+// What the card shows for hydra.release. Public RPC nodes lag after a write, so an empty read
+// and a stale read both lose to the key we just wrote on this page visit (it equals the read once the node catches up).
+// releaseKeys: newest first. Returns { state: none|invalid|latest|older|unknown, key? }.
+export function approvedView(releaseKeys, onchainValue, optimisticValue) {
+  const read = String(onchainValue ?? "").trim();
+  return approval(releaseKeys, String(optimisticValue ?? "").trim() || read);
 }

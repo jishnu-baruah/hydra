@@ -15,6 +15,7 @@ import { createApi, indexerRunner, type AlertRoutes, type ApiDeps, type ConsoleR
 import { swarmUploader } from './swarm.ts'
 import { createWatcher, runOk } from './watch.ts'
 import { ensLinkFacts, ensLinkProblem, ensStatusTargets, ensStatusWriter, type EnsTarget } from './ens.ts'
+import { createSponsor, realSponsorActions } from './ens-sponsor.ts'
 import { deployDemo, readDemoFiles } from './demo.ts'
 
 const env = process.env
@@ -243,6 +244,25 @@ const currentVersion = (app: string): Promise<number> => {
   value.catch(() => versions.delete(app))
   return value
 }
+// Checks the name on ENS and stores the hydra.ens link; shared by the console link route (T-A36) and
+// the sponsored setup (T-A37).
+const linkEnsName: ConsoleRoutes['linkEns'] =
+  indexerKey && walletClient
+    ? async (app, name, by) => {
+        let facts
+        try {
+          facts = await ensLinkFacts({ name, app, indexer: privateKeyToAccount(indexerKey).address })
+        } catch (err) {
+          return { problem: `could not read ${name} on Sepolia (${rootCause(err)}); nothing was linked, try again in a minute` }
+        }
+        const problem = ensLinkProblem(facts)
+        if (problem) return { problem }
+        await guardedCreate({ walletClient, publicClient, schema: EnsLinkSchema, values: ensLinkValues({ app, name, resolver: facts.resolver!, createdAt: Date.now(), payload: { by: by.toLowerCase() } }), expiration: LONG() })
+        seedEnsStatus(app, { name, resolver: facts.resolver! })
+        return { name, resolver: facts.resolver! }
+      }
+    : undefined
+const sponsor = indexerKey && linkEnsName ? createSponsor({ actions: realSponsorActions({ privateKey: indexerKey, link: linkEnsName }) }) : undefined
 const consoleRoutes: ConsoleRoutes | undefined = walletClient && writer
   ? {
       apps: async (address) =>
@@ -256,21 +276,9 @@ const consoleRoutes: ConsoleRoutes | undefined = walletClient && writer
       },
       rotationsPerHour: 10,
       // T-A36: the name's owner tagged it with this app and granted Hydra hydra.status; checked on chain.
-      linkEns: indexerKey
-        ? async (app, name, by) => {
-            let facts
-            try {
-              facts = await ensLinkFacts({ name, app, indexer: privateKeyToAccount(indexerKey).address })
-            } catch (err) {
-              return { problem: `could not read ${name} on Sepolia (${rootCause(err)}); nothing was linked, try again in a minute` }
-            }
-            const problem = ensLinkProblem(facts)
-            if (problem) return { problem }
-            await guardedCreate({ walletClient, publicClient, schema: EnsLinkSchema, values: ensLinkValues({ app, name, resolver: facts.resolver!, createdAt: Date.now(), payload: { by: by.toLowerCase() } }), expiration: LONG() })
-            seedEnsStatus(app, { name, resolver: facts.resolver! })
-            return { name, resolver: facts.resolver! }
-          }
-        : undefined,
+      linkEns: linkEnsName,
+      // T-A37: Hydra's indexer wallet pays to register <app>.eth to the owner, then links it as above.
+      sponsorEns: sponsor,
     }
   : undefined
 
