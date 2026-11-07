@@ -120,3 +120,15 @@ export async function ensLink(app) {
     .sort((x, y) => Number(y.created_at ?? 0) - Number(x.created_at ?? 0))[0];
   return latest ? { name: latest.name, resolver: String(latest.resolver ?? "") } : null;
 }
+
+// Every hydra.ens link the publisher wrote, newest first (raw entities; status/apps/model.js picks one per app).
+export async function ensLinks(limit = 100) {
+  const page = await client
+    .select({ $key: true, $attributes: true })
+    .where(eq("arkiv.schema", "hydra.ens"))
+    .createdBy(PUBLISHER)
+    .orderBy(desc("created_at", "u64"))
+    .limit(limit)
+    .fetch();
+  return page.entities;
+}
