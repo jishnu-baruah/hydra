@@ -789,7 +789,7 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Serves: ENS track (prize) ; WOW factor (judged)
 - Known: T-A35 works on one name set up by hand with spikes/F4; no UI could reach it. A read-only Sepolia simulation on 7 Nov showed one PermissionedResolver multicall from the name's owner can grant Hydra hydra.status and set hydra.app, a stranger is refused, and Hydra's wallet cannot set hydra.app
 - Scope: Console ENS card per app: register a .eth name with its own resolver if needed, one transaction to allow Hydra's hydra.status and tag the name with the app, link it (API verifies on chain and writes a hydra.ens record), and approve a release by setting hydra.release; status writes then come from every indexer and watcher flip of a linked app; the app page and the status page show the name, the live status and which release the name approved
-- Acceptance: tests written failing first for the link checks (owner, hydra.app tag, Hydra grant) and the approved-release compare; live: a name linked from the Console gets hydra.status written on a flip and the app page shows the release it approved
+- Acceptance: 4 or more tests written failing first for the link checks (resolver, hydra.app tag, Hydra grant) and 5 or more for the approved-release compare; live: a name linked from the Console gets hydra.status written within 60 s of a flip and the app page shows the release it approved
 - Evidence: <PR link>
 
 ### T-B10, A clean test site that Hydra verifies, so search can show Good to go
