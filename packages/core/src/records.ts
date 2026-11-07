@@ -62,7 +62,18 @@ export const KeyEpochSchema = defineSchema('hydra.key_epoch', {
   body: bytes(),
 })
 
-export const SCHEMAS = [AppSchema, ReleaseSchema, FileSchema, ObservationSchema, AlertSubSchema, KeyEpochSchema] as const
+// One ENS link of an app (T-A36): the name whose hydra.status Hydra writes. The API writes it only
+// after checking on chain that the name's hydra.app is this app and Hydra may set hydra.status. The
+// newest row of an app is current.
+export const EnsLinkSchema = defineSchema('hydra.ens', {
+  app: str().indexed(),
+  name: str().indexed(),
+  resolver: str(),
+  created_at: u64().indexed(),
+  body: bytes(),
+})
+
+export const SCHEMAS = [AppSchema, ReleaseSchema, FileSchema, ObservationSchema, AlertSubSchema, KeyEpochSchema, EnsLinkSchema] as const
 
 // "long" in ARCHITECTURE.md is the network maximum, about 182.5 days.
 export const LONG = (): ExpirationTime => ExpirationTime.max()
@@ -157,6 +168,15 @@ export const keyEpochValues = (k: { app: string; version: number; createdAt: num
     body: body(k.payload),
   }
 }
+
+// Expiration: LONG.
+export const ensLinkValues = (l: { app: string; name: string; resolver: string; createdAt: number; payload: { by: string } }) => ({
+  app: fitStr(l.app),
+  name: fitStr(l.name),
+  resolver: fitStr(l.resolver),
+  created_at: ms(l.createdAt),
+  body: body(l.payload),
+})
 
 export const observationValues = (o: {
   domain: string

@@ -2,7 +2,7 @@
 
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
-import { AlertSubSchema, KeyEpochSchema, LONG, alertSubValues, keyEpochValues, arkivClients, checkProof, guardedBatch, guardedCreate, guardedDelete, recentObservations } from '@hydra/core'
+import { AlertSubSchema, EnsLinkSchema, KeyEpochSchema, LONG, alertSubValues, ensLinkValues, keyEpochValues, arkivClients, rootCause, checkProof, guardedBatch, guardedCreate, guardedDelete, recentObservations } from '@hydra/core'
 import type { Hex } from 'viem'
 import { checkSite } from '@hydra/indexer/check'
 import { runOnce, sendTelegram } from '@hydra/indexer/run'
@@ -10,11 +10,11 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { sitesView, type TargetInfo } from './observations.ts'
 import { channelNotifier, deliver, type Channel, type Verdict } from './alerts.ts'
 import { chatIdReplies, linkedChats } from './alerts.ts'
-import { activity, alertSubs, appForDomainFrom, appsPublishedBy, blockToMs, claimOf, filesByHash, keyVersion, releasesFor } from './reads.ts'
+import { activity, alertSubs, appForDomainFrom, appsPublishedBy, blockToMs, claimOf, ensLinkOf, filesByHash, keyVersion, releasesFor } from './reads.ts'
 import { createApi, indexerRunner, type AlertRoutes, type ApiDeps, type ConsoleRoutes } from './server.ts'
 import { swarmUploader } from './swarm.ts'
 import { createWatcher, runOk } from './watch.ts'
-import { ensStatusWriter } from './ens.ts'
+import { ensLinkFacts, ensLinkProblem, ensStatusTargets, ensStatusWriter, type EnsTarget } from './ens.ts'
 import { deployDemo, readDemoFiles } from './demo.ts'
 
 const env = process.env
@@ -110,13 +110,58 @@ const notify = alertKeyOk && writer
 
 // The indexer runs inside the API with its own wallet, triggered by a scheduled GitHub Actions job.
 const indexerKey = env.ARKIV_INDEXER_PRIVATE_KEY as Hex | undefined
+
+// ENS status (T-A35, T-A36): every alert of an indexer or watcher run also sets hydra.status on the
+// app's linked ENS name (hydra.ens, from the console), or on a name set up by hand in HYDRA_ENS_STATUS
+// (by domain). It runs after the Arkiv write and on its own: an ENS failure is logged, never fails or
+// repeats the run, and the run does not wait for Sepolia.
+let ensByDomain = new Map<string, EnsTarget>()
+try {
+  ensByDomain = ensStatusTargets(env.HYDRA_ENS_STATUS)
+} catch (err) {
+  console.error(`${err instanceof Error ? err.message : String(err)}; names in HYDRA_ENS_STATUS are ignored`)
+}
+const ensWrite = ensStatusWriter({ privateKey: indexerKey })
+// Not cached: alerts are rare (only on news), and a link must take effect at once.
+const ensLinked = writer ? (app: string) => ensLinkOf(publicClient, writer, app) : undefined
+const ensNotify = ensWrite
+  ? (e: { app?: string; domain: string; to: string }) => {
+      void (async () => {
+        const t = (e.app && ensLinked ? await ensLinked(e.app) : null) ?? ensByDomain.get(e.domain.toLowerCase())
+        if (!t) return
+        const tx = await ensWrite(t, e.to)
+        if (tx) console.log(`ENS status ${t.name} -> ${e.to} tx ${tx}`)
+      })().catch((err) => console.error(`ENS status for ${e.domain} -> ${e.to} not written: ${err instanceof Error ? (err as { shortMessage?: string }).shortMessage ?? err.message.split('\n')[0] : String(err)}`))
+    }
+  : undefined
+// A new link gets the site's current verdict at once, from one live check of its first bound domain;
+// otherwise a healthy site would show no status until its next change. Logged, never thrown.
+function seedEnsStatus(app: string, t: EnsTarget) {
+  if (!ensWrite || !writer) return
+  void (async () => {
+    const manifest = ((await releasesFor(publicClient, writer, app)) as { payload?: { manifest?: { domains?: unknown } } }[])[0]?.payload?.manifest
+    const domain = Array.isArray(manifest?.domains) ? String(manifest.domains[0] ?? '') : ''
+    if (!domain) return console.log(`ENS status ${t.name}: ${app} binds no domain yet, set at its first check`)
+    const r = await checkSite({ domain, app, manifest: manifest as never })
+    const tx = await ensWrite(t, r.verdict)
+    console.log(`ENS status ${t.name} seeded ${r.verdict}${tx ? ` tx ${tx}` : ' (not match or mismatch, nothing written)'}`)
+  })().catch((err) => console.error(`ENS status ${t.name} not seeded: ${rootCause(err)}`))
+}
+
+const notifyAll =
+  notify || ensNotify
+    ? async (e: Parameters<NonNullable<typeof notify>>[0]) => {
+        ensNotify?.(e)
+        await notify?.(e)
+      }
+    : undefined
 const indexer =
   indexerKey && (env.INDEXER_TRIGGER_SECRET ?? '').length >= 32
     ? (() => {
         const clients = arkivClients({ accessKey: env.ARKIV_ACCESS_KEY, privateKey: indexerKey })
         const port = Number(env.PORT ?? env.HYDRA_API_PORT ?? 8787)
-        const run = () => runOnce({ api: `http://127.0.0.1:${port}`, clients, notify })
-        return { secret: env.INDEXER_TRIGGER_SECRET!, run, runner: indexerRunner(run), runOnly: (domain: string) => runOnce({ api: `http://127.0.0.1:${port}`, clients, only: domain, notify }) }
+        const run = () => runOnce({ api: `http://127.0.0.1:${port}`, clients, notify: notifyAll })
+        return { secret: env.INDEXER_TRIGGER_SECRET!, run, runner: indexerRunner(run), runOnly: (domain: string) => runOnce({ api: `http://127.0.0.1:${port}`, clients, only: domain, notify: notifyAll }) }
       })()
     : undefined
 
@@ -167,15 +212,6 @@ function cached<T>(ttlMs: number, load: (key: string) => Promise<T>, max = 500) 
 // by DEMO_WATCH_TOKEN; without it the route answers 503 and says so.
 const watchToken = (env.DEMO_WATCH_TOKEN ?? '').length >= 16 ? env.DEMO_WATCH_TOKEN : undefined
 if (env.DEMO_WATCH_TOKEN && !watchToken) console.error('DEMO_WATCH_TOKEN must be at least 16 characters; the demo watch switch stays off.')
-// ENS status (T-A35): each flip also sets hydra.status on the app's status.<app>.eth, from the
-// indexer wallet on Sepolia. It runs after the Arkiv write and on its own, so an ENS failure is logged
-// but never fails or repeats the flip.
-let ensStatus: ReturnType<typeof ensStatusWriter>
-try {
-  ensStatus = ensStatusWriter({ config: env.HYDRA_ENS_STATUS, privateKey: indexerKey })
-} catch (err) {
-  console.error(`${err instanceof Error ? err.message : String(err)}; ENS status writes stay off`)
-}
 const watcher = writer
   ? createWatcher({
       resolve: async (domain) => {
@@ -188,11 +224,7 @@ const watcher = writer
       onFlip: async (e) => {
         if (!indexer) throw new Error('no indexer wallet is configured, so no observation or alert can be written')
         const problem = runOk(await indexer.runOnly(e.domain))
-        if (problem) throw new Error(problem)
-        ensStatus?.(e.domain, e.to).then(
-          (tx) => tx && console.log(`ENS status ${e.domain} -> ${e.to} tx ${tx}`),
-          (err) => console.error(`ENS status ${e.domain} -> ${e.to} not written: ${err instanceof Error ? (err as { shortMessage?: string }).shortMessage ?? err.message.split('\n')[0] : String(err)}`),
-        )
+        if (problem) throw new Error(problem) // the run's alert also set the ENS status
       },
     })
   : undefined
@@ -223,6 +255,22 @@ const consoleRoutes: ConsoleRoutes | undefined = walletClient && writer
         return { version }
       },
       rotationsPerHour: 10,
+      // T-A36: the name's owner tagged it with this app and granted Hydra hydra.status; checked on chain.
+      linkEns: indexerKey
+        ? async (app, name, by) => {
+            let facts
+            try {
+              facts = await ensLinkFacts({ name, app, indexer: privateKeyToAccount(indexerKey).address })
+            } catch (err) {
+              return { problem: `could not read ${name} on Sepolia (${rootCause(err)}); nothing was linked, try again in a minute` }
+            }
+            const problem = ensLinkProblem(facts)
+            if (problem) return { problem }
+            await guardedCreate({ walletClient, publicClient, schema: EnsLinkSchema, values: ensLinkValues({ app, name, resolver: facts.resolver!, createdAt: Date.now(), payload: { by: by.toLowerCase() } }), expiration: LONG() })
+            seedEnsStatus(app, { name, resolver: facts.resolver! })
+            return { name, resolver: facts.resolver! }
+          }
+        : undefined,
     }
   : undefined
 
