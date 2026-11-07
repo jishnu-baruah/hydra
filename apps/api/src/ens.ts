@@ -77,7 +77,7 @@ export async function ensLinkFacts(o: { name: string; app: string; indexer: Hex;
   return { app: o.app, name: o.name, resolver, appTag: appTag || null, hydraCanWrite }
 }
 
-// Returns a writer for flips, or undefined without a key. Writes from this wallet run one at a time
+// Returns a writer for flips and for a new link, or undefined without a key. Writes from this wallet run one at a time
 // (one nonce at a time), with twice the gas estimate: the estimate is made before the record changes,
 // and a match write that followed a mismatch ran out of gas on 7 Nov. Errors carry no URL or key.
 export function ensStatusWriter(o: { privateKey: Hex | undefined; rpcUrl?: string }) {
@@ -88,7 +88,10 @@ export function ensStatusWriter(o: { privateKey: Hex | undefined; rpcUrl?: strin
   const wallet = createWalletClient({ chain: sepolia, transport, account })
   let queue: Promise<unknown> = Promise.resolve()
   const write = async (t: EnsTarget, value: 'match' | 'mismatch'): Promise<string> => {
-    const call = { address: t.resolver as Hex, abi: SETTEXT, functionName: 'setText', args: [dnsName(t.name), ENS_STATUS_KEY, value] } as const
+    // The name's resolver now, not the one stored at link time: a team may move its name.
+    const current = await pub.getEnsResolver({ name: t.name, universalResolverAddress: UNIVERSAL_RESOLVER })
+    if (!current || current === zeroAddress) throw new Error(`${t.name} has no resolver on ENSv2 Sepolia any more; the team must link a name again from the console`)
+    const call = { address: current, abi: SETTEXT, functionName: 'setText', args: [dnsName(t.name), ENS_STATUS_KEY, value] } as const
     const estimate = await pub.estimateContractGas({ ...call, account })
     const hash = await wallet.writeContract({ ...call, gas: estimate * 2n > 100_000n ? estimate * 2n : 100_000n })
     const r = await pub.waitForTransactionReceipt({ hash, timeout: 120_000 })

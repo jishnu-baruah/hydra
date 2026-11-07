@@ -147,8 +147,10 @@ export function ensBlock(app, ctx) {
     if (resolver) {
       appTag = (await text(name, KEYS.app)).trim();
       hydraCanWrite = await simulates({ account: HYDRA_WRITER, address: resolver, functionName: "setText", args: [dnsName(name), KEYS.status, "match"] });
-      const w = await wallet();
-      walletCanAllow = await simulates({ account: w.account.address ?? w.account, address: resolver, functionName: "multicall", args: [allowCalls(name)] });
+      // Read only: the connected account, without a connect or chain-switch prompt when there is one.
+      const [acct] = (await window.ethereum?.request({ method: "eth_accounts" }).catch(() => [])) ?? [];
+      const me = acct ?? (await wallet()).account.address;
+      walletCanAllow = await simulates({ account: me, address: resolver, functionName: "multicall", args: [allowCalls(name)] });
     } else {
       const m = /^([a-z0-9-]+)\.eth$/.exec(name);
       registrable = !!m && (await client.readContract({ address: ENS.registrar, abi: ABI.registrar, functionName: "isAvailable", args: [m[1]] }));

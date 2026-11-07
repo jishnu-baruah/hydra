@@ -2,7 +2,7 @@
 
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
-import { AlertSubSchema, EnsLinkSchema, KeyEpochSchema, LONG, alertSubValues, ensLinkValues, keyEpochValues, arkivClients, checkProof, guardedBatch, guardedCreate, guardedDelete, recentObservations } from '@hydra/core'
+import { AlertSubSchema, EnsLinkSchema, KeyEpochSchema, LONG, alertSubValues, ensLinkValues, keyEpochValues, arkivClients, rootCause, checkProof, guardedBatch, guardedCreate, guardedDelete, recentObservations } from '@hydra/core'
 import type { Hex } from 'viem'
 import { checkSite } from '@hydra/indexer/check'
 import { runOnce, sendTelegram } from '@hydra/indexer/run'
@@ -122,7 +122,8 @@ try {
   console.error(`${err instanceof Error ? err.message : String(err)}; names in HYDRA_ENS_STATUS are ignored`)
 }
 const ensWrite = ensStatusWriter({ privateKey: indexerKey })
-const ensLinked = writer ? cached(30_000, (app: string) => ensLinkOf(publicClient, writer, app)) : undefined
+// Not cached: alerts are rare (only on news), and a link must take effect at once.
+const ensLinked = writer ? (app: string) => ensLinkOf(publicClient, writer, app) : undefined
 const ensNotify = ensWrite
   ? (e: { app?: string; domain: string; to: string }) => {
       void (async () => {
@@ -133,6 +134,20 @@ const ensNotify = ensWrite
       })().catch((err) => console.error(`ENS status for ${e.domain} -> ${e.to} not written: ${err instanceof Error ? (err as { shortMessage?: string }).shortMessage ?? err.message.split('\n')[0] : String(err)}`))
     }
   : undefined
+// A new link gets the site's current verdict at once, from one live check of its first bound domain;
+// otherwise a healthy site would show no status until its next change. Logged, never thrown.
+function seedEnsStatus(app: string, t: EnsTarget) {
+  if (!ensWrite || !writer) return
+  void (async () => {
+    const manifest = ((await releasesFor(publicClient, writer, app)) as { payload?: { manifest?: { domains?: unknown } } }[])[0]?.payload?.manifest
+    const domain = Array.isArray(manifest?.domains) ? String(manifest.domains[0] ?? '') : ''
+    if (!domain) return console.log(`ENS status ${t.name}: ${app} binds no domain yet, set at its first check`)
+    const r = await checkSite({ domain, app, manifest: manifest as never })
+    const tx = await ensWrite(t, r.verdict)
+    console.log(`ENS status ${t.name} seeded ${r.verdict}${tx ? ` tx ${tx}` : ' (not match or mismatch, nothing written)'}`)
+  })().catch((err) => console.error(`ENS status ${t.name} not seeded: ${rootCause(err)}`))
+}
+
 const notifyAll =
   notify || ensNotify
     ? async (e: Parameters<NonNullable<typeof notify>>[0]) => {
@@ -243,10 +258,16 @@ const consoleRoutes: ConsoleRoutes | undefined = walletClient && writer
       // T-A36: the name's owner tagged it with this app and granted Hydra hydra.status; checked on chain.
       linkEns: indexerKey
         ? async (app, name, by) => {
-            const facts = await ensLinkFacts({ name, app, indexer: privateKeyToAccount(indexerKey).address })
+            let facts
+            try {
+              facts = await ensLinkFacts({ name, app, indexer: privateKeyToAccount(indexerKey).address })
+            } catch (err) {
+              return { problem: `could not read ${name} on Sepolia (${rootCause(err)}); nothing was linked, try again in a minute` }
+            }
             const problem = ensLinkProblem(facts)
             if (problem) return { problem }
             await guardedCreate({ walletClient, publicClient, schema: EnsLinkSchema, values: ensLinkValues({ app, name, resolver: facts.resolver!, createdAt: Date.now(), payload: { by: by.toLowerCase() } }), expiration: LONG() })
+            seedEnsStatus(app, { name, resolver: facts.resolver! })
             return { name, resolver: facts.resolver! }
           }
         : undefined,
