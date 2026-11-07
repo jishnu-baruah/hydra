@@ -1,0 +1,1029 @@
+# TASKS.md, the Hydra board
+
+The board and the lock. Nothing else is the board: not an issue tracker, not a chat message.
+
+**If you are an agent or a person about to write code, read sections 1 to 3 first. They are the
+whole protocol. Then claim exactly one task and work only on that task.**
+
+Scope and record formats: `docs/ARCHITECTURE.md`. Decisions taken since: `DECISIONS.md`, which
+wins where the two disagree, because it is dated. Human-only blockers: `OPERATOR_TODO.md`.
+
+Event: ETHGlobal Mumbai. Day 0 is 2026-11-05 (evening), day 1 is 2026-11-06, submission is the
+morning of 2026-11-07 (check the exact deadline on the ETHGlobal dashboard and write it here).
+
+**Goal by submission:** a judge watches one live run of both flows. (1) A demo team's GitHub
+Action publishes a release that lands on Swarm and Arkiv and shows in the explorer. (2) We change
+one file on the live demo site; the extension turns red and the explorer shows the mismatch.
+
+---
+
+## 1. The lock: claim before you write code
+
+One task, one owner, one branch, one PR. The race is settled by git, not by asking.
+
+`main` takes pull requests only. A claim is a tiny PR carrying one line, and that is what keeps
+the race resolvable: the second claim PR on the same task conflicts on that exact line and cannot
+merge.
+
+```bash
+git checkout main && git pull --ff-only origin main
+git checkout -b claim/t-a02
+# edit ONLY the `- Status:` line of the task you want, nothing else in the file
+git commit -am "claim T-A02" && git push -u origin claim/t-a02
+gh pr create --fill --base main && gh pr merge --auto --squash --delete-branch
+```
+
+If the merge is refused for a conflict, or the board lint says the task is already claimed,
+**someone beat you to it. Pick another task. Never work on a task claimed by someone else.**
+
+Then branch off the updated `main` and do the work:
+
+```bash
+git checkout main && git pull --ff-only origin main
+git checkout -b feature/t-a02-publish-api
+```
+
+Rules the `board` CI job enforces:
+
+- A claim PR is branch `claim/t-<id>` and may change **only** `- Status:` lines in `TASKS.md` and
+  `OPERATOR_TODO.md`. Anything else in that diff fails.
+- A work PR is branch `feature/t-<id>-<slug>` and must match the `Branch:` in the row you claimed.
+- Adding, cutting or rewording a task goes in a `board/<slug>` PR that touches only `TASKS.md`,
+  `OPERATOR_TODO.md` and `DECISIONS.md`.
+- Two owners on one task fails the lint. `Status: done` without a real `Evidence:` fails the lint.
+- `secrets`, `checks` and `hygiene` must be green before merging.
+
+Status values: `open` | `claimed <date> | Owner: <name> | Branch: <branch>` |
+`blocked, see OP-N` | `in-review <PR link>` | `done` | `cut <date>: <reason>`.
+
+Hackathon speed rule: a claim PR needs no reviewer. Merge it the moment CI is green.
+
+## 2. Every task ships as a pull request
+
+No exceptions: one-line changes and docs included.
+
+1. Branch from `main` after claiming.
+2. Commit small. Hashing and compare logic gets its failing test first
+   (`superpowers:test-driven-development`). Other code: one meaningful check per change.
+3. Run `/code-review` at medium. Add `/security-review` when the diff touches `apps/api`, a key,
+   or anything that signs or sends a transaction.
+4. Run `superpowers:verification-before-completion` before you call it done.
+5. Open the PR into `main`. Fill in every line of the template. Squash-merge.
+6. Write the finding you measured into your task row, with its number ("a create took 4.1 s",
+   "21 of 20 targets load a vendor script").
+
+A second human reviews only what CI cannot see: anything in `apps/api` that holds a key or signs,
+and changes to the record contract (`docs/ARCHITECTURE.md`, `packages/core/src/records.ts`), which
+need the owners of the API, explorer and extension to agree. CI reviews the rest.
+
+## 3. Rules for agent sessions
+
+- Ponytail is on at level `full` through the `UserPromptSubmit` hook in `.claude/settings.json`.
+  It restates itself every turn. Follow it.
+- One agent session per claimed task, in its own worktree (`superpowers:using-git-worktrees`).
+  Parallel agents never share a checkout.
+- CI red or a spike fails: `superpowers:systematic-debugging` before you change any code.
+- Hit something only a human can do (faucet sign-in, postage batch, a domain, a sponsor question)?
+  Write an `OP-N` entry in `OPERATOR_TODO.md`, set your task to `blocked, see OP-N`, and move to
+  another task. **Never fake a transaction hash, a Swarm reference or a measurement.**
+- Search through the `Explore` subagent. Never paste whole files, logs or JSON into the
+  conversation. One agent per task; multi-agent workflows only when a human asks for one.
+- Work is credited to the person who ran the agent. No AI co-author lines in commits.
+- You may edit only the files in your task's `Touches:` line. Need a file another task owns? Say
+  so in the PR and let that owner change it.
+
+Default tool per step:
+
+| Step | Tool |
+|---|---|
+| Scope every change | Ponytail, level `full`, always on |
+| Set up the workspace | `superpowers:using-git-worktrees` |
+| Find code | `Explore` subagent |
+| Library docs (Arkiv SDK, Bee, Chrome MV3) | Context7, then the vendor docs |
+| Hashing, manifest and compare code | `superpowers:test-driven-development` |
+| CI red or a spike fails | `superpowers:systematic-debugging` |
+| Before opening a PR | `/code-review` at medium, plus `/security-review` on `apps/api` and keys |
+| Claiming a task done | `superpowers:verification-before-completion` |
+| Research, copy, submission text (Manish) | `/research <question>` (fast) or `/deep <question>` (cross-model verified), from the filebus-research kit; cite every source, and read the sources before trusting a number |
+
+## 4. Task row format
+
+```
+### T-X01, Example task
+- Status: open
+- Suggested: <name>
+- Depends-on: T-F01
+- Touches: apps/example/
+- Serves: Technicality (judged) ; Arkiv track
+- Acceptance: 3 of 3 sample records read back with matching payloads in under 2 s each
+- Evidence: <link to the PR, a tx hash, a Swarm reference, a recording>
+- Kill criterion: still failing after 2 hours, so fall back to <plan B>
+```
+
+`Serves:` must name an ETHGlobal judged criterion (Technicality, Originality, Practicality,
+Usability, WOW factor) or a prize (Arkiv track, Swarm bonus), or a measured metric. `Acceptance:`
+must contain a number. Both are linted. `Suggested:` is who the plan expects to take it; anyone
+may claim any open task.
+
+ID ranges: `T-A` API, chain and CI (Jishnu). `T-B` explorer, `T-C` extension (Mouli). `T-D`
+research, demo and docs (Manish). `T-F` feasibility spikes, each with a `Kill criterion:`. `T-J`
+submission deliverables. `OP-N` operator items.
+
+## 5. Priority, and what can run at the same time
+
+Tasks in one wave touch disjoint files, so three people or three agents can hold one each.
+
+| Wave | When | Parallel-safe set |
+|---|---|---|
+| P0 | Day 0, 5 Nov night | T-A00 **first, alone**; then T-A08, T-F01, T-F02, T-A01, T-B01, T-C01, T-F03, T-D01, T-D02, T-D03, T-D07 |
+| P1 | 6 Nov morning | T-A02, T-A09, T-B02, T-B03, T-D04, T-D05 |
+| P2 | 6 Nov afternoon and night | T-A04, T-A05, T-A06, T-A07, T-B04, T-B05, T-C02, T-C03, T-D06 |
+| P3 | 7 Nov morning | T-J01, T-J02, T-J03, T-C04, T-B06 |
+
+Exit checks. **P1:** a manual `curl` to the API creates a release whose manifest is on Swarm and
+whose records are on Arkiv, and the explorer shows it. **P2:** the GitHub Action runs on the demo
+repo, and the extension goes red when we change a file on the live site.
+
+## 6. Qualification checklist, per prize
+
+From pre-event research (28 Oct): Arkiv runs three tracks of $4,000 (1st $3k each) plus the
+Arkiv + Swarm bonus of $1,000. T-D02 replaces this list with the exact rule text; until then, this
+is what we must be able to show. Tick in a `board/` PR as items land.
+
+**Arkiv track**
+- [ ] Arkiv is on the critical path: `release`, `file` and `observation` records written and read live (T-A02, T-A06, T-B02)
+- [ ] The explorer reads Arkiv directly in the browser, no backend (T-B01)
+- [ ] README section "How we used Arkiv" with explorer links to at least 2 transactions and the query we run
+- [ ] Builder feedback in docs/FEEDBACK.md (T-J03)
+- [ ] Which of the three Arkiv tracks we enter is confirmed (OP-4, T-D02)
+
+**Arkiv + Swarm bonus**
+- [ ] Every release's build and manifest is on Swarm, with `swarm_ref` on its Arkiv record (T-A02)
+- [ ] A Swarm gateway link a judge can open from the explorer (T-B02)
+- [x] README section "How we used Swarm" with at least 1 reference (T-D08, #77)
+
+**ETHGlobal submission**
+- [ ] Code a judge can open: the repo is private today (OP-6)
+- [ ] Demo video within the event's rules, every submission field filled (T-J02, T-J03)
+
+---
+
+# P0, day 0. Nothing branches until T-A00 lands.
+
+### T-A00, Workspace, CI and the board
+- Status: done
+- Suggested: Jishnu
+- Depends-on: none
+- Touches: CLAUDE.md, TASKS.md, OPERATOR_TODO.md, DECISIONS.md, README.md, .env.example, docs/ARCHITECTURE.md, docs/prior-learnings.md, .github/, scripts/board.mjs, .claude/
+- Serves: unblocks every task ; Practicality (judged)
+- Acceptance: board lint passes on 30 rows; a claim PR that edits a non-Status line fails CI in 1 run
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/1 (merged as cef6743; hygiene, checks and secrets green)
+- Finding: GitHub showed the PR on a stale head for over 2 minutes after a push and refused the merge as out of date; closing and reopening the PR resynced it at once.
+
+### T-A08, Core write safety and key hygiene
+- Status: in-review | Branch: feature/t-a08-write-safety
+- Suggested: Jishnu
+- Depends-on: T-A01
+- Touches: packages/core/, docs/ARCHITECTURE.md
+- Serves: Technicality (judged) ; Arkiv track
+- Known: Arkiv guides/known-issues and guides/quickstart (SDK 1.0.1): no automatic write resend; explicit latest nonce and gasPrice; gas >= max(1,000,000, 2 x estimate) and <= half the block gas limit; receipt.status must be success; keyed RPC URLs are secrets; eth_getLogs only reaches about 1,000 blocks back
+- Acceptance: writes go through 1 guarded path that sends at most 1 transaction per call with the gas rule applied; reads retry up to 3 times; 0 errors contain an RPC URL; all tests pass offline
+- Evidence: <PR link>
+
+### T-F01, Arkiv on Rabdi: write, query, timings
+- Status: open
+- Suggested: Jishnu
+- Depends-on: OP-1
+- Touches: spikes/F1/
+- Serves: Technicality (judged) ; Arkiv track
+- Known: spike T7 (Tiramisu): SDK 0.8.1 works; creates took 3 to 7 s; uppercase names revert; numbers default to i32. See docs/prior-learnings.md
+- Acceptance: on Rabdi (chain 7794095) with an access key, 1 `release` and 20 `file` records written with ARCHITECTURE.md attributes and the maximum lifetime; all 21 queried back by project+type; lowercase-name and u64 rules re-confirmed; median create time and the SDK version written in result.json. Limits are already documented, so target 45 minutes.
+- Evidence: <spikes/F1/result.json at a commit, tx hashes>
+- Kill criterion: 20 file records take over 2 minutes, so index external scripts only and drop per-file records
+
+### T-F02, Swarm upload and read spike
+- Status: done
+- Suggested: Jishnu
+- Depends-on: OP-2
+- Touches: spikes/F2/, docs/swarm.md
+- Serves: Technicality (judged) ; Swarm bonus
+- Acceptance: a 5-file folder uploaded to the Swarm testnet and all 5 files read back byte-identical through a gateway URL; steps written in docs/swarm.md
+- Evidence: commit 7bfe80c, spikes/F2/result.json, https://api.gateway.ethswarm.org/bzz/bef3c15af9a3ebfefaee14cc5675f15dd3ec9080230351bf38ee340cd0d43006/hydra.manifest.json
+- Kill criterion: no working upload after 3 hours, so keep the manifest in the Arkiv payload and mark the Swarm bonus at risk in DECISIONS.md
+- Finding: 4 of 5 files read back byte-identical; the EF gateway answers every HTML read with a 302 to bzz.link/forbidden (anti-phishing), which costs Hydra nothing because only the JSON manifest is read from Swarm; the gateway stamps uploads itself, so no postage batch is needed
+
+### T-F03, Extension can hash the scripts a page loads
+- Status: done
+- Suggested: Mouli
+- Depends-on: none
+- Touches: spikes/F3/
+- Serves: Technicality (judged) ; Usability (judged)
+- Known: spike T4: fetch() decodes gzip and brotli, so re-fetched hashes match served bytes; T12: on Next.js, check scripts by policy, not HTML
+- Acceptance: on 5 real dApp pages, the extension background worker lists every script URL and hashes it; 5 of 5 pages succeed, CORS failures counted
+- Evidence: spikes/F3/result.json in https://github.com/jishnu-baruah/hydra/pull/10 (5 of 5 pages, 1081 of 1081 scripts hashed, 0 worker failures; 2 of 1081 page-context fetches failed CORS or network)
+- Kill criterion: over 2 of 5 pages fail for CORS, so hash only same-origin scripts and say so in the UI
+- Finding: Uniswap serves 0 of 816 scripts from its own origin (780 from cdn.app.uniswap.org), so a same-origin-only fallback checks nothing; every script that changed between 2 fetches (3 in run 1, 2 in run 2) was a Cloudflare /cdn-cgi/challenge-platform/ bot check, which T-C02 must allow or Cloudflare sites go red.
+
+### T-A01, packages/core: records, hashing, Arkiv client
+- Status: in-review | Branch: feature/t-a01-core
+- Suggested: Jishnu
+- Depends-on: T-A00
+- Touches: packages/core/
+- Serves: Technicality (judged)
+- Known: spike T7: lowercase attribute names and u64(BigInt(ms)) timestamps are mandatory; print the innermost viem cause on revert
+- Acceptance: sha256 helper matches `sha256sum` on 3 fixture files; Arkiv wrapper retries 3 times; 1 test per record type encodes lowercase attributes and u64 times
+- Evidence: <PR link>
+
+### T-B01, Explorer scaffold that reads Arkiv in the browser
+- Status: done
+- Suggested: Mouli
+- Depends-on: T-A00
+- Touches: apps/explorer/
+- Serves: Usability (judged) ; Arkiv track
+- Acceptance: the explorer page renders 1 record read live from Arkiv testnet in the browser with no backend, in under 3 s
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/15, screenshot apps/explorer/evidence/t-b01-entity.png (a live Rabdi entity with 31 attributes rendered in 682 to 1103 ms over 9 runs, public RPC, no key)
+- Finding: Arkiv SDK 1.0.1 ESM does not load on Node 22.17 (ERR_REQUIRE_CYCLE_MODULE on a 0-byte dist chunk) but loads in the browser from jsdelivr in about 2 s; mixing 2 CDNs broke every query; 0 hydra.release records exist yet, so home shows the empty state.
+
+### T-C01, Extension scaffold with a 3-state badge
+- Status: done
+- Suggested: Mouli
+- Depends-on: T-A00
+- Touches: apps/extension/
+- Serves: Usability (judged)
+- Acceptance: loads unpacked in Chrome; the badge shows all 3 states (green, red, grey) driven by a hard-coded verdict
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/6 (unpacked into Chromium, 3 of 3 badge states read back via chrome.action.getBadgeText, 0 service worker errors)
+- Finding: tab-scoped badge state is kept by Chrome, so 3 tabs showed 3 different badges at once with 0 lines of storage code; non-web pages (chrome://, file://) get no badge so grey only means "a site with no release".
+
+### T-D01, Research: what data is already on Arkiv
+- Status: open
+- Suggested: Manish
+- Depends-on: none
+- Touches: docs/research-arkiv-data.md
+- Serves: Originality (judged) ; Arkiv track
+- Acceptance: at least 3 existing Arkiv datasets or apps described (including sourcify.arkiv.network), each with a working query example and 1 idea for using it in the explorer or extension
+- Evidence: <doc link>
+
+### T-D02, Prize rules for Arkiv and the Arkiv + Swarm bonus
+- Status: open
+- Suggested: Manish
+- Depends-on: none
+- Touches: docs/prizes.md
+- Serves: Arkiv track ; Swarm bonus
+- Acceptance: the exact qualification text for 2 prizes copied with links, and a checklist of every item we must show
+- Evidence: <doc link>
+
+### T-D03, Indexer target list
+- Status: open
+- Suggested: Manish
+- Depends-on: none
+- Touches: packages/indexer/targets.json
+- Serves: Practicality (judged) ; WOW factor (judged)
+- Acceptance: 15 to 20 live dApp frontends with name, domain and category, each opened in a browser to confirm it loads
+- Evidence: <PR link>
+
+### T-D07, Research kit wired into the repo
+- Status: done
+- Suggested: Jishnu
+- Depends-on: none
+- Touches: scripts/research.mjs, .claude/commands/, CLAUDE.md, README.md
+- Serves: unblocks T-D01, T-D02 ; Practicality (judged)
+- Acceptance: /research answers 1 question with citations and a computed verdict in under 60 s, run from this repo, leaving 0 new files in it
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/5 (merged as b07d341)
+- Finding: a question answered in 13 s with 3 cited sources and 0 files left in this repo; a fast answer passed the verify gate with a wrong hex conversion, so answers are leads
+
+# P1, 6 Nov morning
+
+### T-A02, Publish API: POST /v1/releases
+- Status: in-review | Branch: feature/t-a02-publish-api
+- Suggested: Jishnu
+- Depends-on: T-A01, T-F01, T-F02
+- Touches: apps/api/, packages/core/
+- Serves: Technicality (judged) ; Arkiv track ; Swarm bonus
+- Scope: also wallet sign-in (signed message) to stateless API keys, and read routes the site and explorer use, so the Arkiv access key stays on the server
+- Acceptance: one call with a valid key uploads the build to Swarm and writes 1 release plus N file records; a bad key gets 401 with 0 writes; returns entity keys and swarm_ref
+- Evidence: <curl transcript, tx hashes, Swarm reference>
+
+### T-A03, Register apps and domains: POST /v1/apps
+- Status: cut 2026-11-05: replaced for the temp flow by wallet sign-in keys (T-A02, T-A09); domain checks come back after the demo
+- Suggested: Jishnu
+- Depends-on: T-A02
+- Touches: apps/api/src/apps.ts
+- Serves: Practicality (judged)
+- Acceptance: registering checks /.well-known/hydra.txt on 1 real domain and writes 1 app record; a domain without the file is refused with the reason
+- Evidence: <curl transcript, tx hash>
+
+### T-B02, Explorer app page with release history
+- Status: blocked, see OP-8 | Branch: feature/t-b02-app-page
+- Suggested: Mouli
+- Depends-on: T-B01, T-A02
+- Touches: apps/explorer/app/, apps/explorer/src/arkiv.js, apps/explorer/search/page.js
+- Serves: Usability (judged)
+- Acceptance: an app page lists all releases newest first with version, commit, time, file count and a working Swarm link, for 1 real published app
+- Evidence: live on Rabdi 2026-11-06: /app/?name=hydra-test-a lists its 3 releases newest first with version, commit, time and file count in 377 ms, test-dapp its 2 in 244 ms, 0 page errors; the Swarm column reads "Not on Swarm yet" because all 5 releases have swarm_ref pending (OP-8); tests 4 of 4 in apps/explorer/app/releases.test.mjs
+- Finding: the publisher wallet holds 5 tGLM and has sent 0 transactions, so the blocker is a first publish, not funding; every Hydra record comes from that 1 wallet, so the explorer now trusts only entities created by it
+
+### T-B03, Explorer search
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/147 | Branch: feature/t-b03-explorer-search
+- Suggested: Mouli
+- Depends-on: T-B01
+- Touches: apps/explorer/search/, apps/explorer/src/arkiv.js, apps/explorer/index.html
+- Serves: Usability (judged) ; Originality (judged)
+- Acceptance: search finds the right app from 4 kinds of input: domain, app name, file sha256 and Swarm reference
+- Evidence: live on Rabdi 2026-11-06: 2 of 4 kinds find the right app, app name (hydra-test-a, 247 ms) and file sha256 (with or without the sha256- prefix, 316 ms); Swarm reference waits for OP-8 (every swarm_ref is pending); domain waits for domain records, which the T-A03 cut defers until after the demo; tests 3 of 3 in apps/explorer/search/search.test.mjs
+- Finding: anyone can write an entity tagged hydra.app, so search and the home list must filter by the API wallet address (ownedBy) before showing real data; a bare 64-hex input is ambiguous (file sha256 or Swarm ref), so both are queried.
+
+### T-D04, Demo dApp on a domain we control
+- Status: in-review | Branch: feature/t-d04-app-name
+- Suggested: Manish
+- Depends-on: T-A19, T-A20
+- Touches: demo/, .gitignore
+- Serves: WOW factor (judged)
+- Known: spike T6: Vercel previews inject a vercel.live script and are login-protected, so demo and check the production deployment only
+- Acceptance: a 1-page static site with 1 JS file and 1 vendor script, live on a Vercel production domain, with /.well-known/hydra.txt naming its Hydra app, published as a release through the live API and showing `match` on /indexed. Deployed from demo/ in this repo with the Vercel CLI, not its own repo (time)
+- Evidence: https://hydra-demo-dapp.vercel.app, app demo-dapp. Release demo-1 on Arkiv (entity 0xc815...4919c, tx 0xaa28a3a3...8148), Swarm ref 311afb3f...09a4, domain bound. Indexer run 42175159452: `match`. After the staged script change, run 42176284423: `mismatch` (CHANGED /app.js) and 1 Telegram alert sent, 0 errors. PRs #89 and this one
+- Finding: the API key names the app (demo-dapp), so hydra.txt had to say hydra-app=demo-dapp, not the name I had guessed; the Vercel edge served the old hydra.txt for a few minutes after a redeploy; publish uploads every file in the folder including .vercel/project.json (ids, no secrets) and README, so publish from a clean build dir; the tamper helper I first merged still appended a sendBeacon line (non-resolving .invalid host) because a patch silently did not apply, now a harmless console.warn
+
+### T-D05, Demo script, timed
+- Status: open
+- Suggested: Manish
+- Depends-on: none
+- Touches: docs/demo.md
+- Serves: WOW factor (judged)
+- Acceptance: a 3-minute script covering both flows and the indexer, run once against a timer, with the real time written down
+- Evidence: <doc link>
+
+### T-A09, Temp onboarding site: wallet sign-in, API key, repo template
+- Status: done
+- Suggested: Jishnu
+- Depends-on: T-A02
+- Touches: apps/site/
+- Serves: Usability (judged) ; Practicality (judged)
+- Scope: temporary; Mouli merges it into the explorer later
+- Acceptance: a new user connects a wallet, signs 1 message, gets an API key and a filled-in workflow template, and their first push lands a release on Arkiv, in under 5 minutes end to end
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/36 (live at https://hydra-site-one.vercel.app; 2 blind Sonnet agents pasted the site's 1 copy block and each landed a release on Arkiv on the first publish, 37 s and 49 s from setting the secret: tx 0x97f80d736cd10007347bd26d12493830e0b3205016851a3b44ebbf71af3cad98 block 259760 and tx 0x332431ce79b3210c833efd7310087f6b2a11c8f9ed985947da0735d52151e186 block 259762, both receipt status success)
+- Finding: a key did not reserve its app name, so another wallet took "test-dapp" 3 min 8 s after a key was issued and the key then got 403 in CI; keys now write the hydra.app claim at issue (#35). The blind agents also found 5 doc errors in round 1 (version format, sha256- prefix, where 403 fires, swarm pending, secret before first push), all fixed by round 2.
+
+### T-A10, Temp activity view: everything Hydra wrote to Arkiv
+- Status: in-review | Branch: feature/t-a10-activity
+- Suggested: Jishnu
+- Depends-on: T-A02, T-A09
+- Touches: apps/api/src/reads.ts, apps/api/src/server.ts, apps/api/src/main.ts, apps/site/
+- Serves: Usability (judged) ; WOW factor (judged)
+- Scope: temporary, until the explorer events timeline (T-B04) and deploy (T-B06) land; Mouli may fold it in
+- Acceptance: GET /v1/activity lists every app claim, release and file record our wallet wrote, newest block first, and /activity/ on the site shows them per app with CI run links, for at least 2 real apps
+- Evidence: <PR link>
+
+### T-A11, Expiry as a feature: app-name leases renewed by publishing
+- Status: in-review | Branch: feature/t-a11-expiry-leases
+- Suggested: Jishnu
+- Depends-on: T-A02, T-A10
+- Touches: packages/core/, apps/api/, apps/site/, docs/ARCHITECTURE.md
+- Serves: Arkiv track (prize) ; Originality (judged)
+- Scope: step 1 and 2 of the expiry plan (show lifetimes, name leases); observation TTL and incident flags follow with the indexer
+- Acceptance: a new name claim expires 30 days out, the first publish extends it to the network maximum inside the file batch with 0 extra transactions, and /activity/ shows every record's expiry date
+- Evidence: <PR link>
+
+### T-A12, API uploads to Swarm with no postage batch
+- Status: done
+- Suggested: Manish
+- Depends-on: T-A02, OP-2
+- Touches: apps/api/src/swarm.ts, apps/api/src/main.ts, apps/api/test/api.test.ts, apps/api/README.md, apps/api/deploy/README.md, docs/swarm.md, arkiv/swarm.md
+- Serves: Swarm bonus ; Technicality (judged)
+- Scope: Swarm turns on from `BEE_API_URL` alone and the batch header is sent only when `SWARM_POSTAGE_BATCH_ID` is set, so the EF gateway path (OP-2) works with the batch id empty; today an empty batch id leaves Swarm off and every release gets `swarm_ref = pending`
+- Acceptance: with `BEE_API_URL` set and no batch id, 1 upload sends 0 `Swarm-Postage-Batch-Id` headers; with a batch id it sends 1; all API tests pass
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/61 (merged as cdb0cf3; test sends 0 batch headers without a batch id and 1 with one; apps/api tests 12 pass, 0 fail)
+- Finding: the `BEE_API_URL && SWARM_POSTAGE_BATCH_ID` gate in main.ts kept Swarm off on the gateway path, which is why all 5 live releases are `swarm_ref = pending`; OP-8 now needs only `BEE_API_URL` on the host
+
+### T-D08, README section "How we used Swarm"
+- Status: done
+- Suggested: Manish
+- Depends-on: T-A12, OP-8
+- Touches: README.md, arkiv/swarm.md
+- Serves: Swarm bonus
+- Scope: what lives on Swarm (build plus `hydra-manifest.json`) and what on Arkiv (`swarm_ref`), the gateway and stamping choice (OP-2), the HTML-blocked finding, and links a judge can open
+- Acceptance: the section links at least 1 live release whose `swarm_ref` opens `hydra-manifest.json` through the gateway, plus its Arkiv entity in the explorer
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/77 (merged as b374908); README links the manifest of hygra-demo2 2026-11-05.4 on Swarm (HTTP 200) and its Arkiv entity
+- Finding: only releases published after OP-8 land on Swarm; the 5 earlier ones stay swarm_ref pending until republished
+
+### T-A13, Indexer hosted in the API on Render, triggered by GitHub Actions
+- Status: in-review | Branch: feature/t-a13-indexer-hosting
+- Suggested: Jishnu
+- Depends-on: T-A06, T-A04
+- Touches: packages/indexer/, apps/api/, .github/workflows/indexer.yml
+- Serves: Practicality (judged) ; Arkiv track
+- Scope: the free Render service sleeps after 15 idle minutes; a scheduled Actions job calls a secret-protected run route every 30 minutes, which wakes the API and runs one indexer pass
+- Acceptance: with this machine off, a scheduled Actions run triggers 1 indexer pass on Render that writes 1 observation per reachable target, and its log shows the tx hashes
+- Evidence: <Actions run link, tx hashes>
+
+### T-A14, Indexer second view: rendered page through Jina
+- Status: in-review | Branch: feature/t-a14-rendered-view
+- Suggested: Jishnu
+- Depends-on: T-A13
+- Touches: packages/indexer/, .github/workflows/indexer.yml
+- Serves: Technicality (judged) ; WOW factor (judged)
+- Scope: Jina's reader renders the page in a browser from another network. Script origins that appear only at runtime are flagged, sites that block the indexer are read through it, and every script is still hashed by a direct fetch
+- Acceptance: a run reports runtime-only script origins per site and scans at least 1 site that returns 403 to the indexer directly; compare logic has failing tests first
+- Evidence: <Actions run link, tx hashes>
+
+### T-A15, Page to visualise every site the indexer watches
+- Status: in-review | Branch: feature/t-a15-indexed-sites
+- Suggested: Jishnu
+- Depends-on: T-A13, T-A14, T-D03
+- Touches: apps/api/src/reads.ts, apps/api/src/server.ts, apps/api/src/main.ts, apps/api/test/, apps/site/indexed/, packages/core/src/index.ts
+- Serves: WOW factor (judged) ; Usability (judged)
+- Scope: GET /v1/observations returns the latest observation per target (joined with targets.json categories) plus the last few runs; /indexed/ on the site shows every site as a card with status, script count, runtime origins, change flag and a run-history strip, and a summary and category chart
+- Acceptance: the page lists all 20 targets in targets.json, including ones never observed, with their latest status read from Arkiv, and refreshes without a reload
+- Evidence: <PR link, live URL>
+
+### T-A16, DNS checker from two resolvers
+- Status: cut 2026-11-06: a DNS trigger adds nothing to a demo staged with a script change, and free DNS monitors already exist; roadmap item
+- Suggested: Jishnu
+- Depends-on: T-A13
+- Touches: packages/indexer/
+- Serves: Technicality (judged) ; WOW factor (judged)
+- Known: the 2026 hijacks were registrar-level, not code: CoW Swap (14 Apr, about 6 h of phishing per its post-mortem) and 12 Name.com sites (30 to 31 Oct). Script hashes only catch them after the page changes; NS and A records change first
+- Scope: after T-A19 and T-A20, and only if time allows. Each run resolves NS and CNAME (A records rotate behind CDNs, so they are noted, not alerted on) through 2 DNS-over-HTTPS resolvers, compares with the previous observation on Arkiv (not memory, which a sleeping free instance loses), and flags DNS_CHANGED and RESOLVER_SPLIT
+- Finding: DNS change monitoring already exists free (DNSRadar 50 monitors, nslookup.io, dns-watchdog, Cloudflare CT monitoring since 13 Aug 2026), so this is a trigger for our alerts, not a feature to pitch
+- Acceptance: a run records DNS for 20 of 20 targets; a unit test flags a changed NS set and a resolver split; compare logic has failing tests first
+- Evidence: <Actions run, tx hashes>
+- Kill criterion: DoH rate-limited or flaky after 2 hours, so keep 1 resolver and NS only
+
+### T-A17, Alert subscriptions stored on Arkiv as leases
+- Status: cut 2026-11-06: not worth the remaining hours; alerts go to one Telegram chat set by env (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID) and the demo says so
+- Suggested: Jishnu
+- Depends-on: T-A11, T-A13
+- Touches: apps/api/, packages/core/src/records.ts, docs/ARCHITECTURE.md
+- Serves: Arkiv track (prize) ; Practicality (judged)
+- Scope: a protocol team registers a webhook, Discord or Slack endpoint for its app with its Hydra API key. The endpoint config is encrypted (AES-256-GCM, server key) into a `hydra.alert_sub` entity with a 30-day lease, renewed by each publish. The signing secret (`whsec_`) is returned once. Routes: register, list, test, delete
+- Acceptance: register, then list returns it from Arkiv after an API restart, and the stored entity body contains no plaintext URL; another app's key gets 403
+- Evidence: <entity key, tx hash>
+- Kill criterion: no persisted subscription by 6 Nov 18:00 IST, so keep subscriptions in env config for the demo and say so
+
+### T-A18, Alert delivery: signed webhooks plus Discord and Slack
+- Status: done
+- Suggested: Jishnu
+- Depends-on: T-A16, T-A17
+- Touches: apps/api/, packages/indexer/, apps/site/vercel.json
+- Serves: Practicality (judged) ; WOW factor (judged)
+- Known: Standard Webhooks headers webhook-id, webhook-timestamp, webhook-signature (HMAC-SHA256, 5 min replay window); protocol teams already route OpenZeppelin Monitor alerts to Slack, Discord, Telegram and webhooks
+- Scope: Telegram first (user choice, 6 Nov): a bot posts plain-text alerts to one chat set by env. After each indexer run, every new problem per site (DNS_CHANGED, RESOLVER_SPLIT, CHANGED, EXTRA, RUNTIME_ORIGIN, NEW_RUNTIME_ORIGIN, mismatch) becomes 1 event with a stable id. Each subscription gets it signed per Standard Webhooks, or formatted for Discord and Slack, with 3 attempts and no duplicate per id
+- Acceptance: changing 1 script on the demo site sends 1 signed webhook and 1 Discord message within 1 triggered run, and a receiver sample verifies the signature
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/87 (merged as e7d35b5; indexer tests 30 pass; a test message reached the Hydra Test group; no real alert fired yet)
+- Finding: scope narrowed to Telegram on the user's choice; signed Standard Webhooks and Discord are not built and move to the roadmap. Alerts fire only on news (turned mismatch, new loud problem, recovery), or 247 sites would page every run
+- Kill criterion: delivery not working by 6 Nov 22:00 IST, so Discord only
+
+### T-A19, Domain proof: bind a domain to an app
+- Status: done
+- Suggested: Jishnu
+- Depends-on: T-A13
+- Touches: packages/core/src/domain.ts, packages/core/src/index.ts, packages/core/test/, apps/api/, packages/indexer/, packages/action/, docs/ARCHITECTURE.md, apps/site/llms.txt, apps/site/skill/
+- Serves: Practicality (judged) ; Technicality (judged)
+- Known: without a binding every indexed site is "unknown", and an app name alone lets anyone who claims "uniswap" on Hydra raise a false mismatch against app.uniswap.org
+- Scope: a publish may list up to 5 domains. The API keeps a domain only when `https://<domain>/.well-known/hydra.txt` has the line `hydra-app=<app>`; others are returned with the reason and the fix. The indexer compares a site with a release only when that release lists the domain, and rechecks the file every run: a bound domain that loses it is `DOMAIN_PROOF_LOST` (mismatch), because a hijacker controls the domain and could remove it to dodge the check
+- Acceptance: unit tests (failing first) for domain normalisation, private-address refusal and the proof line; a publish with 1 proven and 1 unproven domain keeps 1; an indexer run marks a bound domain whose file is gone as mismatch
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/79 (merged as 2bf307b); tests core 41, api 17, indexer 17; live dry run of 20 sites. No release with a bound domain yet
+- Finding: /security-review caught that bound domains let any publisher make the indexer fetch hosts it chose (blind SSRF, results public on Arkiv); every page and script fetch now goes through safeGet (https, public addresses only, pinned, redirects rechecked). GLM review caught DNS rebinding and transient proofs reading as hijacks
+- Kill criterion: not merged by 6 Nov 16:00 IST, so bind domains in targets.json by hand for the demo and say so
+
+### T-A20, Coverage: DefiLlama discovery, write on change, background run
+- Status: done
+- Suggested: Jishnu
+- Depends-on: T-A19
+- Touches: packages/indexer/, packages/core/src/arkiv.ts, packages/core/src/index.ts, packages/core/test/, apps/api/, apps/site/indexed/, docs/ARCHITECTURE.md, .github/workflows/indexer.yml
+- Serves: WOW factor (judged) ; Practicality (judged)
+- Known: Render free sleeps between 30-minute runs, so "previous observation" must be read from Arkiv, not memory; Arkiv queries return at most 100 rows per page (SDK MAX_LIMIT), so reads page with offset. DefiLlama lists 5,253 protocols with a URL, 227 above $100M TVL (measured 6 Nov). 2 of the last 100 site runs changed, and 20 sites take 80 s, so 227 sites every run would mean about 1,100 Arkiv tx and 10,900 Jina reads a day
+- Scope: daily list of the top 227 by TVL from api.llama.fi (cached; an outage keeps yesterday's list) plus targets.json; write an observation only when status, scripts or problems change, plus 1 heartbeat a day; Jina only for changed sites and once a day; POST /v1/indexer/run returns 202 and scans in the background
+- Acceptance: a run covers at least 200 sites inside 30 minutes and writes under 10 tx when nothing changed
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/82 (merged as d6edf27; first live run: 247 sites, 236 observations, 24 tx, 0 errors, 7.7 min); tests core 44, api 20, indexer 22; live paged read 180 rows; dry run top 40 = 60 sites in 74 s
+- Finding: write on change silently wrote every site (scan result field `hash` vs `scripts_hash`), caught only by a dry run that skipped 0; 1inch answers its script URL with a per-request HTML page, so HTML at a script URL now counts as unreadable; GitHub fired the 30-minute schedule once in 6 hours, so an in-process timer was added
+- Kill criterion: over 30 minutes per run on the free instance, so cut to the top 100
+
+### T-A23, One-site indexer run for the demo
+- Status: in-review | Branch: feature/t-a23-one-site-run
+- Suggested: Jishnu
+- Depends-on: T-A20
+- Touches: packages/indexer/
+- Serves: WOW factor (judged) ; Practicality (judged)
+- Known: a full pass over 248 sites takes about 5 minutes, far over the 90 second demo slot (T-D10); the demo needs a check of one site that is still a real run
+- Scope: `INDEXER_ONLY=<domain,...>` restricts a run to the named domains (bound domains included) and skips the DefiLlama fetch; everything else is the normal run: real fetch, hash, compare, Arkiv write and Telegram alert
+- Acceptance: a unit test for the domain filter written first; a real one-site run on the demo domain writes 1 observation and sends the alert in under 20 s (measured: 13.3 to 15.4 s, tamper to alert 28 s with a 10 s redeploy)
+- Evidence: tests: indexer 31 pass; live one-site runs on hydra-demo-dapp.vercel.app took 13.3 to 15.4 s each; tamper, 10 s redeploy and indexer run gave the alert 28 s after the change (tx https://rabdi.explorer.arkiv.network/tx/0x812487b96ed5f692288938b99b77b52f7a7de6f4290324435c3f336358ff9f68 is the recovery observation)
+- Finding: a one-site run still needs the indexer wallet key, so it runs from a machine with .env, not through the Render API; Jina is off locally, so runtime origins are not read in that run
+- Kill criterion: none, it is a small filter
+
+### T-C05, Extension shows indexer alerts
+- Status: open
+- Suggested: Mouli
+- Depends-on: T-A16, T-C03
+- Touches: apps/extension/
+- Serves: Usability (judged) ; WOW factor (judged)
+- Scope: on any site in the target list, read GET /v1/observations; if the latest observation is under 1 hour old and has DNS_CHANGED, CHANGED, EXTRA or RUNTIME_ORIGIN, show the red banner with the reason and the time
+- Acceptance: on the demo site after a planted change, the banner names the reason within 1 reload of a triggered run
+- Evidence: <recording>
+
+### T-D09, Incident case studies, sources opened
+- Status: open
+- Suggested: Manish
+- Depends-on: none
+- Touches: docs/incidents.md
+- Serves: Practicality (judged)
+- Known: research leads in DECISIONS.md 2026-11-06 Alerts row; every number must be read at its primary source (CoW post-mortem, The Block, Sygnia, Aikido) before it goes in
+- Scope: 4 cases (CoW Swap Apr 2026, Name.com Oct 2026, Bybit Feb 2025, npm chalk Sep 2025): vector, time live, who detected first, team warning delay, and which Hydra signal would have fired
+- Acceptance: 4 cases, every number with a primary-source link
+- Evidence: <PR link>
+
+### T-D10, Live demo: hijack our own site, alert lands
+- Status: open
+- Suggested: Manish
+- Depends-on: T-D04, T-A18
+- Touches: docs/demo.md
+- Serves: WOW factor (judged)
+- Scope: on stage, change 1 script on the demo domain (or repoint its DNS), trigger 1 indexer run, show the Telegram alert, the explorer, and the extension banner
+- Acceptance: the full sequence runs in under 90 seconds, 3 rehearsals in a row
+- Evidence: <recording>
+
+### T-A21, /arkiv/swarm.md answers every Arkiv + Swarm bonus line
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/99 | Branch: feature/t-a21-swarm-bonus
+- Suggested: Manish
+- Depends-on: T-A12, T-D11
+- Touches: arkiv/swarm.md, README.md, docs/swarm.md, .env.example
+- Serves: Swarm bonus
+- Scope: the bonus page lists 7 items for `/arkiv/swarm.md`; answer each for the gateway we actually use (`api.gateway.ethswarm.org`, OP-11), with links a judge can open, and keep README "How we used Swarm" and docs/swarm.md consistent with it. Replaces the earlier testnet-switch scope, cut with OP-11
+- Acceptance: 6 of 7 bonus items answered with links that return 200; the 7th (demo-video timestamp) filled when the video exists
+- Evidence: <PR link>
+### T-D13, CROPS section in the README for the EF "Best CROPS App" prize
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/125 | Branch: feature/t-d13-crops
+- Suggested: Manish
+- Depends-on: none
+- Touches: README.md
+- Serves: Practicality (judged) ; EF Best CROPS App prize
+- Known: EF's idea list names "a tool that proves the shipped frontend or extension matches the public repo"; lead property is Secure. Rules: README section titled CROPS, 1 or 2 lines per letter (C: what we control and what happens if it goes away; O: license and build from the repo; P: what each third party learns; S: how keys and data are protected, trust assumptions); no trackers in the client; keys or personal data stay on the device or the README says why not; video of 3 min max showing the lead property
+- Acceptance: 4 of 4 CROPS lines, each true of the code on main; 0 third-party trackers or analytics in explorer, extension and site
+- Evidence: <PR link>
+
+# P2, 6 Nov afternoon and night
+
+### T-D11, Swarm requirements and integration fit (research plus validation)
+- Status: done
+- Suggested: Manish
+- Depends-on: T-F02
+- Touches: docs/research/swarm-fit.md
+- Serves: Swarm track (prize) ; Technicality (judged)
+- Known: publish already uploads each build plus hydra-manifest.json through the EF gateway (https://api.gateway.ethswarm.org) and stores swarm_ref on Arkiv. Open: is that gateway mainnet or testnet (CLAUDE.md says testnet only), how long uploads live without our own postage batch, and whether a release can be served back as a working site (a "revert" to the last good release, like git revert: history stays, a new record points at a good state)
+- Scope: answer each with a primary source (Swarm docs, Bee API reference, the Swarm prize page) or a measured test, in docs/research/swarm-fit.md. 1 Network: which network the EF gateway writes to; the testnet gateway or Bee setup if it is mainnet; cost. 2 Retention: how long a gateway upload stays retrievable, the postage TTL, and the cost to keep a release 30 days and 6 months. 3 Prize fit: the Swarm track requirements quoted, and which we meet (upload, feeds, ACT, own Bee node). 4 Revert and mirror: open an existing release swarm_ref at /bzz/<ref>/ and record whether index.html loads its assets, for 1 static SPA and 1 Next.js build, with time to first byte. 5 Evidence snapshots: upload a 200 KB HTML file plus 3 scripts as one collection, read it back byte-identical, record ref and time. 6 Feeds: whether a Swarm feed fits "last good release", and what signing it needs (only apps/api may hold keys)
+- Acceptance: all 6 answered, every number with a link or a measured run; a fit table (use, works yes or no, cost, effort in hours, recommendation)
+- Evidence: docs/research/swarm-fit.md; testnet refs 36a8ec50 (200 KB HTML plus 3 scripts, 2.6 s), 8f5aea6a (gzipped HTML, byte-identical after gunzip), fd2fe5d2 (Next.js export, 15 of 15 non-HTML files identical), feed manifest 09c41c86 (write 1.3 s, resolves in about 60 s)
+- Kill criterion: by 6 Nov 20:00 IST, ship what is answered and mark the rest unverified; never guess a number
+- Finding: both public gateways refuse every HTML read (content-sniffed, website rule deny), so 0 of 2 builds load as a site and raw HTML snapshots fail; gzipped HTML reads back byte-identical. A depth-17 mainnet batch costs about 1.37 xBZZ per 30 days at 201,212 PLUR per chunk per block; the bonus accepts "who gave you the batch", so no own batch is needed
+
+### T-A04, Deploy the API with HTTPS
+- Status: claimed 2026-11-05 | Owner: Jishnu | Branch: feature/t-a04-deploy-api
+- Suggested: Jishnu
+- Depends-on: T-A02
+- Touches: apps/api/deploy/
+- Serves: Practicality (judged)
+- Acceptance: the public URL answers 3 of 3 health checks; the wallet key is in host secrets only, confirmed by 0 matches in the repo
+- Evidence: <URL>
+
+### T-A05, GitHub Action
+- Status: in-review | Branch: feature/t-a05-publish-script
+- Suggested: Jishnu
+- Depends-on: T-A04
+- Touches: packages/action/
+- Serves: Practicality (judged) ; Usability (judged)
+- Acceptance: on the demo repo, 1 push to main hashes the build and its external scripts, calls the API and prints the explorer link, in under 2 minutes
+- Evidence: <Actions run link>
+
+### T-A06, Indexer on a timer
+- Status: in-review | Branch: feature/t-a06-indexer
+- Suggested: Jishnu
+- Depends-on: T-A01, T-D03
+- Touches: packages/indexer/
+- Serves: WOW factor (judged) ; Arkiv track
+- Known: spike T4 algorithm (1-byte change caught next poll, 0 false positives in 30 min) and T12 Next.js policy (6 of 6 attacks, 0 false positives). See docs/prior-learnings.md
+- Acceptance: runs every 15 minutes over all targets and writes 1 observation per target per run; a changed script flips status to mismatch within 1 run
+- Evidence: <tx hashes, explorer link>
+
+### T-A07, End-to-end test against testnet
+- Status: open
+- Suggested: Jishnu
+- Depends-on: T-A05
+- Touches: scripts/e2e.mjs
+- Serves: Technicality (judged)
+- Acceptance: one command publishes a release, reads it back from Arkiv and Swarm and checks 1 bad key is refused; passes 3 runs in a row
+- Evidence: <CI or local run log>
+
+### T-B04, Explorer events timeline
+- Status: blocked, see OP-3 | Branch: feature/t-b04-events
+- Suggested: Mouli
+- Depends-on: T-B02, T-A06
+- Touches: apps/explorer/events/, apps/explorer/src/arkiv.js, apps/explorer/index.html, apps/explorer/releases/index.html, apps/explorer/search/index.html, apps/explorer/app/index.html
+- Serves: WOW factor (judged) ; Usability (judged)
+- Acceptance: one timeline mixes releases and observations newest first, and a planted script change appears within 1 indexer run
+- Evidence: live on Rabdi 2026-11-06, under the deploy headers: 87 events (7 releases and 80 observations of 20 sites) in one feed, newest first, in 1.2 s, 0 CSP problems, no horizontal scroll at 1280 and 375 px; tests 5 of 5 in apps/explorer/events/events.test.mjs. The planted change needs a published site the indexer watches, which only the demo site can be (OP-3)
+- Finding: 9 of 80 live observations changed their script set between runs, all on sites with no Hydra release (1inch, across.to, zerion and others), which is natural churn; a Changes filter that counted them would bury a planted change, so it now shows only mismatches and changes on published sites (0 live). 4 sites that record 0 scripts are unreachable from the indexer host (Connect Timeout), not mis-parsed
+
+### T-B05, Pages for sites that have not onboarded
+- Status: done
+- Suggested: Mouli
+- Depends-on: T-B04
+- Touches: apps/explorer/observed/, apps/explorer/src/arkiv.js, apps/explorer/events/page.js
+- Serves: Practicality (judged) ; Originality (judged)
+- Acceptance: all 15 or more indexed targets have a page labelled "observed, not published by the team" with their observation history
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/58; live on Rabdi 2026-11-06 under the deploy headers, 20 of 20 indexed targets have a page labelled "observed, not published by the team" with their observation history (5 runs each), about 0.45 s per page, 0 CSP problems; tests 4 of 4 in apps/explorer/observed/observed.test.mjs; the public URL waits for OP-10 (T-B06)
+- Finding: the explorer can only call a site published when the indexer reports match or mismatch for it, which needs the app name in targets.json to equal the Hydra app name; the demo site (T-D04) must be listed under the name it publishes with, or its page will say "not published by the team"
+
+### T-C02, Extension compare logic
+- Status: blocked, see OP-3 | Branch: feature/t-c02-compare
+- Suggested: Mouli
+- Depends-on: T-C01, T-F03, T-A02
+- Touches: apps/extension/src/compare/, apps/extension/src/background.js, apps/extension/src/verdict.js, apps/extension/manifest.json
+- Serves: Technicality (judged) ; Usability (judged)
+- Known: spike T4 compare algorithm and T12 Next.js rules; the extension is the best vantage point against cloaking (T8). See docs/prior-learnings.md
+- Acceptance: on the demo site, green with 0 mismatches; after changing 1 line of the JS on the host, red naming that 1 file, within 1 reload
+- Evidence: 7 of 7 tests in apps/extension/src/compare/compare.test.mjs; end to end in Chromium against a local demo site and a local stand-in for the API read routes, 3 of 3 runs: green in about 2.7 s, then 1 line added to app.js on the host turns it red naming /assets/app.js within 1 reload. The live API now has 2 apps, but their builds are hosted nowhere a browser can load, so the live green and red check needs the T-D04 demo site (OP-3)
+- Finding: the API ignores domains until ownership is provable, so the extension finds the app from the page's own script hashes (1 lookup per hash, up to 5); a site whose every script was swapped would then look unknown, so the extension remembers each site's app after the first match and shows it red instead of grey
+
+### T-C03, Warning banner and popup detail
+- Status: done
+- Suggested: Mouli
+- Depends-on: T-C02
+- Touches: apps/extension/src/ui/, apps/extension/src/popup.html, apps/extension/src/popup.js, apps/extension/src/background.js, apps/extension/manifest.json, apps/extension/evidence/
+- Serves: Usability (judged) ; WOW factor (judged)
+- Acceptance: a red banner lists every mismatched script (up to 10) and links to the app's explorer page; a grey state says "no release on record" for 1 unknown site
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/37; against the real deployed API (no override) on stake.lido.fi, 17 scripts are looked up and the badge and popup read "No release on record" in 8.6 s with 0 worker errors; apps/extension/evidence/t-c03-*.png; end to end in Chromium, 3 of 3 runs, 10 of 10 checks: the red banner names 1 changed file and links to the explorer page, lists 10 of 12 flagged scripts then "and 2 more", comes back when the page removes it, stays dismissed, and stays styled under a page CSP of style-src 'none'; the popup reads "No release on record" on example.com
+- Finding: a hidden attribute loses to a display rule in the same stylesheet, so the grey popup showed an empty explorer button while a test that read the attribute passed; the check now asks whether the element is visible, and fails without the fix
+
+### T-D06, Get-started page and per-app READMEs
+- Status: open
+- Suggested: Manish
+- Depends-on: T-A05
+- Touches: docs/get-started.md, apps/*/README.md, packages/*/README.md
+- Serves: Usability (judged) ; Practicality (judged)
+- Acceptance: a new team can publish from the doc alone in 3 steps; tested once by someone who did not write the action
+- Evidence: <doc link, name of the tester>
+
+# P3, 7 Nov morning
+
+### T-C04, Package the extension
+- Status: blocked, see OP-9 | Branch: feature/t-c04-package
+- Suggested: Mouli
+- Depends-on: T-C03
+- Touches: apps/extension/
+- Known: before packaging, set EXPLORER in apps/extension/src/ui/links.js to the T-B06 explorer URL (it is localhost:5173 until then), and rewrite apps/extension/README.md, which still describes the T-C01 hard-coded verdict
+- Serves: Usability (judged)
+- Acceptance: a zip plus load-unpacked steps that work on 1 clean Chrome profile in under 2 minutes
+- Evidence: https://github.com/jishnu-baruah/hydra/releases/tag/extension-v0.4.1, rebuilt after T-A22 so the zip asks the API about the domain first; hydra-extension-0.4.1.zip, sha256 000b1bbc3efee7f6ae4f0b666237eae9ff74bf0e4f2f15f8457456bb8844472f on 2 builds; unzipped into a clean Chromium profile: green on hydra-demo-dapp.vercel.app in 4.4 s, grey on example.com in 3.5 s, 9.1 s from launch to the last verdict (live API); 0.4.0 before it (#44): sha256 89b408b98fc8fe5dfdf1bec335e0ea31ca20ae0625525b539e0aa61e70a3c9fa on 2 builds; unzipped into a clean Chromium profile it gave a first real verdict in 9.6 s (stake.lido.fi, grey, deployed API); the hand-timed run in branded Chrome is still to do
+- Finding: Windows' 260-character path limit broke the first unzip inside a deep folder, though the zip's longest path is 22 characters, so users should unzip to a short path; each page sends up to 5 script hashes to the API, so its operator can see which checked sites a user visits, and the README says so
+
+### T-B06, Deploy the explorer
+- Status: done
+- Suggested: Mouli
+- Depends-on: T-B02
+- Touches: apps/explorer/deploy/, apps/explorer/vercel.json, apps/extension/src/ui/links.js
+- Serves: Usability (judged)
+- Acceptance: the public URL loads the home page and 1 app page in under 3 s each
+- Evidence: https://hydra-registry.vercel.app (live, 6 Nov): search by domain finds demo-dapp, the app page shows its bound domain with a match, 0 console errors; deployed by Jishnu from apps/explorer with the Vercel CLI (OP-10). Fixes and copy in #103 (T-B09)
+- Finding: the repo belongs to Jishnu and Mouli is not an admin, so Mouli cannot connect it to their own Vercel through GitHub; the deploy comes from the account that already hosts apps/site, or from a local checkout with the Vercel CLI
+
+
+### T-B07, Landing page and explorer design from the interface template
+- Status: done
+- Suggested: Mouli
+- Depends-on: T-B03
+- Touches: apps/explorer/index.html, apps/explorer/assets/, apps/explorer/releases/, apps/explorer/search/index.html, apps/explorer/search/page.js, apps/explorer/src/main.js, apps/explorer/README.md
+- Serves: Usability (judged) ; WOW factor (judged)
+- Acceptance: a landing page plus the releases, search and entity views share 1 token set with text contrast of at least 4.5:1; 0 page errors and no horizontal scroll at 375 px and 1440 px; reduced motion turns off smooth scroll and every animation
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/28 (0 page errors and no horizontal scroll at 1440 px and 375 px on 5 views; text contrast 5.7:1 to 16.9:1; reduced motion stops all 4 kinds of motion)
+- Finding: the template look needs none of its about 60 packages: 1 CSS file, a 20-line split-flap and Lenis reproduce it, and IntersectionObserver replaces GSAP in about 15 lines.
+
+### T-B08, Publish page in the explorer, from the T-A09 onboarding flow
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/104 | Branch: feature/t-b08-publish-page
+- Suggested: Mouli
+- Depends-on: T-A09, T-B07
+- Touches: apps/explorer/publish/, apps/explorer/assets/, apps/explorer/src/api.js, apps/explorer/events/, apps/explorer/vercel.json, apps/explorer/index.html, apps/explorer/releases/index.html, apps/explorer/search/index.html, apps/explorer/app/index.html, apps/explorer/observed/index.html
+- Serves: Usability (judged) ; Practicality (judged)
+- Acceptance: the explorer's /publish/ page runs the whole T-A09 flow (connect a wallet, sign 1 message, get a key, copy the agent block or the workflow, see the first release) in the explorer design, tested end to end against the API's 3 routes; the events feed also shows app name claims and CI run links from the publisher wallet; every page scrolls smoothly and reveals its content, with 0 motion under prefers-reduced-motion
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/71; /publish/ connects through RainbowKit and was tested with freshly generated wallets (real keys, real signatures) against Jishnu's own sign-in code (apps/api/src/auth.ts, keys.ts): 2 wallets each got a key that verifyKey binds to that wallet and app, a forged signature was refused, 0 CSP problems; live, the events feed shows 6 name claims; all 8 pages scroll smoothly and reveal, and do none of it under reduced motion
+- Finding: React, wagmi and RainbowKit from a CDN break unless every package shares 1 copy of each ("No QueryClient set"); an import map fixes it, allowed by the publish page's own CSP by hash, with inline styles for RainbowKit on that page only. The live API issues keys only to allowlisted wallets (HYDRA_ALLOWED_ADDRESSES), so a judge's wallet must be added before it can sign up. The T-A09 page also wrote the build folder into the workflow unchecked; the explorer accepts only a plain path
+### T-J01, Public action repo for the Marketplace
+- Status: open
+- Suggested: Jishnu
+- Depends-on: T-A05
+- Touches: packages/action/
+- Serves: Practicality (judged)
+- Acceptance: a public repo with action.yml at its root, used by the demo repo in 1 green run
+- Evidence: <repo link, run link>
+
+### T-J02, Backup demo video
+- Status: open
+- Suggested: Manish
+- Depends-on: T-C02, T-A05
+- Touches: docs/submission/
+- Serves: WOW factor (judged)
+- Acceptance: a recording of the full demo under 4 minutes, covering both flows
+- Evidence: <video link>
+
+### T-J03, Submission text and Arkiv feedback
+- Status: open
+- Suggested: Manish
+- Depends-on: T-D02
+- Touches: docs/submission/, docs/FEEDBACK.md
+- Serves: Arkiv track ; Swarm bonus
+- Known: docs/prior-learnings.md lists 4 Arkiv doc issues from the spike; recheck each on Rabdi before filing
+- Acceptance: every submission field filled; 1 section each for Arkiv and Swarm with at least 2 tx hashes and 1 Swarm reference; FEEDBACK.md lists at least 3 builder issues
+- Evidence: <submission link>
+
+### T-J04, Prize-required files: license, /arkiv judge files, README query
+- Status: in-review | Branch: feature/t-j04-prize-files
+- Suggested: Jishnu
+- Depends-on: none
+- Touches: LICENSE, README.md, arkiv/schema.md, arkiv/friction.md, arkiv/reach.md, arkiv/why-arkiv.md, arkiv/how-you-use-arkiv.md, scripts/query-releases.mjs
+- Serves: Arkiv track (prize)
+- Known: the Build on Arkiv (from scratch) rules (docs/prizes.md, read again 6 Nov from the Arkiv MCP) need an open-source license, 5 files under /arkiv (schema, friction, reach, why-arkiv, how-you-use-arkiv), the wallet addresses that wrote entities and one query in the README, and an AI-use statement; only arkiv/swarm.md existed (T-D11)
+- Scope: draft all of them from what the repo and the live system actually show, with the one runnable query tested against live Arkiv. Manish keeps T-J03 (submission text, docs/FEEDBACK.md) and can reuse arkiv/friction.md. The public repo itself is OP-6 and stays a human decision
+- Acceptance: `node scripts/query-releases.mjs demo-dapp` prints release demo-1 with its Swarm reference and entity key; the 5 files exist, answer each question on the prize page, and contain no dash characters
+- Evidence: PR #92 (this one); `node scripts/query-releases.mjs demo-dapp` printed release demo-1 with swarm_ref 311afb3f...09a4 and its entity key against live Arkiv
+- Finding: `@hydra/core` does not resolve from the root scripts/ folder (only linked inside workspace packages), so the query script imports the package source by relative path; a u64 column filter needs the value wrapped as u64(...) (SDK error, hit live); arkiv/swarm.md already on main has 4 dash characters the lint rule bans, left for its owner
+
+### T-A22, Domain lookup: the extension finds an app by its hostname
+- Status: in-review | Branch: feature/t-a22-domain-lookup
+- Suggested: Jishnu
+- Depends-on: T-A19
+- Touches: apps/api/src/reads.ts, apps/api/src/server.ts, apps/api/src/main.ts, apps/api/test/, apps/extension/src/compare/lookup.js, apps/extension/src/compare/lookup.test.mjs, apps/extension/src/background.js, apps/extension/README.md
+- Serves: WOW factor (judged) ; Practicality (judged)
+- Known: tested 6 Nov in real Chrome 156: on the tampered demo site the extension showed grey `?` for a first-time visitor and red `!` only for a returning one, because it finds the app from the hashes of the page's own scripts and a site whose every script changed matches nothing. Since T-A19 a release lists only proven domains, so the hostname can name the app. The extension is Mouli's code; this adds one lookup before the hash lookup and changes nothing else
+- Scope: `GET /v1/domains/<hostname>` returns the app whose releases list that domain (the earliest app to prove it keeps it, so a later claim cannot silence the check), kept only for releases created by the publisher wallet and by the app's owner; the extension asks it first, falls back to the script hashes, and keeps remembering a matched site
+- Acceptance: unit tests written failing first for the route and the extension lookup (API 25 or more pass, extension 17 or more pass); in real Chrome, with no remembered state, 1 first visit to the tampered demo site is red `!`, the published site is green, and app.uniswap.org stays grey
+- Evidence: PR (this one); in real Chrome 156 (extension loaded over the DevTools pipe, fresh profile, no remembered state) a first visit to the tampered demo site is red `!` naming /app.js, the published site is green "All 2 scripts match demo-dapp demo-1", app.uniswap.org stays grey; API tests 25 pass, extension tests 17 pass
+- Finding: Chrome 156 branded builds ignore --load-extension, so the extension is loaded with Extensions.loadUnpacked over --remote-debugging-pipe; the extension now sends the page hostname to the API, which the README says; earliest-proof-wins means a domain cannot move to another app until the first one lapses, by design; /security-review found nothing at 80 percent, GLM found a malformed %-escape returning 500 and a looser hostname check in the extension, both fixed with tests first
+
+### T-B09, Explorer fixes from the 6 Nov walkthrough: domain search, honest copy, domain step
+- Status: done
+- Suggested: Jishnu
+- Depends-on: T-A22
+- Touches: apps/explorer/, apps/extension/src/ui/links.js, apps/extension/README.md, apps/site/index.html
+- Serves: Practicality (judged) ; WOW factor (judged)
+- Known: walked every explorer page on 6 Nov (local run against live Arkiv). Searching any domain returns nothing, including the demo site, because search reads a `domain` column our API fills with "none"; the app page shows no bound domain or live verdict; the publish page has no domain-binding step, so a team that follows it stays "unknown"; copy says "every 15 minutes" (it is about 30), "every check is a public record on Arkiv" (extension checks are not), and "1,081/1,081 scripts on 5 live dApps" (an old spike figure shown as current); the explorer is not hosted (OP-10) so the extension links to localhost. The explorer is Mouli's code; his last push was 08:20 IST and these are scoped fixes
+- Scope: search resolves a hostname through the API's /v1/domains route and the indexer's observations (a site nobody published shows "observed, not published"); the app page lists its bound domains with the latest observation verdict, or tells the team how to bind; the publish page and its agent handoff get the domain step; copy corrected; nav labels Releases, Events become Builds, Activity and Sites is added; the explorer is deployed (OP-10) and the extension links point at it
+- Acceptance: unit tests (failing first) for domain search and the app page's site rows (explorer tests 20 or more pass); in a browser, searching hydra-demo-dapp.vercel.app finds demo-dapp, searching app.uniswap.org finds "observed, not published", and the app page of demo-dapp shows its domain with a match; 0 copy lines left saying "15 minutes"
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/103 (merged); explorer deployed at https://hydra-registry.vercel.app (Vercel project hydra-registry, from apps/explorer with the CLI); on the live site searching hydra-demo-dapp.vercel.app finds demo-dapp (matched by domain), https://app.uniswap.org/swap finds "watched by the indexer, not published by the team", and the demo-dapp app page shows hydra-demo-dapp.vercel.app with a match; explorer tests 29 pass, extension 17 pass; 0 lines say "15 min"
+- Finding: the explorer is a static site whose non-publish pages had a CSP allowing only the Arkiv RPC, so API calls added here would have worked locally and failed in production (connect-src now lists the API); the browser pane cached old ES modules on one port, a fresh port showed the real state; the Jina key ran out of credit again, most likely drained by the first 247-site indexer run, so the indexer second view needs a top-up or a stricter rule; GLM review found a stale verdict after a domain is re-bound, fixed with a test first
+
+### T-A35, ENS status record: status.<app>.eth carries the live verdict
+- Status: in-review | Branch: feature/t-a35-ens-status
+- Suggested: Jishnu
+- Depends-on: T-A25
+- Touches: apps/api/, apps/explorer/status/, apps/explorer/vercel.json, apps/explorer/README.md, spikes/F4/, CLAUDE.md, docs/ARCHITECTURE.md
+- Serves: ENS track (prize) ; WOW factor (judged)
+- Known: spike F4 on 7 Nov: ENSv2 on Sepolia lets a team own status.<app>.eth with its own PermissionedResolver and grant Hydra's monitor wallet setText for the "hydra.status" key only (any other key reverts); a write then reads back through UniversalResolverV2
+- Scope: the live watcher writes hydra.status (match or mismatch) on the app's ENS status name at every flip, from the indexer wallet, without failing or repeating the Arkiv flip; a /status/ explorer page reads the record straight from ENS on Sepolia (no Hydra server) and shows it with the transaction links; CLAUDE.md scope names ENS
+- Acceptance: unit tests written failing first for the config parse and the record value (4 or more cases); live: a hack flips hydra.status on status.demodapp.eth to mismatch within 60 s and the fix flips it back, both read from ENS
+- Evidence: <PR link>
+
+### T-A36, ENS in the product: link a name from the Console, approve releases on it
+- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-a36-ens-console
+- Suggested: Jishnu
+- Depends-on: T-A35, T-A32
+- Touches: apps/api/, packages/core/src/records.ts, docs/ARCHITECTURE.md, apps/explorer/console/, apps/explorer/app/, apps/explorer/status/, apps/explorer/src/, TASKS.md
+- Serves: ENS track (prize) ; WOW factor (judged)
+- Known: T-A35 works on one name set up by hand with spikes/F4; no UI could reach it. A read-only Sepolia simulation on 7 Nov showed one PermissionedResolver multicall from the name's owner can grant Hydra hydra.status and set hydra.app, a stranger is refused, and Hydra's wallet cannot set hydra.app
+- Scope: Console ENS card per app: register a .eth name with its own resolver if needed, one transaction to allow Hydra's hydra.status and tag the name with the app, link it (API verifies on chain and writes a hydra.ens record), and approve a release by setting hydra.release; status writes then come from every indexer and watcher flip of a linked app; the app page and the status page show the name, the live status and which release the name approved
+- Acceptance: tests written failing first for the link checks (owner, hydra.app tag, Hydra grant) and the approved-release compare; live: a name linked from the Console gets hydra.status written on a flip and the app page shows the release it approved
+- Evidence: <PR link>
+
+### T-B10, A clean test site that Hydra verifies, so search can show Good to go
+- Status: in-review https://github.com/jishnu-baruah/hydra/pull/121 | Branch: feature/t-b10-clean-site
+- Suggested: Mouli
+- Depends-on: T-B03
+- Touches: demo-clean/
+- Serves: Usability (judged) ; WOW factor (judged)
+- Known: the indexer's newest checks are all "unknown" (no release) and the only published demo site, hydra-demo-dapp.vercel.app, carries the staged hijack on purpose, so no live site shows the green search verdict. demo-clean/ is a second, untouched static dApp, hosted on GitHub Pages at mouli51ch.github.io (hydra.txt must sit at the domain root, so a user site, not a project page), published with its own app name and bound by domain proof
+- Acceptance: searching mouli51ch.github.io on the explorer shows Good to go from a real indexer match on Arkiv, with no fixture
+- Evidence: live at https://mouli51ch.github.io (repo Mouli51ch/Mouli51ch.github.io, Pages from main), hydra.txt serves hydra-app=clean-vault and index.html, app.js and style.css are byte-identical to demo-clean/; release clean-1 of clean-vault recorded on Arkiv in tx 0x2a43a6e3c1d847f08c8961c9b5bd51d17052577d55416cc42e543b820c06de42, swarm ead8731a2fe8cf04fbee93ff6bb90d41732aecbd9d53090aaf02485660212d18, /v1/domains/mouli51ch.github.io answers clean-vault; indexer run 42202206314 (manual, 6 Nov 10:22 UTC): "match mouli51ch.github.io 1 scripts", 249 sites, 2 match; explorer search for the domain shows Good to go, "Checked by the Hydra indexer 6 min ago", at 1440 and 375 px
+- Finding: the domain proof must sit at the domain root, so a GitHub project page (user.github.io/repo/) can never bind; only a user site or a custom domain can. The indexer scans every published domain on its next run with no list to edit, but GitHub's 30-minute schedule is best effort (no scheduled run between 08:09 and 10:22 UTC), so a manual run is the reliable way to get a first verdict
+### T-A24, A failing Jina second view is loud, and stops wasting calls
+- Status: in-review | Branch: feature/t-a24-loud-jina
+- Suggested: Jishnu
+- Depends-on: T-A14
+- Touches: packages/indexer/src/jina.ts, packages/indexer/src/run.ts, packages/indexer/test/jina.test.ts, packages/indexer/README.md
+- Serves: Practicality (judged)
+- Known: the Jina key ran out of credit twice on 6 Nov (HTTP 402 from r.jina.ai) and the indexer kept reporting 0 errors, because a failed render falls back to the previous run's runtime origins, so lists still looked plausible; sites that block us directly lose their only way in and runtime-only origins stop being detected, with nothing saying so
+- Scope: one small renderer that counts calls and failures and names the reason (no key, HTTP status such as 402 credit out, timeout), and after 3 failures in a row stops calling for the rest of the run; the run summary gains a `jina` field and, when the view failed, 1 error line that says what broke, how many sites it affected and what to do. The 30-minute workflow and /v1/indexer/status already print errors
+- Acceptance: unit tests written failing first (renderer: ok, no key, 402 then stop after 3, network error, a page with no scripts is not a failure; indexer 30 or more tests pass); a dry run with an invalid key prints 1 error line naming HTTP 401 or 402 and makes at most 3 calls plus those already in flight (the pool scans 8 sites at once)
+- Evidence: PR (this one); indexer tests 38 pass (7 new), API 25 pass; dry run with a bad key: "failed 4 of 4 renders (HTTP 401: JINA_KEY is wrong or revoked), 2 more were not tried"; dry run with the real key: "failed 3 of 3 renders (HTTP 402: Jina credit is out), 4 more were not tried", which confirms the account is out of credit
+- Finding: the 8-way pool means up to 8 renders are in flight when the breaker opens, so the call count after opening is a few over 3; a failed render reuses the previous runtime origins, which is why 0 errors hid a dead second view; a 402 on the key in the research kit proved it before the code did
+
+### T-C06, Extension flags a hostname on a public phishing list
+- Status: in-review | Branch: feature/t-c06-known-bad
+- Suggested: Jishnu
+- Depends-on: T-A22
+- Touches: apps/extension/src/compare/blocklist.js, apps/extension/src/compare/blocklist.test.mjs, apps/extension/src/background.js, apps/extension/src/verdict.js, apps/extension/src/ui/present.js, apps/extension/src/ui/present.test.mjs, apps/extension/src/ui/banner.js, apps/extension/README.md
+- Serves: Practicality (judged)
+- Known: for sites with no Hydra release the extension shows grey and says nothing; the 6 Nov re-score (hack-idea-score) decided not to build a full layer for unregistered sites, only an honest known-bad flag from public data. MetaMask's eth-phishing-detect list was checked on GitHub on 6 Nov: 115,807 blocked domains in one 3.4 MB config.json, "Don't Be A Dick" public licence, pushed the same day; ScamSniffer's is GPL-3.0 so it is not used. The extension is Mouli's code; this adds one verdict and one module
+- Scope: a daily-refreshed local copy of the list in storage.local, checked in memory against the visited hostname and its parent domains (the allowlist wins), with no browsing data sent anywhere; a hit shows a distinct "BAD" badge and banner saying the hostname is on MetaMask's public phishing list and that lists can be wrong; a miss says nothing, never "safe"; the README says the list is fetched from GitHub and credits MetaMask
+- Acceptance: unit tests written failing first for the matching and the cache (blocklist 8 or more pass, extension 26 or more pass); in real Chrome a hostname taken from the live list shows BAD and app.uniswap.org and hydra-demo-dapp.vercel.app do not
+- Evidence: PR (this one); in real Chrome 156 (extension loaded over the DevTools pipe) with the live MetaMask list downloaded by the extension itself, poly-mark.xyz (a real entry mapped to a local page) shows BAD with the list wording, hydra-demo-dapp.vercel.app shows OK, app.uniswap.org is not flagged; blocklist 10 tests pass, extension 28 pass
+- Finding: MetaMask eth-phishing-detect is the only crypto list that is both permissively licensed and one small file (115,807 domains, 3.4 MB, pushed daily); ScamSniffer scam-database is GPL-3.0 and CryptoScamDB stopped in 2023, so neither is used; GLM review found that a stale copy was trusted forever and that entries were not checked to be hostnames, both fixed with tests first; the list hit replaces the script comparison for that page, so a false positive hides script evidence, which the banner words as "lists can be wrong"
+
+
+### T-A25, Live checker: watch one bound site every 5 seconds, switched on from a page
+- Status: in-review | Branch: feature/t-a25-live-checker
+- Suggested: Jishnu
+- Depends-on: T-A23
+- Touches: apps/api/src/watch.ts, apps/api/src/server.ts, apps/api/src/main.ts, apps/api/test/, packages/indexer/src/check.ts, packages/indexer/src/run.ts, packages/indexer/package.json, packages/indexer/test/, apps/explorer/live/, apps/explorer/vercel.json, apps/explorer/README.md, apps/explorer nav links
+- Serves: WOW factor (judged)
+- Known: a normal indexer run reads and writes Arkiv and takes about 14 s for one site (T-A23) and 5 min for all, so the demo cannot show a tamper within seconds without a laptop that holds the wallet key; the demo needs a switch on a page that watches the demo site every 5 s on Render
+- Scope: `POST /v1/watch {domain, on}` (bearer DEMO_WATCH_TOKEN, timing-safe) starts or stops one in-memory watcher for a domain that a release has bound; every 5 s it fetches the page and its scripts through safeGet, rechecks hydra.txt and compares with the release, with no Arkiv reads or writes per tick; when the verdict flips (match to mismatch or back) it runs the normal one-site observation write and Telegram alert once; it switches itself off after 15 minutes; `GET /v1/watch` is public and returns the state, the last 30 ticks and the flips; the explorer gets a Live page with the switch, the status and the tick strip
+- Acceptance: unit tests written failing first (watcher: baseline, flip once, flip back, unreachable is not a flip, overlap skipped, auto-off, stop; routes: 401, 503, 400, 200, 404); on the live demo, switching on and then changing app.js shows mismatch on the page within 12 s and 1 Telegram alert, and API tests 30 or more pass
+- Evidence: PR (this one); tests: API 41 pass, indexer 38 pass, explorer 36 pass (new: watcher 14, routes 2, single-site check 7, Live page view 7); local API on the real demo site: a check takes 100 to 600 ms, switch on and off from the Live page works, 401 for a wrong token, 404 for an unbound site; /security-review found nothing at 80 percent; a flip rehearsal on the deployed site is still to run (needs this merged, a deploy and DEMO_WATCH_TOKEN on Render)
+- Finding: GLM review caught an unhandled rejection path in the timer (a throwing tick would have killed the process), a removed script read as unreachable instead of a mismatch, a failed alert never retried, a stale target after the binding vanished, and "alert sent" shown when the one-site run had found no target; all fixed with tests first. A tick skips Arkiv and Jina entirely, which is why it takes 100 to 600 ms against 14 s for a one-site run
+
+### T-D12, Demo kit: hack, restore and status scripts plus a runbook
+- Status: in-review | Branch: feature/t-d12-demo-kit
+- Suggested: Jishnu
+- Depends-on: T-D04, T-A23
+- Touches: demo/hack.mjs, demo/restore.mjs, demo/status.mjs, demo/lib.mjs, demo/RUNBOOK.md, demo/README.md, demo/.vercelignore
+- Serves: WOW factor (judged)
+- Known: on 6 Nov a tamper left in a shared checkout made the repo's demo/app.js differ from the release while the live site was clean, and the latest observation stayed mismatch until a one-site run recorded match again; the stage needs one command to break the site, one to heal it, and one to say what every screen will show
+- Scope: `node demo/hack.mjs` deploys a tampered copy of the demo from a temp folder (the repo stays clean), waits until the live site serves it, then lets the live watcher (T-A25) catch it or runs the one-site check (T-A23) itself and prints the time to alert; `node demo/restore.mjs` deploys the clean demo, waits until the live script hash equals the release, and records match the same way; `node demo/status.mjs` prints the live hash against the release, the latest observation and the watcher state; RUNBOOK.md has the stage order and the fallbacks
+- Acceptance: hack then restore run for real once each; hack reaches a mismatch observation and 1 Telegram alert in under 60 s without the watcher; restore returns to match; status reports both states correctly; the repo stays clean (git status shows 0 changes in demo/ after both)
+- Evidence: PR (this one); rehearsed for real on 6 Nov without the watcher: hack.mjs tamper live after 22.7 s, mismatch recorded and Telegram alert sent after 49.1 s (tx 0x74c4ad32...2860); restore.mjs live restored after 8.7 s, match recorded and recovery alert after 27.3 s (tx 0x2586c06e...70d8); status.mjs answers in about 1 s in both states; git shows demo/app.js unchanged after both
+- Finding: the first hack failed on a 20 s timeout while the free Render API woke up, so API calls now wait 70 s; the API's /v1/observations took 87 s uncached because the API has no Arkiv access key and reads every site through the rate-limited public RPC, so status.mjs reads Arkiv directly for the one domain (1 query, about 1 s) and the runbook says to warm that route before stage
+
+### T-A26, Watcher: a Jina outage is not a failed alert
+- Status: in-review | Branch: feature/t-a26-watch-jina
+- Suggested: Jishnu
+- Depends-on: T-A24, T-A25
+- Touches: apps/api/src/watch.ts, apps/api/test/watch.test.ts
+- Serves: WOW factor (judged)
+- Known: in the 6 Nov rehearsal with the live watcher, both flips were detected (mismatch 14.5 s after the tamper went live, match 17 s after the restore) and the observations were written, but each flip showed "alert failed": T-A24 puts a "Jina second view failed" line in the run's errors when the Jina credit is out, and the watcher's runOk treats any error as a failed write, so the Live page says the alert failed and the watcher retries
+- Scope: runOk ignores the Jina second-view line (it says nothing about the observation write or the alert) and still fails on every other error
+- Acceptance: a unit test written failing first (a Jina-only error is ok, a batch write error is not); API tests 41 or more pass; after deploy, a hack and restore with the watcher on show the alert as done on both flips
+- Evidence: PR (this one); the new test failed first, API tests 42 pass; the live rehearsal after deploy is in the PR conversation
+
+### T-A27, Hack and Fix buttons on the Live page
+- Status: in-review | Branch: feature/t-a27-hack-fix
+- Suggested: Jishnu
+- Depends-on: T-A25, T-D12
+- Touches: apps/api/src/demo.ts, apps/api/src/server.ts, apps/api/src/main.ts, apps/api/test/, apps/api/deploy/Dockerfile, apps/explorer/live/
+- Serves: WOW factor (judged)
+- Known: hack.mjs and restore.mjs need a laptop with the Vercel CLI; the stage wants buttons on a page
+- Scope: POST /v1/demo/hack and /v1/demo/fix (bearer DEMO_WATCH_TOKEN, 503 without VERCEL_TOKEN) deploy the demo site to its Vercel project through Vercel's deployment API: the published files, or the same with one harmless line added to app.js; only that project and those fixed files; Hack and Fix buttons on /live/ next to the switch
+- Acceptance: unit tests written failing first (payload: clean equals the repo files, hack adds 1 line; routes 401, 503, 202); on the live site, Hack turns the watcher to mismatch and Fix back to match, 1 alert each
+- Evidence: PR (this one); API tests 47 pass (new: payload and deploy helper 4, routes 1); live press of Hack and Fix after deploy is in the PR conversation
+
+### T-A28, The demo site is never cached, so Hack and Fix show at once
+- Status: in-review | Branch: feature/t-a28-demo-nocache
+- Suggested: Jishnu
+- Depends-on: T-A27
+- Touches: demo/vercel.json
+- Serves: WOW factor (judged)
+- Known: on 6 Nov the Fix button took 256 s to flip the watcher back to match because Vercel's edge kept serving the tampered app.js; the same stale cache held hydra.txt for minutes earlier
+- Scope: Cache-Control no-store on every demo site path, then redeploy the demo site and the API (which ships demo/vercel.json in its Hack and Fix payload)
+- Acceptance: after deploy, Fix flips the watcher back to match in under 60 s and Hack to mismatch in under 60 s, 1 run each
+- Evidence: PR (this one); the demo site now answers Cache-Control no-store with X-Vercel-Cache MISS; Hack and Fix timings after the API deploy are in the PR conversation
+
+### T-A30, Alert channels per app: webhook, Slack, Discord and Telegram, stored on Arkiv
+- Status: in-review | Branch: feature/t-a30-alert-channels
+- Suggested: Jishnu
+- Depends-on: T-A18, T-A25
+- Touches: packages/core/src/domain.ts, packages/core/src/records.ts, packages/core/src/index.ts, packages/core/test/, apps/api/, packages/indexer/src/run.ts, packages/indexer/test/, docs/ARCHITECTURE.md, .env.example
+- Serves: Practicality (judged) ; Arkiv track (prize)
+- Known: alerts today go to one Telegram chat set by env (T-A18), so a team cannot receive its own; T-A17 (subscriptions) was cut for time and the console now needs it. Requested by Mouli on 6 Nov
+- Scope: a team signs with its Hydra API key and adds up to 5 channels for its app: a generic webhook (Standard Webhooks signed, secret shown once), a Slack or Discord incoming webhook, or a Telegram chat with the Hydra bot added. Each channel is a `hydra.alert_sub` entity on Arkiv whose body is AES-256-GCM encrypted with a server key (ALERT_KEY), owned by the API wallet; routes to list, add (sends a test first), test and delete; every indexer or watcher alert for an app is also delivered to its channels through a pinned public-address POST (no SSRF), 3 attempts
+- Acceptance: unit tests written failing first (encrypt round trip, payload formats, Standard Webhooks signature, safe POST refuses private and non-https, routes 401/403/400/201); live: add a Telegram and a webhook channel for demo-dapp, then a Hack reaches both
+- Evidence: PR (this one); tests written first: core 51, API 64, indexer 47 pass; live channel test after deploy in the PR conversation
+
+### T-A31, Monitored sites are dApps only, and a status address
+- Status: in-review | Branch: feature/t-a31-dapps-only
+- Suggested: Jishnu
+- Depends-on: T-A20
+- Touches: packages/indexer/src/coverage.ts, packages/indexer/test/coverage.test.ts, packages/indexer/README.md, apps/explorer/vercel.json
+- Serves: Practicality (judged)
+- Known: of 250 monitored sites, 34 are centralized exchanges, 2 CeDeFi and 3 chain sites from DefiLlama's list: not dApp frontends a user signs on
+- Scope: DefiLlama entries in the categories CEX, CeDeFi and Chain are skipped (the list is refilled from the next protocols by TVL); the explorer answers on a second name, hydra-status.vercel.app, whose root shows the Monitor page
+- Acceptance: a unit test written failing first for the category filter; a dry run lists 0 sites in those categories; https://hydra-status.vercel.app/ serves the Monitor page
+- Evidence: PR (this one); the category test failed first, indexer tests 46 pass; the status address is checked after deploy in the PR conversation
+
+### T-B11, Console page: a team sets up its alert channels
+- Status: in-review | Branch: feature/t-b11-console
+- Suggested: Mouli
+- Depends-on: T-A30
+- Touches: apps/explorer/console/, apps/explorer nav links, apps/explorer/README.md
+- Serves: Practicality (judged) ; WOW factor (judged)
+- Known: requested by Mouli on 6 Nov; the explorer is his code and he asked for this page
+- Scope: /console/ in the explorer: paste the app's Hydra API key (kept in the tab's session storage only), see the app's channels, add a webhook, Slack, Discord or Telegram channel (each sends a test first), test or delete one; the webhook secret is shown once; plain wording, textContent only
+- Acceptance: unit tests written first for the pure form logic (all 4 channel kinds, 8 or more cases); in a browser on the deployed explorer, adding 1 Telegram channel for demo-dapp delivers its test message
+- Evidence: PR (this one); form tests written first, 9 pass; all explorer tests pass; exercised in a browser against a fake API (401, connect, add with webhook secret, delete); live check after T-A30 deploys in the PR conversation
+
+### T-A32, Console sessions by wallet, all apps, key rotation
+- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-a32-console-keys
+- Suggested: Jishnu
+- Depends-on: T-A30
+- Touches: apps/api/, packages/core/src/records.ts, packages/core/test/, docs/ARCHITECTURE.md
+- Serves: Practicality (judged) ; Arkiv track (prize)
+- Known: requested by Mouli on 7 Nov: a user must manage every app, its key and its alert channels in one place; keys are stateless today, so none can be listed or revoked and a leaked key works until it expires
+- Scope: a wallet signs one console message and gets a 2-hour session token; the session lists every app the wallet owns with its channels and key version; channel add, test and delete work through the session; rotating an app's key stores a new key version on Arkiv (`hydra.key_epoch`) and returns a new key once; every route that takes an app key refuses a key older than the current version, and keys issued from the Publish page carry the current version
+- Acceptance: unit tests written failing first (session sign-in, stale or wrong signature refused, owner-only apps, rotation makes the older key 401 and the new key work, channel routes through the session); API tests 66 or more pass; live: a wallet session lists demo-dapp and a rotation makes the old key fail
+- Evidence: <PR link>
+
+### T-A33, Telegram bot replies with the chat id
+- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-a33-tg-chat-id
+- Suggested: Jishnu
+- Depends-on: T-A30
+- Touches: apps/api/, apps/explorer/console/
+- Serves: Usability (judged)
+- Known: requested on 7 Nov: a team must find its group's chat id before adding a Telegram channel; Find my chat works, but there is no way to see the id in Telegram itself
+- Scope: while the API runs, the bot answers "/hydra <app>" (and "/chatid") in a chat with that chat's id and the next step, once per message; the console hint says to paste that id; the membership proof (the same "/hydra <app>" within 15 minutes) is unchanged
+- Acceptance: unit tests written failing first for the reply logic (4 or more cases: replies once per message, ignores old messages and other text, names the app); API tests 78 or more pass; live: "/hydra demo-dapp" in a group gets the id back within 10 s
+- Evidence: <PR link>
+
+### T-B17, Explorer: one navbar everywhere, readable Activity table
+- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-b17-nav-activity
+- Suggested: Mouli
+- Depends-on: T-B14
+- Touches: apps/explorer/
+- Serves: Usability (judged)
+- Known: requested on 7 Nov: the Live page had its own menu and pages had different header tags; Activity cells were clipped, touched the edges, and releases had a blank site cell
+- Scope: the same nav links and header tag on every page; Activity columns size to content with 16 px cell padding, unclipped badges, only the detail wraps, and non-site rows say "not a site check"
+- Acceptance: 9 pages share one nav; in a browser on live data, no clipped badge or blank cell in the first 10 Activity rows
+- Evidence: <PR link>
+
+### T-B16, Publish: key without the agent, then set up alerts
+- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-b16-publish-alerts
+- Suggested: Mouli
+- Depends-on: T-B12
+- Touches: apps/explorer/publish/
+- Serves: Usability (judged)
+- Known: requested on 7 Nov: some coding agents refuse to handle the HYDRA_API_KEY in the pasted block; nothing after the first release points a team to alert setup in the Console
+- Scope: the agent block no longer carries the key; it tells the agent to ask the user to run the gh secret command, and the page shows that command for the user; after monitoring starts, a clear next step "Set up alerts" leads to the Console (signed in by the same wallet)
+- Acceptance: flow tests updated first (2 or more new cases: no key in the agent block, the user command carries it); in a browser: sign-in, the key command shown, a Set up alerts step links to the Console
+- Evidence: <PR link>
+
+### T-B14, Monitor: integrated sites only, activity as a table with severity colours
+- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-b14-monitor-table
+- Suggested: Mouli
+- Depends-on: T-A31
+- Touches: apps/explorer/observed/, apps/explorer/events/
+- Serves: Usability (judged) ; Practicality (judged)
+- Known: requested on 7 Nov: the Monitor lists about 248 watched sites, most with no Hydra release; activity rows are not aligned, and every change reads as red
+- Scope: Monitor lists only sites bound to a Hydra release; activity is an aligned table like a block explorer (fixed columns, monospace, right-aligned numbers); severity green (matches, releases), yellow (changes that are not proven compromise: unreachable, third-party origin change, unknown), red (only a served script that is in no release)
+- Acceptance: unit tests first for the filter and the severity mapping (6 or more cases); in a browser on live data: only bound sites listed, columns aligned, colours as mapped
+- Evidence: <PR link>
+
+### T-B15, App page: last checks bar at the top
+- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-b15-app-status
+- Suggested: Mouli
+- Depends-on: T-A27
+- Touches: apps/explorer/app/
+- Serves: Usability (judged) ; WOW factor (judged)
+- Known: requested on 7 Nov: an app's page shows releases but not whether its site matches now
+- Scope: above the releases table, the app page shows its bound site's current verdict and a bar of its last checks, green match, red mismatch, yellow unreachable, like the Live page, from the indexer observations
+- Acceptance: unit tests first for the bar model (4 or more cases); in a browser: demo-dapp shows the bar with at least 5 checks
+- Evidence: <PR link>
+
+### T-B18, ENS status page: heading fits on one line
+- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-b18-status-heading
+- Suggested: Mouli
+- Depends-on: T-A35
+- Touches: apps/explorer/status/
+- Serves: Usability (judged)
+- Known: reported on 7 Nov from a Mac: the name status.demodapp.eth breaks as "STATUS.DEMODAPP.E / TH" at the home-size heading
+- Scope: the status page heading uses the compact size the app page already uses, so a normal ENS name stays on one line at laptop widths
+- Acceptance: in a browser at 1280 px and 1512 px wide the heading stays on 1 line; at 400 px it wraps without scrolling sideways
+- Evidence: <PR link>
+
+### T-B12, Console: sign in with a wallet, every app, keys and channels
+- Status: in-review | Branch: feature/t-b12-console-wallet
+- Suggested: Mouli
+- Depends-on: T-A32, T-B11
+- Touches: apps/explorer/, apps/api/src/server.ts, apps/api/test/console.test.ts
+- Serves: Practicality (judged) ; WOW factor (judged)
+- Known: requested by Mouli on 7 Nov; the T-B11 page takes one pasted key per app
+- Scope: the console signs in with the browser wallet (one message, no gas), lists every app the wallet owns, and per app shows the key version with a Rotate button (new key shown once with the CI command), and the channels with add, test and delete; pasting a single app key stays as a fallback
+- Acceptance: unit tests written first for the pure view logic (8 or more cases); in a browser against a fake API: sign in, 2 apps listed, rotate shows a key once, add and delete a channel
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/132
+
+### T-A34, Swarm reads go through a host that resolves on more networks
+- Status: done
+- Suggested: Manish
+- Depends-on: T-A21
+- Touches: apps/explorer/app/releases.js, apps/explorer/app/releases.test.mjs, apps/extension/src/compare/lookup.js, arkiv/swarm.md
+- Serves: Swarm bonus ; Practicality (judged)
+- Known: on 7 Nov a home router's DNS (Mumbai) returned nothing for api.gateway.ethswarm.org, so the explorer's Manifest link failed; download.gateway.ethswarm.org resolved on the same network, is the same server (128.140.29.197) and returned the test-hydra0 manifest with HTTP 200
+- Scope: the explorer's Manifest link and the extension's manifest fetch read from download.gateway.ethswarm.org; uploads stay on api.gateway.ethswarm.org; arkiv/swarm.md names the read host and adds the DNS finding to friction
+- Acceptance: explorer and extension tests pass with the new host; 2 published manifests (hygra-demo2, test-hydra0) open with HTTP 200 on the read host
+- Evidence: https://github.com/jishnu-baruah/hydra/pull/139, live explorer serves releases.js with download.gateway.ethswarm.org; test-hydra0 and hygra-demo2 manifests HTTP 200 there
+- Finding: api.gateway.ethswarm.org did not resolve on a Mumbai home router DNS (192.168.0.1) while download.gateway.ethswarm.org, the same server, did
+
+### T-B13, Explorer shows a release manifest in the page instead of downloading it
+- Status: claimed 2026-11-07 | Owner: Manish | Branch: feature/t-b13-manifest-view
+- Suggested: Manish
+- Depends-on: T-A34
+- Touches: apps/explorer/manifest/, apps/explorer/app/page.js, apps/explorer/vercel.json
+- Serves: Usability (judged) ; Swarm bonus
+- Known: download.gateway.ethswarm.org (T-A34) sends `Content-Disposition: attachment`, so the Manifest link downloads a JSON file; api.gateway sends `inline`
+- Scope: the Manifest link opens an explorer page that fetches hydra-manifest.json from Swarm and shows it as formatted JSON (textContent only), with the raw Swarm link next to it; CSP connect-src allows the read host
+- Acceptance: test-hydra0 and hygra-demo2 manifests render in the page in a browser with 0 CSP errors in the console; a bad ref shows an error that names the cause
+- Evidence: <PR link>
