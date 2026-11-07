@@ -153,7 +153,7 @@ function renderApps(apps) {
   apps.forEach((a, i) => {
     const sum = rowSummary(a);
     const panel = el("div", { className: "app-panel", id: `app-panel-${i}`, hidden: true });
-    const row = el("button", { type: "button", className: "app-row", onclick: () => { openApp = nextOpen(openApp, a.app); paint(); } },
+    const row = el("button", { type: "button", className: "app-row", onclick: () => { if (apps.length === 1) return; openApp = nextOpen(openApp, a.app); paint(); } },
       el("span", { className: "app-name", textContent: sum.name }),
       el("span", { className: "app-meta", textContent: sum.meta }));
     row.setAttribute("aria-expanded", "false");
@@ -373,6 +373,8 @@ async function walletSignIn() {
     return setBusy(false);
   }
   setBusy(false);
+  openApp = null; // a new sign-in starts with nothing open and no search
+  query = "";
   mode = "wallet";
   token = session.session;
   store.set(SKEY, JSON.stringify(session));
