@@ -792,6 +792,17 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: 4 or more tests written failing first for the link checks (resolver, hydra.app tag, Hydra grant) and 5 or more for the approved-release compare; live: a name linked from the Console gets hydra.status written within 60 s of a flip and the app page shows the release it approved
 - Evidence: <PR link>
 
+### T-B19, ENS status index: every linked app, its ENS status and whether its newest release is approved
+- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-b19-ens-index
+- Suggested: Jishnu
+- Depends-on: T-A36
+- Touches: apps/explorer/status/, apps/explorer/src/arkiv.js, apps/explorer/src/ensview.js, apps/explorer/vercel.json
+- Serves: ENS track (prize) ; WOW factor (judged)
+- Known: T-A36 shows ENS per app and per name but nothing lists all linked apps; the single-name /status/ view stays as it is
+- Scope: a new read-only page /status/apps/ lists every app with a hydra.ens link: app, ENS name, live hydra.status read from ENS, whether the newest release is approved by the name, and the app's last checks as a status bar from Arkiv; apps with no link are not listed and nothing else changes
+- Acceptance: 4 or more tests written failing first for the row model (latest link per app, approval state, bar from checks); live: the page lists 1 or more linked apps and a name with no records shows as not set, never an error
+- Evidence: <PR link>
+
 ### T-B10, A clean test site that Hydra verifies, so search can show Good to go
 - Status: in-review https://github.com/jishnu-baruah/hydra/pull/121 | Branch: feature/t-b10-clean-site
 - Suggested: Mouli
