@@ -12,9 +12,9 @@ export function nextStep({ name, resolver, appTag, app, hydraCanWrite, walletCan
 }
 
 // What the card shows for hydra.release. Public RPC nodes lag after a write, so an empty read
-// falls back to the key we just wrote on this page visit; a non-empty read always wins.
+// and a stale read both lose to the key we just wrote on this page visit (it equals the read once the node catches up).
 // releaseKeys: newest first. Returns { state: none|invalid|latest|older|unknown, key? }.
 export function approvedView(releaseKeys, onchainValue, optimisticValue) {
   const read = String(onchainValue ?? "").trim();
-  return approval(releaseKeys, read || optimisticValue);
+  return approval(releaseKeys, String(optimisticValue ?? "").trim() || read);
 }

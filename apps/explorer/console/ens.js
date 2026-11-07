@@ -120,21 +120,23 @@ export function ensBlock(app, ctx) {
       const hash = await send(w, { address: resolver, abi: ABI.resolver, functionName: "setText", args: [dnsName(link.name), KEYS.release, latest.key] });
       optimistic.set(link.name, latest.key);
       say(`Approved ${latest.version}. ${tx(hash)}`);
-      draw(link, live, approveRow, rec, rels);
+      draw(link, live, approveRow, { ...rec, release: latest.key }, rels);
     }), "btn"));
   }
 
   // One click: the API registers and links the name, paid by Hydra. We only poll its progress.
+  const setupPath = () => `/v1/console/apps/${encodeURIComponent(app)}/ens/setup`;
+  const setupHeaders = () => ({ authorization: `Bearer ${ctx.getToken()}`, "content-type": "application/json" });
+  const EXPIRED = "Your console session expired. Sign in again, then press the button.";
+  const isLimit = (m) => /daily|per wallet|per-wallet|limit/i.test(String(m ?? ""));
+
   async function setup(out) {
-    const path = `/v1/console/apps/${encodeURIComponent(app)}/ens/setup`;
-    const headers = () => ({ authorization: `Bearer ${ctx.getToken()}`, "content-type": "application/json" });
     const progress = el("p", { className: "help" });
     const hashes = el("ul", { className: "ens-steps" });
     out.replaceChildren(progress, hashes);
-    const expired = "Your console session expired. Sign in again, then press the button.";
     try {
       progress.textContent = "Starting the setup...";
-      await api(path, { method: "POST", headers: headers(), body: "{}" });
+      await api(setupPath(), { method: "POST", headers: setupHeaders(), body: "{}" });
     } catch (e) {
       if ([404, 405, 503].includes(e.status)) {
         progress.textContent = "This Hydra server does not sponsor ENS setup. Use the manual path below with a name you own.";
@@ -142,18 +144,61 @@ export function ensBlock(app, ctx) {
         if (manual) manual.open = true;
         return;
       }
-      progress.textContent = e.status === 401 ? expired : `Hydra could not start the setup: ${e.message}. Press the button again in a minute.`;
+      if (e.status === 401) {
+        progress.textContent = EXPIRED;
+        return;
+      }
+      if (e.status === 409) {
+        // A setup may already exist for this app: look before telling the user anything.
+        let st = null;
+        try {
+          st = await api(setupPath(), { method: "GET", headers: setupHeaders() });
+        } catch {
+          // fall through to the server's own message
+        }
+        if (st?.state === "running") return poll(progress, hashes);
+        if (st?.state === "done") return finish(st);
+        progress.textContent = isLimit(e.message) ? `Hydra did not start the setup: ${e.message}` : `Hydra did not start the setup: ${e.message}. Reload the page to see the latest state.`;
+        return;
+      }
+      progress.textContent = `Hydra could not start the setup: ${e.message}. Press the button again in a minute.`;
       return;
     }
+    return poll(progress, hashes);
+  }
+
+  // Done: the Arkiv index may lag, so draw the linked view directly instead of re-reading the link.
+  async function finish(st) {
+    say(`${st.name ?? "Your name"} is registered and linked.`);
+    if (typeof st.name === "string" && st.name) await renderLinked({ name: st.name, resolver: "" });
+    else await render();
+  }
+
+  // On page load: pick up a setup that is already running or finished.
+  async function resume(out) {
+    let st;
+    try {
+      st = await api(setupPath(), { method: "GET", headers: setupHeaders() });
+    } catch {
+      return; // no sponsor, signed out or offline: the button explains itself when pressed
+    }
+    if (st?.state === "done") return finish(st);
+    if (st?.state !== "running") return;
+    const progress = el("p", { className: "help" });
+    const hashes = el("ul", { className: "ens-steps" });
+    out.replaceChildren(progress, hashes);
+    return poll(progress, hashes);
+  }
+
+  async function poll(progress, hashes) {
     const shown = new Set();
     const deadline = Date.now() + 4 * 60 * 1000;
     while (Date.now() < deadline) {
-      await new Promise((r) => setTimeout(r, 3000));
       let st;
       try {
-        st = await api(path, { method: "GET", headers: headers() });
+        st = await api(setupPath(), { method: "GET", headers: setupHeaders() });
       } catch (e) {
-        progress.textContent = e.status === 401 ? expired : `Could not read the setup progress: ${e.message}. Reload the page; the setup keeps running on the server.`;
+        progress.textContent = e.status === 401 ? EXPIRED : `Could not read the setup progress: ${e.message}. Reload the page; the setup keeps running on the server.`;
         return;
       }
       for (const h of Array.isArray(st.txs) ? st.txs : []) {
@@ -161,16 +206,17 @@ export function ensBlock(app, ctx) {
         shown.add(h);
         hashes.append(el("li", {}, stepLink(h)));
       }
-      if (st.state === "done") {
-        say(`${st.name ?? "Your name"} is registered and linked.`);
-        await render();
-        return;
-      }
+      if (st.state === "done") return finish(st);
       if (st.state === "failed") {
         progress.textContent = `The setup failed: ${String(st.error ?? "unknown error").slice(0, 240)}. Press the button to try again, or use a name you own below.`;
         return;
       }
+      if (st.state === "none") {
+        progress.textContent = "The server restarted and lost this setup. Check the Etherscan links shown above, then press the button again.";
+        return;
+      }
       progress.textContent = typeof st.step === "string" && st.step ? `Setting up: ${st.step.slice(0, 120)}` : "Setting up...";
+      await new Promise((r) => setTimeout(r, 3000));
     }
     progress.textContent = "The setup is taking longer than 4 minutes. Reload the page to see whether it finished; if not, press the button again.";
   }
@@ -191,6 +237,7 @@ export function ensBlock(app, ctx) {
       auto,
       manual,
     );
+    guard("Resuming the ENS setup", () => resume(auto));
   }
 
   async function simulates(req) {

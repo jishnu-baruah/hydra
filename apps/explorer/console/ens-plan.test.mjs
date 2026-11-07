@@ -48,8 +48,10 @@ test("approvedView: empty read keeps the optimistic value", () => {
   assert.deepEqual(approvedView([K1, K2], "", K1), { state: "latest", key: K1 });
   assert.equal(approvedView([K1, K2], "  ", K1).state, "latest");
 });
-test("approvedView: a non-empty read wins over the optimistic value", () => {
-  assert.equal(approvedView([K1, K2], K2, K1).state, "older");
+test("approvedView: the optimistic value wins over a stale non-empty read", () => {
+  // old release K2 still approved on chain, user just approved the newer K1
+  assert.deepEqual(approvedView([K1, K2], K2, K1), { state: "latest", key: K1 });
+  assert.equal(approvedView([K1, K2], K1, K1).state, "latest");
 });
 test("approvedView: older release", () => {
   assert.deepEqual(approvedView([K1, K2], K2, ""), { state: "older", key: K2 });

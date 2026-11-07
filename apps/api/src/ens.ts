@@ -9,6 +9,15 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { sepolia } from 'viem/chains'
 import { packetToBytes } from 'viem/ens'
 
+// One queue for every Sepolia transaction the indexer wallet sends (status writes and sponsored setups):
+// one nonce at a time, so two of them never collide.
+let sepoliaTail: Promise<unknown> = Promise.resolve()
+export function sepoliaQueue<T>(fn: () => Promise<T>): Promise<T> {
+  const run = sepoliaTail.catch(() => undefined).then(fn)
+  sepoliaTail = run
+  return run
+}
+
 export const ENS_STATUS_KEY = 'hydra.status'
 export const ENS_APP_KEY = 'hydra.app'
 export const UNIVERSAL_RESOLVER = '0x24e1d8e068620b647ca097f961a61055f4f42d72' // ENSv2, Sepolia
@@ -86,7 +95,6 @@ export function ensStatusWriter(o: { privateKey: Hex | undefined; rpcUrl?: strin
   const pub = createPublicClient({ chain: sepolia, transport })
   const account = privateKeyToAccount(o.privateKey)
   const wallet = createWalletClient({ chain: sepolia, transport, account })
-  let queue: Promise<unknown> = Promise.resolve()
   const write = async (t: EnsTarget, value: 'match' | 'mismatch'): Promise<string> => {
     // The name's resolver now, not the one stored at link time: a team may move its name.
     const current = await pub.getEnsResolver({ name: t.name, universalResolverAddress: UNIVERSAL_RESOLVER })
@@ -101,8 +109,6 @@ export function ensStatusWriter(o: { privateKey: Hex | undefined; rpcUrl?: strin
   return (t: EnsTarget, verdict: string): Promise<string | null> => {
     const value = ensStatusValue(verdict)
     if (!value) return Promise.resolve(null)
-    const run = queue.catch(() => undefined).then(() => write(t, value))
-    queue = run
-    return run
+    return sepoliaQueue(() => write(t, value))
   }
 }

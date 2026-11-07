@@ -29,6 +29,8 @@ test('label rules', () => {
   assert.equal(sponsorLabelProblem('my-app'), null)
   assert.match(sponsorLabelProblem('ab')!, /register a different name yourself/)
   assert.match(sponsorLabelProblem('My_App')!, /register a different name yourself/)
+  for (const bad of ['-foo', 'foo-', 'ab--cd', 'xn--abc']) assert.match(sponsorLabelProblem(bad)!, /register a different name yourself/, bad)
+  assert.equal(sponsorLabelProblem('a-b-c'), null)
 })
 
 test('steps run in order, one at a time, and the job ends done with every tx', async () => {

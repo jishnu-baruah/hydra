@@ -12,7 +12,7 @@ import { packetToBytes } from 'viem/ens'
 import { randomBytes } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { rootCause } from '@hydra/core'
-import { ENS_APP_KEY, ENS_STATUS_KEY } from './ens.ts'
+import { ENS_APP_KEY, ENS_STATUS_KEY, sepoliaQueue } from './ens.ts'
 
 export const STEP_LABELS = [
   '1 of 6 deploying the resolver',
@@ -23,7 +23,8 @@ export const STEP_LABELS = [
   '6 of 6 checking the name and linking it',
 ] as const
 
-const LABEL = /^[a-z0-9-]{3,40}$/
+// ENS labels: no leading or trailing hyphen, and no "--" at positions 3 and 4 (reserved, e.g. xn--).
+const LABEL = /^(?!-)(?!..--)[a-z0-9-]{3,40}(?<!-)$/
 export const sponsorLabelProblem = (label: string): string | null =>
   LABEL.test(label) ? null : `${label}.eth is taken or too short: register a different name yourself in the console, or use a name you own`
 
@@ -155,18 +156,15 @@ export function realSponsorActions(o: {
   const wallet = createWalletClient({ chain: sepolia, transport, account })
   const reg = abi('ETHRegistrar')
   const res = abi('PermissionedResolver')
-  let queue: Promise<unknown> = Promise.resolve() // one nonce at a time across jobs
   // Sends once, logs the hash, waits for the receipt. Never resends.
   const tx = (what: string, send: () => Promise<Hex>) => {
-    const run = queue.catch(() => undefined).then(async () => {
+    return sepoliaQueue(async () => {
       const hash = await send()
       console.log(`ENS sponsor ${what} tx ${hash}`)
       const r = await pub.waitForTransactionReceipt({ hash, timeout: 180_000 })
       if (r.status !== 'success') throw new Error(`${what} reverted (tx ${hash})`)
       return r
     })
-    queue = run
-    return run
   }
   const duration = () => pub.readContract({ address: A.registrar, abi: reg, functionName: 'MIN_REGISTER_DURATION' }) as Promise<bigint>
   const commitArgs = async (x: { label: string; team: string; resolver: string; secret: string }) =>
