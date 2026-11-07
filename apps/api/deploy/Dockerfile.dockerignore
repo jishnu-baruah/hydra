@@ -12,6 +12,7 @@
 !packages/indexer/package.json
 !packages/indexer/src
 !packages/indexer/targets.json
+!spikes/F4/abi
 **/node_modules
 **/.env
 **/.env.*
