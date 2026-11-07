@@ -22,6 +22,8 @@
 //   GET  /v1/console/apps             Authorization: Bearer <session>; every app this wallet owns
 //   POST /v1/console/apps/:app/rotate a new API key; older keys of the app stop working
 //   POST /v1/console/apps/:app/ens    { name } links an ENS name whose owner tagged it with the app (T-A36)
+//   POST /v1/console/apps/:app/ens/setup  one click: Hydra's indexer wallet pays to register <app>.eth to the owner and link it (T-A37); 202, runs in the background
+//   GET  /v1/console/apps/:app/ens/setup  { state, step, name, error, txs } of that job
 //   .../apps/:app/alerts, /alerts/:id, /alerts/:id/test, /telegram-chats   the /v1/alerts routes, by session
 
 import { timingSafeEqual } from 'node:crypto'
@@ -60,6 +62,11 @@ export interface ConsoleRoutes {
   rotate: (app: string, by: string) => Promise<{ version: number }> // stores the next key version and clears the cache
   rotationsPerHour?: number // per app; default 10
   // T-A36: checks the name on ENS and stores the link, or says why not. Absent: the route answers 503.
+  // T-A37: starts the sponsored setup job / reads its state. Absent: the routes answer 503.
+  sponsorEns?: {
+    start: (app: string, owner: string) => { ok: true; step: string } | { ok: false; problem: string }
+    status: (app: string) => { state: string; step: string | null; name: string | null; error: string | null; txs: string[] }
+  }
   linkEns?: (app: string, name: string, by: string) => Promise<{ name: string; resolver: string } | { problem: string }>
 }
 
@@ -403,12 +410,12 @@ export function createApi(deps: ApiDeps) {
         return send(res, 200, out.value)
       }
 
-      const consoleRoute = /^\/v1\/console\/apps(?:\/([a-z0-9-]+)(?:\/(rotate|telegram-chats|alerts|ens)(?:\/(0x[0-9a-fA-F]{64})(\/test)?)?)?)?$/.exec(path)
+      const consoleRoute = /^\/v1\/console\/apps(?:\/([a-z0-9-]+)(?:\/(rotate|telegram-chats|alerts|ens)(?:\/(0x[0-9a-fA-F]{64})(\/test)?|\/(setup))?)?)?$/.exec(path)
       if (consoleRoute) {
-        const [, app, sub, id, isTest] = consoleRoute
+        const [, app, sub, id, isTest, setup] = consoleRoute
         const method = req.method ?? ''
-        const want = !app ? 'GET' : sub === 'rotate' || sub === 'ens' ? 'POST' : sub === 'telegram-chats' ? 'GET' : !sub ? '' : id ? (isTest ? 'POST' : 'DELETE') : 'POST'
-        if (!want || (sub !== 'alerts' && id) || (sub === 'alerts' && !id && method === 'GET')) return send(res, 404, { error: 'not found' })
+        const want = !app ? 'GET' : sub === 'rotate' || sub === 'ens' ? (setup && method === 'GET' ? 'GET' : 'POST') : sub === 'telegram-chats' ? 'GET' : !sub ? '' : id ? (isTest ? 'POST' : 'DELETE') : 'POST'
+        if (!want || (setup && sub !== 'ens') || (sub !== 'alerts' && id) || (sub === 'alerts' && !id && method === 'GET')) return send(res, 404, { error: 'not found' })
         if (method !== want) return send(res, 405, { error: `${method} is not supported on ${path}` })
         const session = sessionAuth(req, res)
         if (!session) return
@@ -435,6 +442,12 @@ export function createApi(deps: ApiDeps) {
           return send(res, 200, { app, key, version, expires_at: now + KEY_TTL_MS })
         }
         if (sub === 'telegram-chats') return telegramChats(res, app)
+        if (sub === 'ens' && setup) {
+          if (!deps.console.sponsorEns) return send(res, 503, { error: 'one-click ENS setup is off on this server: it needs the indexer wallet (ARKIV_INDEXER_PRIVATE_KEY) and the Arkiv writer wallet. Register the name yourself in the console' })
+          if (method === 'GET') return send(res, 200, deps.console.sponsorEns.status(app))
+          const out = deps.console.sponsorEns.start(app, me)
+          return out.ok ? send(res, 202, { state: 'running', step: out.step }) : send(res, 409, { error: out.problem })
+        }
         if (sub === 'ens') {
           if (!deps.console.linkEns) return send(res, 503, { error: 'ENS links are off on this server: it needs the indexer wallet (ARKIV_INDEXER_PRIVATE_KEY) and the Arkiv writer wallet' })
           const body = await readJson(req, SMALL)

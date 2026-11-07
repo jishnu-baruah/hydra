@@ -2,8 +2,11 @@
 // and approve a release with hydra.release. Wallet mode only. Everything read is set with textContent.
 import { encodeFunctionData, zeroHash } from "https://cdn.jsdelivr.net/npm/viem@2.21.0/+esm";
 import { ABI, ALL_ROLES, client, dnsName, ENS, HYDRA_WRITER, hydraRecords, KEYS, NAME_RE, resolverOf, send, text, tx, wallet, zeroAddress } from "../src/ens.js";
-import { nextStep } from "./ens-plan.js";
+import { nextStep, approvedView } from "./ens-plan.js";
 import { api } from "../src/api.js";
+
+// name -> release key we just approved, kept for this page visit (public RPC nodes lag behind a write).
+const optimistic = new Map();
 
 const REJECTED = "You rejected the request in your wallet; press the button again when ready.";
 
@@ -81,20 +84,31 @@ export function ensBlock(app, ctx) {
       live.textContent = `Could not read ${link.name} on Sepolia: ${e?.shortMessage ?? e?.message ?? e}. Reload the page to try again.`;
       return;
     }
-    const approved = rels.find((r) => r.key === rec.release);
+    draw(link, live, approveRow, rec, rels);
+  }
+
+  // Shows the records and the approve button. Also used right after an approval, without a new read.
+  function draw(link, live, approveRow, rec, rels) {
+    const view = approvedView(rels.map((r) => r.key), rec.release, optimistic.get(link.name));
+    const rel = view.key ? rels.find((r) => r.key.toLowerCase() === view.key.toLowerCase()) : null;
     const latest = rels[0];
     const short = (k) => `${k.slice(0, 10)}...`;
+    const shown = view.state === "none" ? "none approved yet"
+      : view.state === "invalid" ? "not a release id (fix the hydra.release record on your name)"
+      : rel ? `${rel.version || "release"} (${short(view.key)})`
+      : `${short(view.key)} (not one of this app's releases)`;
     live.replaceChildren(
       el("p", { className: "label", textContent: "hydra.status" }),
       el("p", { textContent: rec.status || "not set yet (Hydra writes it at the next change of your site)" }),
       el("p", { className: "label", textContent: "hydra.release (approved)" }),
-      el("p", { textContent: !rec.release ? "none approved yet" : approved ? `${approved.version || "release"} (${short(rec.release)})` : `${short(rec.release)} (not one of this app's releases)` }),
+      el("p", { textContent: shown }),
     );
+    approveRow.replaceChildren();
     if (!latest) {
       approveRow.append(el("p", { className: "help", textContent: "No releases yet. Publish one, then approve it here." }));
       return;
     }
-    if (approved === latest) {
+    if (view.state === "latest") {
       approveRow.append(el("p", { className: "help", textContent: `The latest release ${latest.version} is approved.` }));
       return;
     }
@@ -104,19 +118,78 @@ export function ensBlock(app, ctx) {
       if (!resolver) throw new Error(`${link.name} has no resolver on ENSv2 Sepolia`);
       say("Confirm the approval in your wallet...");
       const hash = await send(w, { address: resolver, abi: ABI.resolver, functionName: "setText", args: [dnsName(link.name), KEYS.release, latest.key] });
+      optimistic.set(link.name, latest.key);
       say(`Approved ${latest.version}. ${tx(hash)}`);
-      await renderLinked(link);
+      draw(link, live, approveRow, rec, rels);
     }), "btn"));
+  }
+
+  // One click: the API registers and links the name, paid by Hydra. We only poll its progress.
+  async function setup(out) {
+    const path = `/v1/console/apps/${encodeURIComponent(app)}/ens/setup`;
+    const headers = () => ({ authorization: `Bearer ${ctx.getToken()}`, "content-type": "application/json" });
+    const progress = el("p", { className: "help" });
+    const hashes = el("ul", { className: "ens-steps" });
+    out.replaceChildren(progress, hashes);
+    const expired = "Your console session expired. Sign in again, then press the button.";
+    try {
+      progress.textContent = "Starting the setup...";
+      await api(path, { method: "POST", headers: headers(), body: "{}" });
+    } catch (e) {
+      if ([404, 405, 503].includes(e.status)) {
+        progress.textContent = "This Hydra server does not sponsor ENS setup. Use the manual path below with a name you own.";
+        const manual = box.querySelector("details.ens-manual");
+        if (manual) manual.open = true;
+        return;
+      }
+      progress.textContent = e.status === 401 ? expired : `Hydra could not start the setup: ${e.message}. Press the button again in a minute.`;
+      return;
+    }
+    const shown = new Set();
+    const deadline = Date.now() + 4 * 60 * 1000;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 3000));
+      let st;
+      try {
+        st = await api(path, { method: "GET", headers: headers() });
+      } catch (e) {
+        progress.textContent = e.status === 401 ? expired : `Could not read the setup progress: ${e.message}. Reload the page; the setup keeps running on the server.`;
+        return;
+      }
+      for (const h of Array.isArray(st.txs) ? st.txs : []) {
+        if (typeof h !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(h) || shown.has(h)) continue;
+        shown.add(h);
+        hashes.append(el("li", {}, stepLink(h)));
+      }
+      if (st.state === "done") {
+        say(`${st.name ?? "Your name"} is registered and linked.`);
+        await render();
+        return;
+      }
+      if (st.state === "failed") {
+        progress.textContent = `The setup failed: ${String(st.error ?? "unknown error").slice(0, 240)}. Press the button to try again, or use a name you own below.`;
+        return;
+      }
+      progress.textContent = typeof st.step === "string" && st.step ? `Setting up: ${st.step.slice(0, 120)}` : "Setting up...";
+    }
+    progress.textContent = "The setup is taking longer than 4 minutes. Reload the page to see whether it finished; if not, press the button again.";
   }
 
   function renderCheck() {
     const input = el("input", { placeholder: `${app}.eth`, spellcheck: false, autocomplete: "off", id: `ens-${app}` });
     const out = el("div", {});
-    show(
-      el("p", { className: "help", textContent: "Link an ENSv2 Sepolia name so Hydra writes the live verdict on it and you can approve releases there." }),
+    const auto = el("div", {});
+    const manual = el("details", { className: "ens-manual" },
+      el("summary", { textContent: "Use a name I already own" }),
       el("div", { className: "field" }, el("label", { htmlFor: input.id, textContent: "ENS name" }), input),
       btn("Check name", () => guard("Checking the name", () => check(input.value, out)), "btn"),
       out,
+    );
+    show(
+      el("p", { className: "help", textContent: "Link an ENSv2 Sepolia name so Hydra writes the live verdict on it and you can approve releases there." }),
+      btn("Set up ENS for me (free, Hydra pays, no wallet prompts)", () => guard("Setting up ENS", () => setup(auto)), "btn"),
+      auto,
+      manual,
     );
   }
 
@@ -167,7 +240,7 @@ export function ensBlock(app, ctx) {
     if (plan.step === "register") {
       out.replaceChildren(note, btn(`Register ${name} (5 wallet steps)`, () => guard("Registering the name", () => register(name, steps, out)), "btn"), steps);
     } else if (plan.step === "allow") {
-      out.replaceChildren(note, btn("Allow Hydra (1 transaction)", () => guard("Allowing Hydra", () => allow(name, resolver, out)), "btn"));
+      out.replaceChildren(note, btn("Allow Hydra and link", () => guard("Allowing Hydra", () => allow(name, resolver, out)), "btn"));
     } else if (plan.step === "link") {
       out.replaceChildren(note, btn(`Link ${name}`, () => guard("Linking the name", () => link(name)), "btn"));
     } else {
@@ -219,7 +292,8 @@ export function ensBlock(app, ctx) {
     say("Confirm the permission in your wallet...");
     const hash = await send(w, { address: resolver, abi: ABI.resolver, functionName: "multicall", args: [allowCalls(name)] });
     say(`Hydra is allowed on ${name}. ${tx(hash)}`);
-    proceed(nextStep({ name, resolver, appTag: app, app, hydraCanWrite: true, walletCanAllow: true, registrable: false }), name, resolver, out);
+    // Link right away; if that fails, the card offers the Link button again.
+    if (!(await link(name))) proceed(nextStep({ name, resolver, appTag: app, app, hydraCanWrite: true, walletCanAllow: true, registrable: false }), name, resolver, out);
   }
 
   // The API checks the name on chain, then stores the link. A refusal (409) carries its reason.
@@ -234,10 +308,12 @@ export function ensBlock(app, ctx) {
       });
     } catch (e) {
       say("");
-      return fail(e.status === 401 ? "Your console session expired. Sign in again, then press Link." : `Hydra did not link ${name}: ${e.message}`);
+      fail(e.status === 401 ? "Your console session expired. Sign in again, then press Link." : `Hydra did not link ${name}: ${e.message}. Press Link to try again.`);
+      return false;
     }
     say(`Linked. Hydra writes hydra.status on ${name} at the next change of your site.`);
     await renderLinked({ name: r.name, resolver: r.resolver }); // Arkiv's index can lag the write
+    return true;
   }
 
   render();

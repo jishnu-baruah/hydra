@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { nextStep } from "./ens-plan.js";
+import { nextStep, approvedView } from "./ens-plan.js";
 
 const base = { name: "shop.eth", resolver: "0xabc", appTag: "", app: "shop", hydraCanWrite: false, walletCanAllow: true, registrable: false };
 const step = (o) => nextStep({ ...base, ...o }).step;
@@ -35,4 +35,26 @@ test("every step carries a sentence without dashes", () => {
     assert.ok(r.text.length > 20);
     assert.ok(!/[^\x00-\x7f]/.test(r.text));
   }
+});
+
+const K1 = "0x" + "ab".repeat(32);
+const K2 = "0x" + "cd".repeat(32);
+test("approvedView: case difference still matches the newest release", () => {
+  const v = approvedView([K1, K2], K1.toUpperCase().replace("0X", "0x"), "");
+  assert.equal(v.state, "latest");
+  assert.equal(v.key, K1);
+});
+test("approvedView: empty read keeps the optimistic value", () => {
+  assert.deepEqual(approvedView([K1, K2], "", K1), { state: "latest", key: K1 });
+  assert.equal(approvedView([K1, K2], "  ", K1).state, "latest");
+});
+test("approvedView: a non-empty read wins over the optimistic value", () => {
+  assert.equal(approvedView([K1, K2], K2, K1).state, "older");
+});
+test("approvedView: older release", () => {
+  assert.deepEqual(approvedView([K1, K2], K2, ""), { state: "older", key: K2 });
+});
+test("approvedView: invalid and none", () => {
+  assert.equal(approvedView([K1], "hello", "").state, "invalid");
+  assert.equal(approvedView([K1], "", "").state, "none");
 });
