@@ -803,6 +803,28 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: 4 or more tests written failing first for the row model (latest link per app, approval state, bar from checks); live: the page lists 1 or more linked apps and a name with no records shows as not set, never an error
 - Evidence: <PR link>
 
+### T-A37, One-click ENS: Hydra sponsors the name, the team signs nothing but the approval
+- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-a37-ens-sponsor
+- Suggested: Jishnu
+- Depends-on: T-A36
+- Touches: apps/api/, apps/explorer/console/ens.js
+- Serves: ENS track (prize) ; WOW factor (judged)
+- Known: T-A36 needs 8 wallet prompts (5 to register, 1 allow, 1 link, 1 approve). A simulation on 7 Nov showed a resolver cannot take preset records and a Hydra grant at init (it reverts), but the registrar takes a separate owner, so Hydra can pay and hand the name to the team. Also a bug: the Console showed "none approved yet" for a release already approved on chain
+- Scope: the Console sets up <app>.eth in one click: Hydra's wallet deploys the resolver, tags it, registers the name with the team wallet as owner and Hydra left with hydra.status only, then links it, while the team signs nothing; the team's one step is Approve; fix the approval display (case-insensitive compare, no stale read right after approving)
+- Acceptance: 5 or more tests written failing first (sponsor plan and limits: owner only, 1 name per app, 3 per address per day, taken name refused, job states); live: one click gives a name the team wallet owns with hydra.status writable by Hydra only, and Approve then shows approved on the page
+- Evidence: <PR link>
+
+### T-B20, Console as a list: collapsed apps you can search and expand
+- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-b20-console-list
+- Suggested: Jishnu
+- Depends-on: T-A36
+- Touches: apps/explorer/console/console.js, apps/explorer/console/console.css, apps/explorer/console/index.html
+- Serves: WOW factor (judged)
+- Known: the Console draws every app as a full card, so a wallet with many apps scrolls a long page
+- Scope: each app is one collapsed row (name, key version, channel count, ENS status) that expands to the full card; a search box appears above 5 apps; one app is open at a time; nothing about key rotation, channels or the ENS card changes inside the card
+- Acceptance: 3 or more tests written failing first for the row summary and the search filter; live: a wallet with 6 or more apps shows 6 rows on one screen, and expanding one shows its card
+- Evidence: <PR link>
+
 ### T-B10, A clean test site that Hydra verifies, so search can show Good to go
 - Status: in-review https://github.com/jishnu-baruah/hydra/pull/121 | Branch: feature/t-b10-clean-site
 - Suggested: Mouli
