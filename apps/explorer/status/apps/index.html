@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>All apps, Hydra</title>
+    <meta name="description" content="Every app that linked an ENS name, with its live status and approved release." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
+    <link rel="stylesheet" href="../../assets/hydra.css" />
+    <link rel="stylesheet" href="../../app/app.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="bar">
+      <a class="mark" href="../../">Hydra</a>
+      <nav aria-label="Main">
+        <a href="../../releases/">Builds</a>
+        <a href="../../observed/">Monitor</a>
+        <a href="../../search/">Search</a>
+        <a href="../../publish/">Publish</a>
+        <a href="../../console/" class="nav-console" hidden>Console</a>
+      </nav>
+      <span class="tag">Arkiv Rabdi / 7794095</span>
+    </header>
+
+    <main id="main">
+      <section class="hero">
+        <p class="eyebrow">ENS status <span>/ All apps</span></p>
+        <h1 class="compact">Apps with an ENS name</h1>
+        <p class="lede">Each row reads the app's own ENS name live. Hydra's monitor sets <code>hydra.status</code>; the team sets <code>hydra.release</code>.</p>
+      </section>
+      <p id="msg" role="status" aria-live="polite">Reading Arkiv...</p>
+      <div class="table-wrap">
+        <table id="tbl" hidden>
+          <thead><tr><th>App</th><th>ENS name</th><th>Status</th><th>Approval</th><th>Last checks</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </main>
+    <script type="module" src="page.js"></script>
+    <script type="module" src="../../assets/motion.js"></script>
+  </body>
+</html>
