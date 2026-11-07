@@ -3,6 +3,7 @@
 // Everything from the API is set with textContent.
 import { api } from "../src/api.js";
 import { channelLine, targetError } from "./form.js";
+import { filterApps, nextOpen, rowSummary } from "./list.js";
 import { apiErrorText, appCard, consoleRequest, normalizeApps, rotateCommand, sessionLive, shortAddress, toHex, walletErrorText } from "./view.js";
 
 const $ = (id) => document.getElementById(id);
@@ -11,6 +12,8 @@ const KKEY = "hydra.console.key";
 let mode = ""; // "wallet", "key" or "" when signed out
 let token = "";
 let busy = false;
+let openApp = null; // name of the one expanded app
+let query = ""; // the "Find an app" text
 let bot = null; // Telegram bot username, or null when the server has none
 
 const store = {
@@ -80,6 +83,8 @@ function signOut() {
   token = "";
   store.set(SKEY, "");
   store.set(KKEY, "");
+  openApp = null;
+  query = "";
   $("apps").replaceChildren();
   $("empty").replaceChildren("Sign in to see your apps.");
   $("empty").hidden = false;
@@ -117,7 +122,49 @@ function renderApps(apps) {
   if (!apps.length) {
     $("empty").replaceChildren("This wallet owns no apps yet. ", el("a", { href: "../publish/", textContent: "Publish one first" }), ".");
   }
-  for (const a of apps) box.append(renderApp(a));
+  if (!apps.length) return;
+  if (!apps.some((a) => a.app === openApp)) openApp = apps.length === 1 ? apps[0].app : null;
+  const items = new Map(); // app name -> { item, row, panel, built }
+  const none = el("p", { className: "help", textContent: "No app matches.", hidden: true });
+  const apply = () => {
+    const keep = new Set(filterApps(apps, query).map((a) => a.app));
+    for (const [name, it] of items) it.item.hidden = !keep.has(name);
+    none.hidden = keep.size > 0;
+  };
+  const paint = () => {
+    for (const [name, it] of items) {
+      const open = name === openApp;
+      it.row.setAttribute("aria-expanded", String(open));
+      it.panel.hidden = !open;
+      if (open && !it.built) {
+        it.built = true; // the card (and its ENS read) is built once, on first open
+        it.panel.append(renderApp(it.app));
+      }
+    }
+  };
+  if (apps.length > 5) {
+    const input = el("input", { id: "app-find", type: "search", value: query, autocomplete: "off", spellcheck: false });
+    input.addEventListener("input", () => { query = input.value; apply(); });
+    box.append(el("div", { className: "find" }, el("label", { htmlFor: "app-find", textContent: "Find an app" }), input));
+  } else {
+    query = "";
+  }
+  const list = el("div", { className: "applist" });
+  apps.forEach((a, i) => {
+    const sum = rowSummary(a);
+    const panel = el("div", { className: "app-panel", id: `app-panel-${i}`, hidden: true });
+    const row = el("button", { type: "button", className: "app-row", onclick: () => { openApp = nextOpen(openApp, a.app); paint(); } },
+      el("span", { className: "app-name", textContent: sum.name }),
+      el("span", { className: "app-meta", textContent: sum.meta }));
+    row.setAttribute("aria-expanded", "false");
+    row.setAttribute("aria-controls", panel.id);
+    const item = el("div", { className: "app-item" }, row, panel);
+    items.set(a.app, { app: a, item, row, panel, built: false });
+    list.append(item);
+  });
+  box.append(list, none);
+  apply();
+  paint();
 }
 
 function renderApp(a) {
