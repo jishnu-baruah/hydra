@@ -4,6 +4,12 @@
 // link on Arkiv. Whenever a linked app's live site starts or stops matching its published release, the
 // monitor writes "match" or "mismatch" to the name, so anyone can read the verdict from ENS without
 // asking Hydra. Each write is one transaction and is never resent.
+//
+// Where each part of the ENS feature lives (search for the name; each has a comment saying what it does):
+//   1. Permission, the team lets Hydra set one record only: resolverSetupCalls in apps/api/src/ens-sponsor.ts
+//   2. Write, "match" or "mismatch" onto the name:           ensStatusWriter below (called from apps/api/src/main.ts)
+//   3. Read, in the browser with no Hydra server:            text() in apps/explorer/src/ens.js,
+//                                                            shown by apps/explorer/status/status.js
 import { createPublicClient, createWalletClient, http, toHex, zeroAddress, type Hex } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { sepolia } from 'viem/chains'
