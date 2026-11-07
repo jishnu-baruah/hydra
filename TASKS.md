@@ -781,6 +781,17 @@ is what we must be able to show. Tick in a `board/` PR as items land.
 - Acceptance: unit tests written failing first for the config parse and the record value (4 or more cases); live: a hack flips hydra.status on status.demodapp.eth to mismatch within 60 s and the fix flips it back, both read from ENS
 - Evidence: <PR link>
 
+### T-A36, ENS in the product: link a name from the Console, approve releases on it
+- Status: claimed 2026-11-07 | Owner: Jishnu | Branch: feature/t-a36-ens-console
+- Suggested: Jishnu
+- Depends-on: T-A35, T-A32
+- Touches: apps/api/, packages/core/src/records.ts, docs/ARCHITECTURE.md, apps/explorer/console/, apps/explorer/app/, apps/explorer/status/, apps/explorer/src/, TASKS.md
+- Serves: ENS track (prize) ; WOW factor (judged)
+- Known: T-A35 works on one name set up by hand with spikes/F4; no UI could reach it. A read-only Sepolia simulation on 7 Nov showed one PermissionedResolver multicall from the name's owner can grant Hydra hydra.status and set hydra.app, a stranger is refused, and Hydra's wallet cannot set hydra.app
+- Scope: Console ENS card per app: register a .eth name with its own resolver if needed, one transaction to allow Hydra's hydra.status and tag the name with the app, link it (API verifies on chain and writes a hydra.ens record), and approve a release by setting hydra.release; status writes then come from every indexer and watcher flip of a linked app; the app page and the status page show the name, the live status and which release the name approved
+- Acceptance: 4 or more tests written failing first for the link checks (resolver, hydra.app tag, Hydra grant) and 5 or more for the approved-release compare; live: a name linked from the Console gets hydra.status written within 60 s of a flip and the app page shows the release it approved
+- Evidence: <PR link>
+
 ### T-B10, A clean test site that Hydra verifies, so search can show Good to go
 - Status: in-review https://github.com/jishnu-baruah/hydra/pull/121 | Branch: feature/t-b10-clean-site
 - Suggested: Mouli
