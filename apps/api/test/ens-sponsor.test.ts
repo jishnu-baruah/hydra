@@ -132,7 +132,10 @@ test('routes: auth, 403 for a non-owner, 202 start, 409 on a second, GET status,
     } as never).listen(0)
   const s = build(true)
   const off = build(false)
-  after(() => s.close())
+  after(() => {
+    s.close()
+    off.close()
+  })
   const call = (srv: typeof s, method: string, p: string, token?: string) =>
     fetch(`http://127.0.0.1:${(srv.address() as AddressInfo).port}${p}`, { method, headers: { connection: 'close', ...(token ? { authorization: `Bearer ${token}` } : {}) } }).then(async (r) => ({ status: r.status, json: (await r.json()) as Record<string, any> }))
   const now = Date.now()
