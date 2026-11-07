@@ -44,3 +44,20 @@
 .app .ens { display: grid; gap: 10px; }
 .app .ens-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font: 400 13px var(--mono); word-break: break-word; }
 .app .ens-live p { margin: 0; word-break: break-word; }
+
+/* Compact app list: one row per app, one card open at a time. */
+.apps { gap: 8px; }
+.find { display: grid; gap: 6px; }
+.find label { font: 500 13px var(--mono); }
+.find input { width: 100%; height: 40px; padding: 0 12px; font: 400 14px var(--mono); color: var(--fg); background: var(--card); border: 1px solid var(--border); border-radius: 0; }
+.find input:focus { outline: none; border-color: var(--accent); }
+.applist { display: grid; gap: 8px; }
+.app-item[hidden], .app-panel[hidden] { display: none; }
+.app-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 44px; padding: 0 14px; text-align: left; cursor: pointer; color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 0; font: 500 14px var(--mono); }
+.app-row::before { content: "+"; color: var(--muted); }
+.app-row[aria-expanded="true"]::before { content: "-"; }
+.app-row[aria-expanded="true"] { border-color: var(--accent); }
+.app-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.app-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-meta { color: var(--muted); font-weight: 400; font-size: 12px; white-space: nowrap; }
+.app-panel .app { border-top: 0; }
