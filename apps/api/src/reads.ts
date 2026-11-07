@@ -4,7 +4,7 @@
 // only records created by our publisher wallet (`writer`). An app name belongs to the address in
 // its earliest `hydra.app` record; releases and files from any other address are dropped.
 
-import { AlertSubSchema, AppSchema, FileSchema, KeyEpochSchema, ReleaseSchema, eq, readAll, readWithRetry } from '@hydra/core'
+import { AlertSubSchema, AppSchema, EnsLinkSchema, FileSchema, KeyEpochSchema, ReleaseSchema, eq, readAll, readWithRetry } from '@hydra/core'
 import { hexToBytes, hexToString, type Hex } from 'viem'
 import type { StoredSub } from './alerts.ts'
 import { appForDomain as pickApp, type DomainRelease } from './domains.ts'
@@ -194,4 +194,11 @@ export async function appsPublishedBy(reader: unknown, writer: Hex, address: str
 export async function blockToMs(reader: unknown, block: number): Promise<number> {
   const t = await readWithRetry(() => (reader as { getBlockTiming: () => Promise<{ currentBlock: bigint; currentBlockTime: number; blockDuration: number }> }).getBlockTiming())
   return Math.round((t.currentBlockTime + (block - Number(t.currentBlock)) * t.blockDuration) * 1000)
+}
+
+// The app's ENS link (T-A36): the newest hydra.ens row our wallet wrote for it, or null.
+export async function ensLinkOf(reader: unknown, writer: Hex, app: string): Promise<{ name: string; resolver: string } | null> {
+  const rows = await fetchRows(reader, writer, EnsLinkSchema, { app: true, name: true, resolver: true, created_at: true }, eq('app', app), 100)
+  const r = rows.filter((x) => x.app === app).sort((a, b) => Number(b.created_at ?? 0) - Number(a.created_at ?? 0))[0]
+  return r ? { name: String(r.name), resolver: String(r.resolver) } : null
 }

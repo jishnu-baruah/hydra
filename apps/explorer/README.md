@@ -25,8 +25,9 @@ cd apps/explorer && python -m http.server 5173
 - `/events/` (nav: Activity): releases, app claims and indexer observations, newest first.
 - `/live/` (nav: Live): the demo's live checker. Shows the Hydra API's watch state for one bound site (a check every 5 s, the last 30 checks, what changed and whether the alert went out) and switches it on or off with the demo token. Reads `GET /v1/watch`; the switch is `POST /v1/watch`.
 - `/publish/`: sign in with a wallet, get an API key, add the workflow, bind the domain.
-- `/console/`: sign in with your wallet (one signed message, no funds move), see the apps it owns, rotate an app's key (shown once, with the `gh secret set` command), and list, test, add and delete alert channels (webhook, Slack, Discord, Telegram). Calls `/v1/console/*`. Only the sign-in shows until a wallet signs in.
-- `/status/?name=status.<app>.eth`: the app's `hydra.status` ENS text record (ENSv2, Sepolia), read in the browser through the Universal Resolver every 5 s. Hydra's server is not asked.
+- `/console/`: sign in with your wallet (one signed message, no funds move), see the apps it owns, rotate an app's key (shown once, with the `gh secret set` command), and list, test, add and delete alert channels (webhook, Slack, Discord, Telegram). Calls `/v1/console/*`. Only the sign-in shows until a wallet signs in. The "ENS name" card registers a name, allows Hydra, links it and approves a release; every write is a Sepolia transaction from the user's wallet.
+- `/app/?name=<app>`: the "ENS name" section shows the app's linked name and its status, with the same link and approve actions as the console card.
+- `/status/?name=status.<app>.eth`: the app's `hydra.status` ENS text record (ENSv2, Sepolia), read in the browser through the Universal Resolver every 5 s, plus its `hydra.app` and `hydra.release` records. Hydra's server is not asked.
 
 Everything read from Arkiv is shown with `textContent`, never as HTML.
 

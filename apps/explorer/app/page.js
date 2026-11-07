@@ -3,6 +3,7 @@
 import { api } from "../src/api.js";
 import { ownerOf, trustedReleases } from "./releases.js";
 import { barModel, headline, siteHistory } from "./checks.js";
+import { approval, approvalText, isAppName, statusText } from "../src/ensview.js";
 import { boundDomains, latestVerdict, verdictText } from "./sites.js";
 
 const $ = (id) => document.getElementById(id);
@@ -20,6 +21,7 @@ const when = (ms) => new Date(ms).toISOString().replace("T", " ").slice(0, 16) +
 const name = (new URLSearchParams(location.search).get("name") ?? "").trim();
 
 let arkiv;
+const ensCells = new Map(); // release key -> its ENS cell, filled once ENS answers
 try {
   if (!name) {
     status("No app named. Open this page from search, or add ?name=<app> to the address.", true);
@@ -38,7 +40,7 @@ try {
       const wrap = el("div", undefined, { className: "table-wrap" });
       const t = wrap.appendChild(el("table"));
       const head = t.createTHead().insertRow();
-      for (const h of ["Version", "Commit", "Published", "Files", "Swarm", "Record"]) head.append(el("th", h));
+      for (const h of ["Version", "Commit", "Published", "Files", "Swarm", "Record", "ENS"]) head.append(el("th", h));
       const body = t.createTBody();
       for (const r of releases) {
         const tr = body.insertRow();
@@ -52,12 +54,14 @@ try {
             : el("span", "Not on Swarm yet", { className: "muted" }),
         );
         tr.insertCell().append(el("a", "View", { href: `../releases/?key=${encodeURIComponent(r.key)}` }));
+        ensCells.set(r.key, tr.insertCell());
       }
       $("view").append(wrap);
       const capped = rows.length >= 100 ? " Arkiv returned its 100-row page limit, so some releases may be missing." : "";
       status(`${releases.length} release(s) by the app's owner, read live from Arkiv in ${Math.round(performance.now())} ms.${capped}`);
       await showSites(arkiv);
     }
+    await showEns(arkiv, releases);
   }
 } catch (err) {
   status(
@@ -121,3 +125,36 @@ async function showChecks(domains) {
 }
 
 document.body.dataset.done = "1";
+
+// ENS name: the team's own name says which release is official. Any failure stays inside this section.
+async function showEns(arkivModule, releases) {
+  const box = $("ens");
+  if (!box) return;
+  try {
+    const link = await arkivModule.ensLink(name);
+    if (!link) return void box.replaceChildren(el("p", "Not linked to an ENS name. The team links one in the Console.", { className: "muted" }));
+    const ens = await import("../src/ens.js");
+    const rec = await ens.hydraRecords(link.name);
+    const keys = releases.map((r) => r.key);
+    const a = approval(keys, rec.release);
+    const row = el("p", undefined, { className: "site-row" });
+    row.append(
+      el("a", link.name, { href: `../status/?name=${encodeURIComponent(link.name)}` }),
+      " ",
+      el("span", rec.status === "match" || rec.status === "mismatch" ? rec.status : "no status yet", { className: `chip ${rec.status === "match" || rec.status === "mismatch" ? rec.status : "unknown"}` }),
+      " ",
+      el("span", statusText(rec.status), { className: "muted" }),
+    );
+    box.replaceChildren(row, el("p", approvalText(a.state, link.name)));
+    if (rec.app && rec.app !== name) {
+      const shown = isAppName(rec.app) ? rec.app : "another name";
+      box.append(el("p", `${link.name} now names app ${shown}, not this app. Ask the team which name is current.`, { className: "warn" }));
+    }
+    if (a.state === "latest" || a.state === "older") {
+      const cell = ensCells.get(releases.find((r) => r.key.toLowerCase() === a.key.toLowerCase())?.key);
+      if (cell) cell.append(el("span", "Approved", { className: "chip match" }));
+    }
+  } catch (err) {
+    box.replaceChildren(el("p", `Could not read the ENS name (${err.shortMessage ?? err.message}). Reload to retry; the public Sepolia RPC may be busy.`, { className: "muted" }));
+  }
+}

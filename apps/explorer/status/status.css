@@ -5,3 +5,6 @@
 .verdict[data-v="mismatch"] .dot { background: var(--mismatch); box-shadow: 0 0 18px var(--mismatch); }
 .verdict[data-v="mismatch"] { color: var(--mismatch); }
 #pick { margin-top: 20px; }
+.recs { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0 0 12px; }
+.recs dt { font-family: var(--mono); color: var(--muted); }
+.recs dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); }

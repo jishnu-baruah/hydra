@@ -127,7 +127,10 @@ function renderApp(a) {
   card.append(el("h3", {}, el("a", { href: c.href, textContent: c.name })));
   card.append(el("p", { className: "meta", textContent: [c.claimed, c.version, c.count].filter(Boolean).join(". ") + "." }));
 
-  if (mode === "wallet") card.append(rotateBlock(a.app));
+  if (mode === "wallet") {
+    card.append(rotateBlock(a.app));
+    card.append(ensSlot(a.app));
+  }
 
   card.append(el("h4", { textContent: "Alert channels" }));
   const ul = el("ul", { className: "channels" });
@@ -137,6 +140,15 @@ function renderApp(a) {
   }
   card.append(ul, addForm(a.app));
   return card;
+}
+
+// The ENS card loads on its own (it pulls viem from a CDN), so a failure there never breaks the page.
+function ensSlot(app) {
+  const slot = el("div", {});
+  import("./ens.js")
+    .then((m) => slot.replaceWith(m.ensBlock(app, { getToken: () => token, run, say, fail, el, btn })))
+    .catch((e) => slot.replaceChildren(el("p", { className: "warn", textContent: `The ENS card could not load: ${e?.message ?? e}. Check your connection and reload the page.` })));
+  return slot;
 }
 
 function rotateBlock(app) {

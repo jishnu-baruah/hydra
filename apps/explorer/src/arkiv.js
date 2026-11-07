@@ -109,3 +109,14 @@ export function rootCause(err) {
   while (e?.cause) e = e.cause;
   return e?.message ?? String(err);
 }
+
+// The app's ENS link (T-A36): the newest hydra.ens row the API wrote after checking the name on chain,
+// or null. { name, resolver }.
+export async function ensLink(app) {
+  const rows = await find("hydra.ens", "app", app);
+  const latest = rows
+    .map((e) => Object.fromEntries(Object.entries(e.$attributes ?? {}).map(([k, v]) => [k, v?.value])))
+    .filter((a) => a.app === app && typeof a.name === "string")
+    .sort((x, y) => Number(y.created_at ?? 0) - Number(x.created_at ?? 0))[0];
+  return latest ? { name: latest.name, resolver: String(latest.resolver ?? "") } : null;
+}

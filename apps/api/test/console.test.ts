@@ -264,3 +264,35 @@ test('console channel routes: same behaviour through the session; 403 for an app
   assert.deepEqual((await call('DELETE', `/v1/console/apps/mine2/alerts/${id}`, t)).json, { deleted: id })
   assert.equal((await call('PUT', '/v1/console/apps/mine/alerts', t)).status, 405)
 })
+
+test('ens link: 403 for an app the session does not own; a refused check is 409 with its reason; a good one is 201', async () => {
+  const linked: string[] = []
+  const s = build({
+    console: {
+      apps: async () => [],
+      rotate: async () => ({ version: 1 }),
+      linkEns: async (app: string, name: string, by: string) => {
+        if (name === 'bad.eth') return { problem: 'bad.eth does not name mine' }
+        linked.push(`${app}=${name} by ${by}`)
+        return { name, resolver: '0xD0FcfcCcB378174ca736A4b4969B74Fb24850b58' }
+      },
+    },
+  })
+  const port = (s.address() as AddressInfo).port
+  const at = (p: string, token: string, body: unknown) =>
+    fetch(`http://127.0.0.1:${port}${p}`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify(body) }).then(async (r) => ({ status: r.status, json: await r.json() }))
+  const now = Date.now()
+  const token = issueSession(SECRET, { address: me.address, scope: 'console', iat: now, exp: now + 60_000 })
+  assert.equal((await at('/v1/console/apps/theirs/ens', token, { name: 'theirs.eth' })).status, 403)
+  const bad = await at('/v1/console/apps/mine/ens', token, { name: 'Not A Name' })
+  assert.equal(bad.status, 400)
+  assert.match(bad.json.error, /ENS name/)
+  const refused = await at('/v1/console/apps/mine/ens', token, { name: 'bad.eth' })
+  assert.equal(refused.status, 409)
+  assert.match(refused.json.error, /does not name mine/)
+  const ok = await at('/v1/console/apps/mine/ens', token, { name: 'mine.eth' })
+  assert.equal(ok.status, 201, JSON.stringify(ok.json))
+  assert.equal(ok.json.name, 'mine.eth')
+  assert.deepEqual(linked, [`mine=mine.eth by ${me.address}`])
+  s.close()
+})

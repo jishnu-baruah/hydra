@@ -5,3 +5,7 @@
 .check.match { background: var(--match); }
 .check.mismatch { background: var(--mismatch); }
 .check.unknown { background: #d4b13a; }
+.chip { font: 500 11px/1 var(--mono); letter-spacing: 0.18em; text-transform: uppercase; padding: 5px 7px; border: 1px solid var(--border); color: var(--unknown); }
+.chip.match { color: var(--match); border-color: rgb(63 191 111 / 0.4); }
+.chip.mismatch { color: var(--mismatch); border-color: rgb(255 90 78 / 0.45); }
+.warn { color: var(--mismatch); }

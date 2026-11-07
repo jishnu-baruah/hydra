@@ -89,6 +89,7 @@ self-clearing incident flags kept alive by renewal.
 | `hydra.observation` | Indexer | `domain`, `status` (`match`, `mismatch`, `unknown`), `observed_at` (u64), `scripts_hash` | `app` (optional) | `{ scripts: [{url, sha256}] }` | 3 days |
 | `hydra.alert_sub` | API, when a team adds an alert channel (T-A30); deleted by the API on request | `app`, `kind` (`webhook`, `slack`, `discord`, `telegram`), `created_at` (u64) | | sealed bytes, not JSON: AES-256-GCM under the API's `ALERT_KEY`, `iv(12) \| tag(16) \| ciphertext` of `{ app, target, secret? }`; the target and webhook secret are never on chain in the clear | long |
 | `hydra.key_epoch` | API, when a team rotates an app's API key in the console (T-A32) | `app`, `version` (u64), `created_at` (u64) | | `{ by }` (the owner address) | long |
+| `hydra.ens` | API publisher wallet, only after it checks on chain (Sepolia, ENSv2) that the name has a resolver, its `hydra.app` text record equals the app, and Hydra's indexer may set `hydra.status`; requested from the Console by the wallet that owns the app (`POST /v1/console/apps/:app/ens`) (T-A36) | `app`, `name`, `created_at` (u64) | `resolver` | `{ by }` (the owner address) | long |
 
 ## Manifest (stored on Swarm, referenced by `release.swarm_ref`)
 
@@ -130,6 +131,14 @@ domain serves the file.
 ## ENS status records (T-A35)
 
 A team owns `status.<app>.eth` on ENSv2 (Sepolia), with its own sub-registry and PermissionedResolver, and grants Hydra's indexer wallet `setText` for the `hydra.status` key only (`grantSetterRoles`; any other key reverts). At each watcher flip the API writes `match` or `mismatch` there (one transaction, never resent, after the Arkiv write and outside it). `HYDRA_ENS_STATUS` maps `<domain>=<ens name>@<resolver>`. Anyone reads it through UniversalResolverV2; the explorer `/status/` page does so in the browser. Setup steps: `spikes/F4/spike.mjs <label> --sub`.
+
+ENS text records (Sepolia, read through UniversalResolverV2):
+
+- `hydra.status`: written by Hydra's indexer at every alert of a linked app (`match` or `mismatch`).
+- `hydra.app`: set by the name's owner. It ties the name to one app, so nobody links a name they do not control.
+- `hydra.release`: set by the name's owner from the Console. The Arkiv key of the release the team approved; the explorer shows whether the newest release is approved.
+
+Names linked from the Console need no config. `HYDRA_ENS_STATUS` still works for names set up by hand.
 
 ## Open decisions
 

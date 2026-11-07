@@ -21,6 +21,7 @@
 //   POST /v1/console/session          { address, issuedAt, signature } -> { session, address, expires }
 //   GET  /v1/console/apps             Authorization: Bearer <session>; every app this wallet owns
 //   POST /v1/console/apps/:app/rotate a new API key; older keys of the app stop working
+//   POST /v1/console/apps/:app/ens    { name } links an ENS name whose owner tagged it with the app (T-A36)
 //   .../apps/:app/alerts, /alerts/:id, /alerts/:id/test, /telegram-chats   the /v1/alerts routes, by session
 
 import { timingSafeEqual } from 'node:crypto'
@@ -28,6 +29,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { normalizeDomain, rootCause, WriteNotVerifiedError } from '@hydra/core'
 import { APP_NAME, checkInput, keyFromSignature, signInMessage } from './auth.ts'
 import { getAddress } from 'viem'
+import { ensNameOk } from './ens.ts'
 import { ADDRESS, consoleMessage, issueSession, SESSION_TTL_MS, sessionFromSignature, verifySession } from './console.ts'
 import { issueKey, KEY_TTL_MS, verifyKey, type KeyClaims } from './keys.ts'
 import { claimApp, ownedError, publish, type PublishDeps } from './publish.ts'
@@ -57,6 +59,8 @@ export interface ConsoleRoutes {
   apps: (address: string) => Promise<{ app: string; created_at: number; expires_at: number }[]> // candidates: apps created for this wallet
   rotate: (app: string, by: string) => Promise<{ version: number }> // stores the next key version and clears the cache
   rotationsPerHour?: number // per app; default 10
+  // T-A36: checks the name on ENS and stores the link, or says why not. Absent: the route answers 503.
+  linkEns?: (app: string, name: string, by: string) => Promise<{ name: string; resolver: string } | { problem: string }>
 }
 
 export interface ApiDeps {
@@ -181,6 +185,7 @@ export function createApi(deps: ApiDeps) {
   const takeClaim = limiter(deps.claimsPerHour ?? 5)
   const takeAlertWrite = limiter(deps.alerts?.writesPerHour ?? 20)
   const takeRotation = limiter(deps.console?.rotationsPerHour ?? 10)
+  const takeEnsLink = limiter(10)
 
   // The indexer trigger spends gas, so it needs its own secret and the shared runner guard.
   const runner = deps.indexer ? (deps.indexer.runner ?? indexerRunner(deps.indexer.run)) : undefined
@@ -398,11 +403,11 @@ export function createApi(deps: ApiDeps) {
         return send(res, 200, out.value)
       }
 
-      const consoleRoute = /^\/v1\/console\/apps(?:\/([a-z0-9-]+)(?:\/(rotate|telegram-chats|alerts)(?:\/(0x[0-9a-fA-F]{64})(\/test)?)?)?)?$/.exec(path)
+      const consoleRoute = /^\/v1\/console\/apps(?:\/([a-z0-9-]+)(?:\/(rotate|telegram-chats|alerts|ens)(?:\/(0x[0-9a-fA-F]{64})(\/test)?)?)?)?$/.exec(path)
       if (consoleRoute) {
         const [, app, sub, id, isTest] = consoleRoute
         const method = req.method ?? ''
-        const want = !app ? 'GET' : sub === 'rotate' ? 'POST' : sub === 'telegram-chats' ? 'GET' : !sub ? '' : id ? (isTest ? 'POST' : 'DELETE') : 'POST'
+        const want = !app ? 'GET' : sub === 'rotate' || sub === 'ens' ? 'POST' : sub === 'telegram-chats' ? 'GET' : !sub ? '' : id ? (isTest ? 'POST' : 'DELETE') : 'POST'
         if (!want || (sub !== 'alerts' && id) || (sub === 'alerts' && !id && method === 'GET')) return send(res, 404, { error: 'not found' })
         if (method !== want) return send(res, 405, { error: `${method} is not supported on ${path}` })
         const session = sessionAuth(req, res)
@@ -430,6 +435,15 @@ export function createApi(deps: ApiDeps) {
           return send(res, 200, { app, key, version, expires_at: now + KEY_TTL_MS })
         }
         if (sub === 'telegram-chats') return telegramChats(res, app)
+        if (sub === 'ens') {
+          if (!deps.console.linkEns) return send(res, 503, { error: 'ENS links are off on this server: it needs the indexer wallet (ARKIV_INDEXER_PRIVATE_KEY) and the Arkiv writer wallet' })
+          const body = await readJson(req, SMALL)
+          const name = typeof body.name === 'string' ? body.name.trim() : ''
+          if (!ensNameOk(name)) return send(res, 400, { error: '"name" must be a lowercase ENS name such as yourapp.eth' })
+          if (!takeEnsLink(app)) return send(res, 429, { error: 'too many ENS link attempts for this app; try again within the hour' })
+          const out = await deps.console.linkEns(app, name, me)
+          return 'problem' in out ? send(res, 409, { error: out.problem }) : send(res, 201, { app, ...out })
+        }
         return alertOps(req, res, { app, id, isTest: Boolean(isTest) })
       }
 
