@@ -131,8 +131,11 @@ const ALL_ROLES = BigInt('0x' + '11'.repeat(32))
 const abi = (n: string) => JSON.parse(readFileSync(new URL(`../../../spikes/F4/abi/${n}.json`, import.meta.url), 'utf8')).abi
 const SEPOLIA_RPC = 'https://ethereum-sepolia-rpc.publicnode.com'
 
-// The multicall run once on the new resolver, from Hydra. Order matters: the team gets its roles
-// before Hydra gives up its own.
+// ENS, permissions. A team's ENS name points at its own resolver contract (ENSv2 on Sepolia), and this
+// list of calls is run once on that resolver. The line that matters is grantSetterRoles: it lets Hydra's
+// monitor wallet call setText for the single record "hydra.status" and nothing else (any other record
+// reverts). The team gets every role and Hydra's own admin rights are revoked, so the team stays in
+// control and can take the permission back at any time. Order matters: the team gets its roles first.
 export function resolverSetupCalls(o: { label: string; app: string; team: Hex; hydra: Hex }): Hex[] {
   const res = abi('PermissionedResolver')
   const enc = (functionName: string, args: unknown[]) => encodeFunctionData({ abi: res, functionName, args })

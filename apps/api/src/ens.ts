@@ -1,9 +1,9 @@
-// ENS status records (T-A35, spike F4) and ENS links from the console (T-A36). A team owns an ENS
-// name on ENSv2 (Sepolia) with its own PermissionedResolver. From the console it tags the name with
-// its app (text record hydra.app) and grants Hydra's indexer wallet setText for "hydra.status" only,
-// in one transaction; the API checks both on chain, then stores the link on Arkiv (hydra.ens). At
-// every flip of a linked app the indexer writes match or mismatch there, so anyone can read the
-// verdict from ENS without asking Hydra. Each write is one transaction, never resent.
+// ENS status records. A team owns an ENS name on ENSv2 (Sepolia) with its own resolver contract. The
+// name carries a text record "hydra.app" (which app it belongs to, set by the team) and Hydra's monitor
+// wallet may set one other record on it, "hydra.status". The API checks both on chain, then stores the
+// link on Arkiv. Whenever a linked app's live site starts or stops matching its published release, the
+// monitor writes "match" or "mismatch" to the name, so anyone can read the verdict from ENS without
+// asking Hydra. Each write is one transaction and is never resent.
 import { createPublicClient, createWalletClient, http, toHex, zeroAddress, type Hex } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { sepolia } from 'viem/chains'
@@ -35,7 +35,7 @@ export const ensNameOk = (name: string): boolean => name.length <= 255 && NAME.t
 const dnsName = (name: string): Hex => toHex(packetToBytes(name))
 
 // HYDRA_ENS_STATUS: "<domain>=<ens name>@<resolver address>", comma separated. Names linked from the
-// console need no config; this stays for names set up by hand (spikes/F4).
+// console need no config; this stays for names set up by hand.
 export function ensStatusTargets(config: string | undefined): Map<string, EnsTarget> {
   const out = new Map<string, EnsTarget>()
   for (const raw of (config ?? '').split(',').map((s) => s.trim()).filter(Boolean)) {
@@ -86,9 +86,11 @@ export async function ensLinkFacts(o: { name: string; app: string; indexer: Hex;
   return { app: o.app, name: o.name, resolver, appTag: appTag || null, hydraCanWrite }
 }
 
-// Returns a writer for flips and for a new link, or undefined without a key. Writes from this wallet run one at a time
-// (one nonce at a time), with twice the gas estimate: the estimate is made before the record changes,
-// and a match write that followed a mismatch ran out of gas on 7 Nov. Errors carry no URL or key.
+// ENS, write. Returns the function that sets the text record "hydra.status" to "match" or "mismatch" on a
+// team's ENS name: one Sepolia transaction from Hydra's monitor wallet, which has permission for that
+// one record only. It is called from main.ts after a flip has been stored on Arkiv. Writes run one at a
+// time (one nonce at a time) with twice the gas estimate, because the estimate is made before the record
+// changes and a later write can need more. Never resent. Errors carry no URL or key.
 export function ensStatusWriter(o: { privateKey: Hex | undefined; rpcUrl?: string }) {
   if (!o.privateKey) return undefined
   const transport = http(o.rpcUrl ?? SEPOLIA_RPC, { timeout: 30_000, retryCount: 0 })

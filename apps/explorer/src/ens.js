@@ -1,12 +1,12 @@
-// Shared ENS helpers for the explorer (T-A35, T-A36). ENSv2 on Sepolia, read in the browser through the
-// Universal Resolver; Hydra's server is not asked. Text records are data: shown, never run.
+// Shared ENS helpers for the explorer. ENSv2 on Sepolia, read in the browser through the Universal
+// Resolver contract; Hydra's server is not asked. Text records are data: shown, never run.
 import { createPublicClient, createWalletClient, custom, http, parseAbi, toHex, zeroAddress } from "https://cdn.jsdelivr.net/npm/viem@2.21.0/+esm";
 import { sepolia } from "https://cdn.jsdelivr.net/npm/viem@2.21.0/chains/+esm";
 import { normalize, packetToBytes } from "https://cdn.jsdelivr.net/npm/viem@2.21.0/ens/+esm";
 
 export { sepolia, zeroAddress };
 export const KEYS = { status: "hydra.status", app: "hydra.app", release: "hydra.release" };
-// ENSv2 Sepolia deployment, as used by spikes/F4/spike.mjs.
+// ENSv2 Sepolia deployment: contract addresses.
 export const ENS = {
   universal: "0x24e1d8e068620b647ca097f961a61055f4f42d72",
   registrar: "0xf633e7fc17e2bbe0d0965d18ec1821dcb754a3d3",
@@ -52,7 +52,10 @@ export async function resolverOf(name) {
   return r && r !== zeroAddress ? r : null;
 }
 
-// One text record, or "" when unset.
+// ENS, read. Reads one text record (for example "hydra.status") straight from ENS on Sepolia, in the
+// visitor's browser, through ENSv2's UniversalResolver contract (viem getEnsText). No Hydra server or
+// API is involved, so the verdict can be checked without trusting Hydra's backend. Used by the /status/
+// pages and the app page. Returns "" when the record is not set.
 export async function text(name, key) {
   return (await client.getEnsText({ name: normalize(name), key, universalResolverAddress: ENS.universal })) ?? "";
 }
